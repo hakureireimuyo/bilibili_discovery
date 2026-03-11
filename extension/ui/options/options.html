@@ -1,38 +1,91 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <title>Bilibili Discovery Options</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilibili Discovery 设置</title>
     <link rel="stylesheet" href="./options.css" />
   </head>
   <body>
     <div class="app">
-      <h1>设置</h1>
-      <div class="links">
-        <a id="open-stats" href="#">查看统计信息</a>
+      <div class="header">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h1>设置</h1>
+        <p class="subtitle">配置您的Bilibili Discovery扩展</p>
       </div>
-      <label>
-        缓存时间（小时）
-        <input id="cache-hours" type="number" min="1" max="168" />
-      </label>
-      <label>
-        用户 UID
-        <input id="user-id" type="number" min="1" placeholder="Bilibili UID" />
-      </label>
-      <label>
-        API Base URL
-        <input id="api-base-url" type="text" placeholder="https://api.openai.com" />
-      </label>
-      <label>
-        Model
-        <input id="api-model" type="text" placeholder="gpt-4o-mini" />
-      </label>
-      <label>
-        API Key
-        <input id="api-key" type="password" placeholder="sk-..." />
-      </label>
-      <button id="save-btn">保存</button>
-      <p id="status" class="status"></p>
+
+      <div class="content">
+        <div class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            基本设置
+          </h2>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">缓存时间</span>
+              <input id="cache-hours" type="number" min="1" max="168" class="form-input" />
+              <span class="input-suffix">小时</span>
+            </label>
+            <p class="form-hint">设置数据缓存的有效时间，建议设置为24-72小时</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">用户 UID</span>
+              <input id="user-id" type="number" min="1" placeholder="输入您的B站UID" class="form-input" />
+            </label>
+            <p class="form-hint">您的B站用户ID，可在个人主页查看</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            AI配置
+          </h2>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">API Base URL</span>
+              <input id="api-base-url" type="text" placeholder="https://api.deepseek.com" class="form-input" />
+            </label>
+            <p class="form-hint">支持OpenAI规范的API地址，默认为DeepSeek</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">Model</span>
+              <input id="api-model" type="text" placeholder="deepseek-chat" class="form-input" />
+            </label>
+            <p class="form-hint">使用的AI模型名称</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">API Key</span>
+              <input id="api-key" type="password" placeholder="输入您的API密钥" class="form-input" />
+            </label>
+            <p class="form-hint">您的API密钥，将安全存储在本地</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button id="save-btn" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          保存设置
+        </button>
+        <p id="status" class="status"></p>
+      </div>
     </div>
     <script type="module" src="./options.ts"></script>
   </body>
