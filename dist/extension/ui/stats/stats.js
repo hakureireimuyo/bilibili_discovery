@@ -144,6 +144,23 @@ export async function initStats() {
             window.location.reload();
         });
     });
+    const updateUpListBtn = document.getElementById("btn-update-up-list");
+    updateUpListBtn?.addEventListener("click", () => {
+        if (typeof chrome === "undefined")
+            return;
+        chrome.runtime.sendMessage({ type: "update_up_list" }, (response) => {
+            console.log("[Stats] Update UP list response:", response);
+            window.location.reload();
+        });
+    });
+    const autoClassifyBtn = document.getElementById("btn-auto-classify");
+    autoClassifyBtn?.addEventListener("click", () => {
+        if (typeof chrome === "undefined")
+            return;
+        chrome.runtime.sendMessage({ type: "start_auto_classify" }, (response) => {
+            console.log("[Stats] Start auto classify response:", response);
+        });
+    });
     const probeBtn = document.getElementById("btn-probe-up");
     const probeInput = document.getElementById("probe-mid");
     const probeResult = document.getElementById("probe-result");
@@ -171,12 +188,10 @@ export async function initStats() {
     const upCache = (await getValue("upList")) ?? { upList: [] };
     const upTags = (await getValue("upTags")) ?? {};
     const videoCounts = (await getValue("videoCounts")) ?? {};
-    const interestProfile = (await getValue("interestProfile")) ?? {};
     setText("stat-up-count", String(upCache.upList?.length ?? 0));
     setText("stat-tag-count", String(countUpTags(upTags)));
     setText("stat-video-count", String(countVideoTotals(videoCounts)));
     renderUpList(upCache.upList ?? [], upTags);
-    renderInterests(buildInterestRows(interestProfile));
     renderTags(upTags);
 }
 if (typeof document !== "undefined") {

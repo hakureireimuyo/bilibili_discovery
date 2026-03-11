@@ -140,6 +140,7 @@ export function initPopup(): void {
   const recommendBtn = document.getElementById("btn-recommend");
   const updateUpBtn = document.getElementById("btn-update-up");
   const classifyBtn = document.getElementById("btn-classify-up");
+  const autoClassifyBtn = document.getElementById("btn-auto-classify");
 
   randomUpBtn?.addEventListener("click", () => sendAction("random_up"));
   randomVideoBtn?.addEventListener("click", () => sendAction("random_video"));
@@ -151,6 +152,7 @@ export function initPopup(): void {
   });
   updateUpBtn?.addEventListener("click", () => sendAction("update_up_list"));
   classifyBtn?.addEventListener("click", () => sendAction("classify_ups"));
+  autoClassifyBtn?.addEventListener("click", () => sendAction("start_auto_classification"));
 
   void loadInterests();
   void loadStatus();

@@ -14,19 +14,22 @@ function postUid(uid: number): void {
 }
 
 function injectPageProbe(): void {
-  const script = document.createElement("script");
-  script.textContent = [
-    "(function(){",
-    "try{",
-    "var uid=window.__INITIAL_STATE__&&window.__INITIAL_STATE__.user&&window.__INITIAL_STATE__.user.mid;",
-    "if(typeof uid==='number'&&uid>0){",
-    "window.postMessage({source:'bde',type:'uid_detected',uid:uid},'*');",
-    "}",
-    "}catch(e){}",
-    "})();"
-  ].join("");
-  (document.documentElement || document.head || document.body).appendChild(script);
-  script.remove();
+  // Directly try to access __INITIAL_STATE__ without injecting script
+  try {
+    const win = window as unknown as {
+      __INITIAL_STATE__?: {
+        user?: {
+          mid?: number;
+        };
+      };
+    };
+    const uid = win.__INITIAL_STATE__?.user?.mid;
+    if (typeof uid === "number" && uid > 0) {
+      window.postMessage({ source: "bde", type: "uid_detected", uid }, "*");
+    }
+  } catch (e) {
+    console.warn("[UID] Failed to access __INITIAL_STATE__", e);
+  }
 }
 
 function initUidDetector(): void {

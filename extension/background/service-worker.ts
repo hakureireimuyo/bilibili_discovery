@@ -12,9 +12,11 @@ import {
   updateInterestFromWatch
 } from "../engine/recommender.js";
 import { getValue, saveUPList, setValue, type UP } from "../storage/storage.js";
+import { chatComplete, parseTagsFromContent } from "../engine/llm-client.js";
 
 export const ALARM_UPDATE_UP_LIST = "update_up_list";
 export const ALARM_CLASSIFY_UPS = "classify_ups";
+export const ALARM_COLLECT_UP_PAGES = "collect_up_pages";
 
 export interface AlarmLike {
   name: string;
@@ -31,8 +33,8 @@ export interface MessageLike {
 }
 
 export interface TabsManager {
-  update: (updateProperties: { url: string }) => void;
-  query?: (queryInfo: { url: string }) => Promise<{ id?: number }[]>;
+  update: (tabId: number | undefined, updateProperties: { url: string }) => void;
+  query?: (queryInfo: { active?: boolean; currentWindow?: boolean; url?: string }) => Promise<{ id?: number; url?: string }[]>;
   sendMessage?: (tabId: number, message: unknown) => Promise<unknown>;
 }
 
@@ -65,6 +67,7 @@ interface BackgroundOptions {
   tabs?: TabsManager;
   uid?: number;
   batchSize?: number;
+  classifyWithPageDataFn?: (mid: number, pageData: any, existingTags: string[]) => Promise<string[]>;
 }
 
 declare const chrome: {
@@ -187,6 +190,310 @@ function toUpUrl(mid: number): string {
   return `https://space.bilibili.com/${mid}`;
 }
 
+// Store collected page data temporarily
+const collectedPageData = new Map<number, any>();
+
+// Track classification queue and status
+const classificationQueue: number[] = [];
+let isClassifying = false;
+
+/**
+ * Handle UP page data collection from content script
+ */
+export async function handleUPPageCollected(
+  message: MessageLike,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  const payload = message.payload as { mid?: number; name?: string; sign?: string; videos?: any[] } | undefined;
+  if (!payload?.mid) {
+    console.warn("[Background] Invalid UP page data", payload);
+    return;
+  }
+
+  console.log("[Background] UP page data collected:", {
+    mid: payload.mid,
+    name: payload.name,
+    sign: payload.sign,
+    videoCount: payload.videos?.length ?? 0
+  });
+  console.log("[Background] Classification queue:", classificationQueue);
+  console.log("[Background] Current UP being classified:", classificationQueue[0]);
+  
+  // Check if UP is invalid (no name and no videos)
+  if (!payload.name && (!payload.videos || payload.videos.length === 0)) {
+    console.log("[Background] UP", payload.mid, "appears to be invalid, skipping...");
+    // Remove from queue
+    const queueIndex = classificationQueue.indexOf(payload.mid);
+    if (queueIndex !== -1) {
+      classificationQueue.splice(queueIndex, 1);
+    }
+    collectedPageData.delete(payload.mid);
+    
+    // If this was the current UP, process next one
+    if (classificationQueue.length > 0) {
+      const nextMid = classificationQueue[0];
+      console.log("[Background] Moving to next UP:", nextMid);
+      const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+      if (tabs) {
+        // Get all tabs, excluding DevTools windows
+        const allTabs = await tabs.query?.({}) ?? [];
+        // Find a non-DevTools window with an active tab
+        const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
+        if (targetTab?.id) {
+          tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
+        }
+      }
+    }
+    return;
+  }
+
+  collectedPageData.set(payload.mid, payload);
+
+  // If we have data for the current UP being classified, process it
+  if (classificationQueue.length > 0 && classificationQueue[0] === payload.mid) {
+    console.log("[Background] Data matches current UP, processing classification...");
+    await processNextClassification(options);
+  } else {
+    console.log("[Background] Data does not match current UP, waiting...");
+  }
+}
+
+/**
+ * Classify UP using page data instead of API
+ */
+export async function classifyUPWithPageData(
+  mid: number,
+  pageData: any,
+  existingTags: string[] = [],
+  options: BackgroundOptions = {}
+): Promise<string[]> {
+  const classifyWithPageDataFn = options.classifyWithPageDataFn ?? defaultClassifyWithPageData;
+  return classifyWithPageDataFn(mid, pageData, existingTags);
+}
+
+/**
+ * Default implementation of classifyUPWithPageData
+ */
+async function defaultClassifyWithPageData(
+  mid: number,
+  pageData: any,
+  existingTags: string[] = []
+): Promise<string[]> {
+  console.log("[Background] Starting LLM classification for UP:", mid);
+  console.log("[Background] UP name:", pageData.name);
+  console.log("[Background] UP sign:", pageData.sign);
+  console.log("[Background] Existing tags:", existingTags);
+  
+
+
+  // Use page text content for classification
+  const pageText = pageData.pageText ?? "";
+  const titles = pageData.videos?.slice(0, 10).map((v: any) => v.title) ?? [];
+  
+  console.log("[Background] Page text length:", pageText.length);
+  console.log("[Background] Page text preview:", pageText.substring(0, 500));
+  console.log("[Background] Video titles for classification:", titles);
+  
+  const existing = existingTags.length > 0 ? existingTags.join("、") : "无";
+  const prompt = [
+    "You are a content classifier.",
+    "Return a JSON array of 3 to 5 short Chinese tags.",
+    "Prefer existing tags when appropriate and avoid near-duplicate synonyms.",
+    `UP: ${pageData.name}`,
+    `Bio: ${pageData.sign}`,
+    `Existing tags: ${existing}`,
+    `Page content (first 2000 chars): ${pageText.substring(0, 2000)}`,
+    `Video titles: ${titles.join(" | ")}`
+  ].join("\n");
+
+  console.log("[Background] Sending prompt to LLM...");
+  console.log("[Background] Prompt:", prompt);
+
+  const content = await chatComplete([
+    { role: "system", content: "Classify Bilibili UP content into tags." },
+    { role: "user", content: prompt }
+  ]);
+
+  if (!content) {
+    console.log("[Background] LLM empty response for UP:", mid);
+    return [];
+  }
+
+  console.log("[Background] LLM raw response for UP", mid, ":", content);
+  const tags = parseTagsFromContent(content);
+  console.log("[Background] Parsed tags for UP", mid, ":", tags);
+  return tags;
+}
+
+/**
+ * Process next UP in classification queue
+ */
+async function processNextClassification(options: BackgroundOptions = {}): Promise<void> {
+  if (isClassifying) {
+    console.log("[Background] Already classifying, skipping...");
+    return;
+  }
+  
+  if (classificationQueue.length === 0) {
+    console.log("[Background] Classification queue is empty, all done!");
+    return;
+  }
+
+  isClassifying = true;
+  const mid = classificationQueue[0];
+  const pageData = collectedPageData.get(mid);
+
+  console.log("[Background] Processing classification for UP:", mid);
+  console.log("[Background] Queue size:", classificationQueue.length);
+  console.log("[Background] Remaining UPs:", classificationQueue.slice(0, 5));
+
+  if (!pageData) {
+    console.log("[Background] No page data yet for UP", mid, ", waiting...");
+    isClassifying = false;
+    return;
+  }
+
+  try {
+    const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
+    const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+
+    const upTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
+    const existingTags = upTags[String(mid)] ?? [];
+
+    console.log("[Background] Existing tags for UP", mid, ":", existingTags);
+
+    // Skip if UP already has tags
+    if (existingTags.length > 0) {
+      console.log("[Background] UP", mid, "already has tags, skipping...");
+      classificationQueue.shift();
+      collectedPageData.delete(mid);
+      isClassifying = false;
+      
+      // Process next UP
+      if (classificationQueue.length > 0) {
+        const nextMid = classificationQueue[0];
+        console.log("[Background] Moving to next UP:", nextMid);
+        const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+        if (tabs) {
+          // Get all tabs, excluding DevTools windows
+          const allTabs = await tabs.query?.({}) ?? [];
+          // Find a non-DevTools window with an active tab
+          const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
+          if (targetTab?.id) {
+            tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
+          }
+        }
+      }
+      return;
+    }
+
+    const tags = await classifyUPWithPageData(mid, pageData, existingTags, options);
+    upTags[String(mid)] = tags;
+
+    await setValueFn("upTags", upTags);
+    console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", tags);
+    console.log("[Background] Progress:", classificationQueue.length - 1, "UPs remaining");
+
+    // Remove from queue and collected data
+    classificationQueue.shift();
+    collectedPageData.delete(mid);
+
+    // Update status
+    await setValueFn("classifyStatus", { lastUpdate: Date.now() });
+
+    // Process next UP
+    isClassifying = false;
+    if (classificationQueue.length > 0) {
+      const nextMid = classificationQueue[0];
+      console.log("[Background] Moving to next UP:", nextMid);
+      const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+      if (tabs) {
+        // Get all tabs, excluding DevTools windows
+        const allTabs = await tabs.query?.({}) ?? [];
+        // Find a non-DevTools window with an active tab
+        const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
+        if (targetTab?.id) {
+          tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
+        } else {
+          console.log("[Background] No suitable tab found, skipping navigation");
+        }
+      }
+    } else {
+      console.log("[Background] ✓ All UPs classified successfully!");
+    }
+  } catch (error) {
+    console.error("[Background] ✗ Classification error for UP", mid, ":", error);
+    classificationQueue.shift();
+    collectedPageData.delete(mid);
+    isClassifying = false;
+  }
+}
+
+/**
+ * Start automatic classification by visiting UP pages
+ */
+export async function startAutoClassification(options: BackgroundOptions = {}): Promise<void> {
+  console.log("[Background] ===== Starting auto classification =====");
+  
+  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
+  const cache = (await getValueFn("upList")) as { upList?: { mid: number }[] } | null;
+  const list = cache?.upList ?? [];
+  
+  console.log("[Background] Loaded UP list:", list.length, "UPs");
+  
+  if (list.length === 0) {
+    console.log("[Background] ✗ No UPs to classify. Please update your UP list first.");
+    return;
+  }
+
+  // Clear existing queue
+  classificationQueue.length = 0;
+  collectedPageData.clear();
+
+  // Get existing tags
+  const upTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
+
+  // Filter out UPs that already have tags
+  const upsWithoutTags = list.filter(up => {
+    const existingTags = upTags[String(up.mid)] ?? [];
+    const hasTags = existingTags.length > 0;
+    if (hasTags) {
+      console.log("[Background] Skipping UP", up.mid, "- already has tags:", existingTags);
+    }
+    return !hasTags;
+  });
+
+  // Add UPs without tags to queue
+  for (const up of upsWithoutTags) {
+    classificationQueue.push(up.mid);
+  }
+
+  console.log("[Background] ✓ Classification queue created with", classificationQueue.length, "UPs");
+  console.log("[Background] First 5 UPs in queue:", classificationQueue.slice(0, 5));
+
+  // Start by opening first UP page
+  if (classificationQueue.length > 0) {
+    const firstMid = classificationQueue[0];
+    console.log("[Background] Opening first UP page:", toUpUrl(firstMid));
+    
+    const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+    if (tabs) {
+      // Get current active tab
+      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
+      if (activeTab && activeTab[0]?.id) {
+        console.log("[Background] Updating active tab:", activeTab[0].id);
+        tabs.update(activeTab[0].id, { url: toUpUrl(firstMid) });
+      } else {
+        // Fallback: update the current tab
+        console.log("[Background] Updating current tab (fallback)");
+        tabs.update(undefined, { url: toUpUrl(firstMid) });
+      }
+    } else {
+      console.log("[Background] ✗ Tabs API not available");
+    }
+  }
+}
+
 /**
  * Handle runtime messages.
  */
@@ -252,7 +559,14 @@ export async function handleMessage(
     const upList = cache?.upList ?? [];
     const up = randomUPFn(upList);
     if (up) {
-      tabs.update({ url: toUpUrl(up.mid) });
+      // Get current active tab
+      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
+      if (activeTab && activeTab[0]?.id) {
+        tabs.update(activeTab[0].id, { url: toUpUrl(up.mid) });
+      } else {
+        // Fallback: update the current tab
+        tabs.update(undefined, { url: toUpUrl(up.mid) });
+      }
     }
     return null;
   }
@@ -265,7 +579,14 @@ export async function handleMessage(
     const videos = await getUPVideosFn(up.mid);
     const video = randomVideoFn(videos);
     if (video) {
-      tabs.update({ url: toVideoUrl(video.bvid) });
+      // Get current active tab
+      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
+      if (activeTab && activeTab[0]?.id) {
+        tabs.update(activeTab[0].id, { url: toVideoUrl(video.bvid) });
+      } else {
+        // Fallback: update the current tab
+        tabs.update(undefined, { url: toVideoUrl(video.bvid) });
+      }
     }
     return null;
   }
@@ -277,6 +598,16 @@ export async function handleMessage(
 
   if (message.type === "classify_ups") {
     await classifyUpTask(options);
+    return null;
+  }
+
+  if (message.type === "start_auto_classification") {
+    await startAutoClassification(options);
+    return null;
+  }
+
+  if (message.type === "up_page_collected") {
+    await handleUPPageCollected(message, options);
     return null;
   }
 
@@ -309,7 +640,14 @@ export async function handleMessage(
     const video = await recommendVideoFn(up.mid);
     if (video) {
       const url = toVideoUrl(video.bvid);
-      tabs.update({ url });
+      // Get current active tab
+      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
+      if (activeTab && activeTab[0]?.id) {
+        tabs.update(activeTab[0].id, { url });
+      } else {
+        // Fallback: update the current tab
+        tabs.update(undefined, { url });
+      }
       return { title: video.title, url };
     }
   }

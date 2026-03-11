@@ -4,12 +4,7 @@
 
 import { getValue, setValue } from "../../storage/storage.js";
 
-export type HomeMode = "random_up" | "recommend";
-export type ClassifyMode = "tag" | "llm";
-
 export interface Settings {
-  homeMode: HomeMode;
-  classifyMode: ClassifyMode;
   cacheHours: number;
   userId: number | null;
   apiBaseUrl: string;
@@ -18,24 +13,14 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  homeMode: "random_up",
-  classifyMode: "tag",
   cacheHours: 24,
   userId: null,
-  apiBaseUrl: "https://api.openai.com",
-  apiModel: "gpt-4o-mini",
+  apiBaseUrl: "https://api.deepseek.com",
+  apiModel: "deepseek-chat",
   apiKey: ""
 };
 
 export function normalizeSettings(input: Partial<Settings>): Settings {
-  const homeMode =
-    input.homeMode === "recommend" || input.homeMode === "random_up"
-      ? input.homeMode
-      : DEFAULT_SETTINGS.homeMode;
-  const classifyMode =
-    input.classifyMode === "llm" || input.classifyMode === "tag"
-      ? input.classifyMode
-      : DEFAULT_SETTINGS.classifyMode;
   const cacheHoursRaw = Number(input.cacheHours ?? DEFAULT_SETTINGS.cacheHours);
   const cacheHours = Math.min(168, Math.max(1, cacheHoursRaw));
   const userIdRaw = Number(input.userId);
@@ -46,8 +31,6 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
   const apiKey = String(input.apiKey ?? DEFAULT_SETTINGS.apiKey).trim();
 
   return {
-    homeMode,
-    classifyMode,
     cacheHours,
     userId,
     apiBaseUrl,
@@ -83,8 +66,6 @@ export async function initOptions(): Promise<void> {
   }
 
   const statsLink = document.getElementById("open-stats") as HTMLAnchorElement | null;
-  const homeModeEl = document.getElementById("home-mode") as HTMLSelectElement | null;
-  const classifyModeEl = document.getElementById("classify-mode") as HTMLSelectElement | null;
   const cacheHoursEl = document.getElementById("cache-hours") as HTMLInputElement | null;
   const userIdEl = document.getElementById("user-id") as HTMLInputElement | null;
   const apiBaseUrlEl = document.getElementById("api-base-url") as HTMLInputElement | null;
@@ -93,8 +74,6 @@ export async function initOptions(): Promise<void> {
   const saveBtn = document.getElementById("save-btn");
 
   const settings = await loadSettings();
-  if (homeModeEl) homeModeEl.value = settings.homeMode;
-  if (classifyModeEl) classifyModeEl.value = settings.classifyMode;
   if (cacheHoursEl) cacheHoursEl.value = String(settings.cacheHours);
   if (userIdEl && settings.userId) userIdEl.value = String(settings.userId);
   if (apiBaseUrlEl) apiBaseUrlEl.value = settings.apiBaseUrl;
@@ -108,9 +87,6 @@ export async function initOptions(): Promise<void> {
 
   saveBtn?.addEventListener("click", async () => {
     const next = normalizeSettings({
-      homeMode: (homeModeEl?.value as HomeMode) ?? DEFAULT_SETTINGS.homeMode,
-      classifyMode:
-        (classifyModeEl?.value as ClassifyMode) ?? DEFAULT_SETTINGS.classifyMode,
       cacheHours: Number(cacheHoursEl?.value ?? DEFAULT_SETTINGS.cacheHours),
       userId: Number(userIdEl?.value ?? DEFAULT_SETTINGS.userId),
       apiBaseUrl: String(apiBaseUrlEl?.value ?? DEFAULT_SETTINGS.apiBaseUrl),

@@ -168,6 +168,23 @@ export async function initStats(): Promise<void> {
     });
   });
 
+  const updateUpListBtn = document.getElementById("btn-update-up-list");
+  updateUpListBtn?.addEventListener("click", () => {
+    if (typeof chrome === "undefined") return;
+    chrome.runtime.sendMessage({ type: "update_up_list" }, (response: unknown) => {
+      console.log("[Stats] Update UP list response:", response);
+      window.location.reload();
+    });
+  });
+
+  const autoClassifyBtn = document.getElementById("btn-auto-classify");
+  autoClassifyBtn?.addEventListener("click", () => {
+    if (typeof chrome === "undefined") return;
+    chrome.runtime.sendMessage({ type: "start_auto_classify" }, (response: unknown) => {
+      console.log("[Stats] Start auto classify response:", response);
+    });
+  });
+
   const probeBtn = document.getElementById("btn-probe-up");
   const probeInput = document.getElementById("probe-mid") as HTMLInputElement | null;
   const probeResult = document.getElementById("probe-result");
@@ -198,14 +215,12 @@ export async function initStats(): Promise<void> {
   const upCache = (await getValue<UPCache>("upList")) ?? { upList: [] };
   const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
-  const interestProfile = (await getValue<InterestProfile>("interestProfile")) ?? {};
 
   setText("stat-up-count", String(upCache.upList?.length ?? 0));
   setText("stat-tag-count", String(countUpTags(upTags)));
   setText("stat-video-count", String(countVideoTotals(videoCounts)));
 
   renderUpList(upCache.upList ?? [], upTags);
-  renderInterests(buildInterestRows(interestProfile));
   renderTags(upTags);
 }
 

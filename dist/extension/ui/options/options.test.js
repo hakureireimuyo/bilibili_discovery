@@ -6,24 +6,18 @@ test("normalizeSettings clamps cache hours", () => {
 });
 test("normalizeSettings fills defaults", () => {
     const settings = normalizeSettings({});
-    assert(settings.homeMode === DEFAULT_SETTINGS.homeMode, "expected default home");
-    assert(settings.classifyMode === DEFAULT_SETTINGS.classifyMode, "expected default classify");
     assert(settings.apiBaseUrl === DEFAULT_SETTINGS.apiBaseUrl, "expected default base url");
     assert(settings.apiModel === DEFAULT_SETTINGS.apiModel, "expected default model");
     assert(settings.userId === null, "expected null userId");
 });
 test("normalizeSettings accepts valid values", () => {
     const settings = normalizeSettings({
-        homeMode: "recommend",
-        classifyMode: "llm",
         cacheHours: 12,
         userId: 123,
         apiBaseUrl: "https://api.deepseek.com",
         apiModel: "deepseek-chat",
         apiKey: "sk-test"
     });
-    assert(settings.homeMode === "recommend", "expected recommend");
-    assert(settings.classifyMode === "llm", "expected llm");
     assert(settings.cacheHours === 12, "expected 12");
     assert(settings.userId === 123, "expected userId");
     assert(settings.apiBaseUrl === "https://api.deepseek.com", "expected base url");

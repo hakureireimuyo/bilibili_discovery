@@ -10,19 +10,17 @@ function postUid(uid) {
     chrome.runtime.sendMessage({ type: "detect_uid", payload: { uid } });
 }
 function injectPageProbe() {
-    const script = document.createElement("script");
-    script.textContent = [
-        "(function(){",
-        "try{",
-        "var uid=window.__INITIAL_STATE__&&window.__INITIAL_STATE__.user&&window.__INITIAL_STATE__.user.mid;",
-        "if(typeof uid==='number'&&uid>0){",
-        "window.postMessage({source:'bde',type:'uid_detected',uid:uid},'*');",
-        "}",
-        "}catch(e){}",
-        "})();"
-    ].join("");
-    (document.documentElement || document.head || document.body).appendChild(script);
-    script.remove();
+    // Directly try to access __INITIAL_STATE__ without injecting script
+    try {
+        const win = window;
+        const uid = win.__INITIAL_STATE__?.user?.mid;
+        if (typeof uid === "number" && uid > 0) {
+            window.postMessage({ source: "bde", type: "uid_detected", uid }, "*");
+        }
+    }
+    catch (e) {
+        console.warn("[UID] Failed to access __INITIAL_STATE__", e);
+    }
 }
 function initUidDetector() {
     if (typeof window === "undefined") {

@@ -40,6 +40,14 @@ button:hover {
   background: #1d5ae0;
 }
 
+#btn-auto-classify {
+  background: #ff6b2b;
+}
+
+#btn-auto-classify:hover {
+  background: #e55a1f;
+}
+
 .interest-list {
   display: flex;
   flex-direction: column;

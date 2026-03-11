@@ -114,7 +114,7 @@ test("handleMessage random_up opens space url", async () => {
       getValueFn: async () => ({ upList: [{ mid: 2 }] }),
       randomUPFn: () => ({ mid: 2, name: "A", face: "", sign: "", follow_time: 1 }),
       tabs: {
-        update: (info: { url: string }) => {
+        update: (tabId: number | undefined, info: { url: string }) => {
           url = info.url;
         }
       }
@@ -172,7 +172,7 @@ test("handleMessage recommend_video opens video url", async () => {
         tags: []
       }),
       tabs: {
-        update: (info: { url: string }) => {
+        update: (tabId: number | undefined, info: { url: string }) => {
           url = info.url;
         }
       }

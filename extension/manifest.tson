@@ -19,6 +19,11 @@
       "matches": ["https://*.bilibili.com/*"],
       "js": ["content/uid.ts"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://space.bilibili.com/*"],
+      "js": ["content/up-page-collector.ts"],
+      "run_at": "document_idle"
     }
   ],
   "action": {
