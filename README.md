@@ -113,7 +113,7 @@ npm run build
      - **排除区域**：拖拽标签到此区域，排除包含这些标签的UP主
      - **清除筛选**：重置所有筛选条件
 
-![统计页面截图](picture\Snipaste.png)
+![统计页面截图](picture/Snipaste.png)
 
 ### 随机推荐
 
