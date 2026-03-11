@@ -24,7 +24,7 @@ export function colorFromTag(tag) {
     }
     const hue = Math.abs(hash) % 360;
     const sat = 70 + (Math.abs(hash * 7) % 21);
-    const light = 70 + (Math.abs(hash * 13) % 11);
+    const light = 85 + (Math.abs(hash * 13) % 11);
     return `hsl(${hue} ${sat}% ${light}%)`;
 }
 function renderTagPill(tag, count) {
@@ -148,10 +148,15 @@ function renderUpList(upList, upTags) {
     for (const up of filteredUpList) {
         const item = document.createElement("div");
         item.className = "up-item";
+        const avatarLink = document.createElement("a");
+        avatarLink.href = `https://space.bilibili.com/${up.mid}`;
+        avatarLink.target = "_blank";
+        avatarLink.rel = "noreferrer";
         const avatar = document.createElement("img");
         avatar.className = "up-avatar";
         avatar.src = up.face || "";
         avatar.alt = up.name;
+        avatarLink.appendChild(avatar);
         const info = document.createElement("div");
         info.className = "up-info";
         const name = document.createElement("a");
@@ -173,7 +178,7 @@ function renderUpList(upList, upTags) {
         }
         info.appendChild(name);
         info.appendChild(tags);
-        item.appendChild(avatar);
+        item.appendChild(avatarLink);
         item.appendChild(info);
         container.appendChild(item);
     }

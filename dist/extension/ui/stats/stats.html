@@ -10,8 +10,24 @@
       <h1>统计信息</h1>
       <div class="layout">
         <div class="panel">
+          <div class="cards">
+            <div class="card">
+              <span class="label">关注UP数量</span>
+              <span id="stat-up-count" class="value">-</span>
+            </div>
+            <div class="card">
+              <span class="label">UP分类词条数</span>
+              <span id="stat-tag-count" class="value">-</span>
+            </div>
+            <div class="card">
+              <span class="label">视频数量</span>
+              <span id="stat-video-count" class="value">-</span>
+            </div>
+          </div>
           <h2>关注UP</h2>
           <div id="up-list" class="up-list"></div>
+        </div>
+        <div class="panel">
           <div class="filter-area">
             <div class="filter-section">
               <h3>筛选条件</h3>
@@ -31,29 +47,12 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="panel">
-          <div class="cards">
-            <div class="card">
-              <span class="label">关注UP数量</span>
-              <span id="stat-up-count" class="value">-</span>
-            </div>
-            <div class="card">
-              <span class="label">UP分类词条数</span>
-              <span id="stat-tag-count" class="value">-</span>
-            </div>
-            <div class="card">
-              <span class="label">视频数量</span>
-              <span id="stat-video-count" class="value">-</span>
-            </div>
-          </div>
           <div class="section">
             <h2>UP分类词条</h2>
             <div class="search-box">
               <input id="tag-search" type="text" placeholder="搜索标签..." />
             </div>
             <div id="tag-list" class="list tag-list-scrollable"></div>
-            <button id="btn-clear-classify" class="danger">清理分类数据</button>
           </div>
         </div>
       </div>

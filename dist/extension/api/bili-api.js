@@ -68,12 +68,25 @@ export async function getFollowedUPs(uid, options = {}) {
         if (!Array.isArray(list) || list.length === 0) {
             break;
         }
-        all.push(...list);
+        // Log first item for debugging
+        if (page === 1 && list.length > 0) {
+            console.log("[API] First UP item:", JSON.stringify(list[0], null, 2));
+        }
+        // Map API response to UP interface
+        const upList = list.map((item) => ({
+            mid: item.mid || item.attribute,
+            name: item.uname || item.name || "",
+            face: item.face || "",
+            sign: item.sign || item.usign || "",
+            follow_time: item.mtime || item.follow_time || 0
+        }));
+        all.push(...upList);
         if (list.length < pageSize) {
             break;
         }
         page += 1;
     }
+    console.log("[API] Total UPs fetched:", all.length);
     return all;
 }
 /**
