@@ -2,7 +2,7 @@
  * Stats page logic.
  */
 
-import { getValue } from "../../storage/storage.js";
+import { getValue, setValue } from "../../storage/storage.js";
 
 export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
@@ -57,17 +57,24 @@ function renderTagPill(tag: string, count?: number): HTMLSpanElement {
   // Make tag draggable
   pill.draggable = true;
   pill.addEventListener("dragstart", (e) => {
-    e.dataTransfer?.setData("text/plain", tag);
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("application/x-bili-tag", tag);
+      e.dataTransfer.effectAllowed = "move";
+    }
     createDragGhost(e, tag);
+    dragContext = { tag, dropped: false };
   });
   pill.addEventListener("dragend", () => {
     removeDragGhost();
+    dragContext = null;
   });
   
   return pill;
 }
 
 let dragGhost: HTMLElement | null = null;
+let dragContext: { tag: string; originUpMid?: number; dropped: boolean } | null = null;
+let globalDragOverHandler: ((e: DragEvent) => void) | null = null;
 
 function createDragGhost(e: DragEvent, tag: string): void {
   removeDragGhost();
@@ -82,6 +89,18 @@ function createDragGhost(e: DragEvent, tag: string): void {
   ghost.style.fontWeight = "600";
   document.body.appendChild(ghost);
   dragGhost = ghost;
+  if (e.dataTransfer) {
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+  }
+  if (!globalDragOverHandler) {
+    globalDragOverHandler = (event: DragEvent) => {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    };
+    document.addEventListener("dragover", globalDragOverHandler);
+  }
   
   const moveGhost = (moveEvent: MouseEvent) => {
     if (dragGhost) {
@@ -102,17 +121,22 @@ function removeDragGhost(): void {
     dragGhost.remove();
     dragGhost = null;
   }
+  if (globalDragOverHandler) {
+    document.removeEventListener("dragover", globalDragOverHandler);
+    globalDragOverHandler = null;
+  }
 }
 
 let allTagCounts: Record<string, number> = {};
 let filteredTags: string[] = [];
+let currentCustomTags: string[] = [];
 
 function renderTags(upTags: Record<string, string[]>, searchTerm: string = ""): void {
   const container = document.getElementById("tag-list");
   if (!container) return;
   container.innerHTML = "";
   const tags = Object.values(upTags).flat();
-  if (tags.length === 0) {
+  if (tags.length === 0 && currentCustomTags.length === 0) {
     const item = document.createElement("div");
     item.className = "list-item";
     item.textContent = "暂无分类词条";
@@ -124,6 +148,13 @@ function renderTags(upTags: Record<string, string[]>, searchTerm: string = ""): 
   allTagCounts = {};
   for (const tag of tags) {
     allTagCounts[tag] = (allTagCounts[tag] ?? 0) + 1;
+  }
+  
+  // Ensure custom tags are included
+  for (const tag of currentCustomTags) {
+    if (!allTagCounts[tag]) {
+      allTagCounts[tag] = 0;
+    }
   }
   
   // Filter tags by search term
@@ -210,12 +241,13 @@ function renderUpList(
     name.textContent = up.name;
     const tags = document.createElement("div");
     tags.className = "up-tags";
+    setupUpTagDropZone(tags, up.mid);
     const tagList = upTags[String(up.mid)] ?? [];
     if (tagList.length === 0) {
       tags.textContent = "暂无分类";
     } else {
       for (const tag of tagList) {
-        tags.appendChild(renderTagPill(tag));
+        tags.appendChild(renderUpTagPill(tag, up.mid));
       }
     }
     info.appendChild(name);
@@ -316,8 +348,11 @@ function setupDragAndDrop(): void {
       e.preventDefault();
       zone.element.classList.remove("drag-over");
       
-      const tag = e.dataTransfer?.getData("text/plain");
+      const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
       if (!tag) return;
+      if (dragContext) {
+        dragContext.dropped = true;
+      }
       
       // Remove from other zone if exists
       if (zone.type === "include") {
@@ -343,6 +378,93 @@ let currentUpTags: Record<string, string[]> = {};
 
 function refreshUpList(): void {
   renderUpList(currentUpList, currentUpTags);
+}
+
+function normalizeTag(tag: string): string {
+  return tag.trim();
+}
+
+async function addTagToUp(mid: number, tag: string): Promise<void> {
+  const nextTag = normalizeTag(tag);
+  if (!nextTag) return;
+  const key = String(mid);
+  const existing = currentUpTags[key] ?? [];
+  if (existing.includes(nextTag)) return;
+  const next = [...existing, nextTag];
+  currentUpTags = { ...currentUpTags, [key]: next };
+  await setValue("upTags", currentUpTags);
+  renderUpList(currentUpList, currentUpTags);
+  renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
+}
+
+async function removeTagFromUp(mid: number, tag: string): Promise<void> {
+  const key = String(mid);
+  const existing = currentUpTags[key] ?? [];
+  if (!existing.includes(tag)) return;
+  const next = existing.filter((t) => t !== tag);
+  currentUpTags = { ...currentUpTags, [key]: next };
+  await setValue("upTags", currentUpTags);
+  renderUpList(currentUpList, currentUpTags);
+  renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
+}
+
+function setupUpTagDropZone(tagsEl: HTMLElement, mid: number): void {
+  tagsEl.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    tagsEl.classList.add("drag-over");
+  });
+
+  tagsEl.addEventListener("dragleave", () => {
+    tagsEl.classList.remove("drag-over");
+  });
+
+  tagsEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    tagsEl.classList.remove("drag-over");
+    const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
+    if (!tag) return;
+    if (dragContext) {
+      dragContext.dropped = true;
+    }
+    void addTagToUp(mid, tag);
+  });
+}
+
+function renderUpTagPill(tag: string, mid: number): HTMLSpanElement {
+  const pill = document.createElement("span");
+  pill.className = "tag-pill";
+  pill.textContent = tag;
+  pill.style.backgroundColor = colorFromTag(tag);
+  pill.draggable = true;
+  pill.addEventListener("click", () => {
+    const keyword = encodeURIComponent(tag);
+    window.open(`https://search.bilibili.com/all?keyword=${keyword}`, "_blank", "noreferrer");
+  });
+  pill.addEventListener("dragstart", (e) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("application/x-bili-tag", tag);
+      e.dataTransfer.effectAllowed = "move";
+    }
+    createDragGhost(e, tag);
+    dragContext = { tag, originUpMid: mid, dropped: false };
+  });
+  pill.addEventListener("dragend", () => {
+    removeDragGhost();
+    if (dragContext?.originUpMid === mid && !dragContext.dropped) {
+      void removeTagFromUp(mid, tag);
+    }
+    dragContext = null;
+  });
+  return pill;
+}
+
+async function addCustomTag(tag: string): Promise<void> {
+  const next = normalizeTag(tag);
+  if (!next) return;
+  if (currentCustomTags.includes(next)) return;
+  currentCustomTags = [...currentCustomTags, next];
+  await setValue("customTags", currentCustomTags);
+  renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
 
 export async function initStats(): Promise<void> {
@@ -402,10 +524,12 @@ export async function initStats(): Promise<void> {
 
   const upCache = (await getValue<UPCache>("upList")) ?? { upList: [] };
   const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
+  const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
   
   currentUpList = upCache.upList ?? [];
   currentUpTags = upTags;
+  currentCustomTags = customTags;
 
   setText("stat-up-count", String(upCache.upList?.length ?? 0));
   setText("stat-tag-count", String(countUpTags(upTags)));
@@ -420,6 +544,12 @@ export async function initStats(): Promise<void> {
   searchInput?.addEventListener("input", (e) => {
     const searchTerm = (e.target as HTMLInputElement).value;
     renderTags(currentUpTags, searchTerm);
+  });
+
+  const addTagBtn = document.getElementById("btn-add-tag");
+  addTagBtn?.addEventListener("click", () => {
+    const value = searchInput?.value ?? "";
+    void addCustomTag(value);
   });
   
   // Filter buttons

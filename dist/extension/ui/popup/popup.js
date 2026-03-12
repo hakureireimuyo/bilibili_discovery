@@ -72,6 +72,7 @@ async function handleUpdateUpList() {
 }
 // 进度条相关
 let progressInterval = null;
+let progressListener = null;
 function showProgress() {
     const section = document.getElementById("classify-progress-section");
     if (section) {
@@ -107,44 +108,53 @@ async function handleAutoClassify() {
         return;
     }
     try {
-        // 检查使用哪种分类方式
-        const settings = await getValue("settings");
-        const useAPIMethod = settings?.classifyMethod === "api";
-        if (useAPIMethod) {
-            // API方式：显示进度条
-            showProgress();
-            updateProgress(0, 0, "准备中...");
-            // 监听进度更新
-            const listener = (message) => {
-                const msg = message;
-                if (msg.type === "classify_progress") {
-                    const payload = msg.payload;
-                    updateProgress(payload.current, payload.total, payload.text);
-                }
-                else if (msg.type === "classify_complete") {
-                    hideProgress();
-                    alert("分类完成！");
-                    void loadStatus();
-                }
-            };
-            chrome.runtime.onMessage.addListener(listener);
-            // 发送开始分类消息
-            await sendActionWithResponse("classify_ups");
-            // 设置超时，5分钟后自动隐藏进度条
-            setTimeout(() => {
+        showProgress();
+        updateProgress(0, 0, "准备中...");
+        const listener = (message) => {
+            const msg = message;
+            if (msg.type === "classify_progress") {
+                const payload = msg.payload;
+                updateProgress(payload.current, payload.total, payload.text);
+            }
+            else if (msg.type === "classify_complete") {
                 hideProgress();
-                chrome.runtime.onMessage.removeListener(listener);
-            }, 5 * 60 * 1000);
+                if (progressListener) {
+                    chrome.runtime.onMessage.removeListener(progressListener);
+                    progressListener = null;
+                }
+                alert("分类完成！");
+                void loadStatus();
+            }
+        };
+        if (progressListener) {
+            chrome.runtime.onMessage.removeListener(progressListener);
         }
-        else {
-            // 网页抓取方式：不显示进度条，直接开始
-            await sendActionWithResponse("start_auto_classification");
-        }
+        chrome.runtime.onMessage.addListener(listener);
+        progressListener = listener;
+        await sendActionWithResponse("start_auto_classification");
+        setTimeout(() => {
+            hideProgress();
+            if (progressListener) {
+                chrome.runtime.onMessage.removeListener(progressListener);
+                progressListener = null;
+            }
+        }, 5 * 60 * 1000);
     }
     catch (error) {
         console.error("[Popup] Auto classify error", error);
         hideProgress();
         alert("分类失败，请稍后重试");
+    }
+}
+async function hydrateProgress() {
+    if (typeof chrome === "undefined") {
+        return;
+    }
+    const response = await sendActionWithResponse("get_classify_progress");
+    const progress = response;
+    if (progress?.active) {
+        showProgress();
+        updateProgress(progress.current ?? 0, progress.total ?? 0, progress.text ?? "准备中...");
     }
 }
 function sendActionWithResponse(type) {
@@ -211,7 +221,13 @@ async function jumpToRandomUP() {
     const randomIndex = Math.floor(Math.random() * upCache.upList.length);
     const randomUP = upCache.upList[randomIndex];
     if (typeof chrome !== "undefined") {
-        chrome.tabs.create({ url: `https://space.bilibili.com/${randomUP.mid}` });
+        const activeTab = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (activeTab && activeTab[0]?.id) {
+            chrome.tabs.update(activeTab[0].id, { url: `https://space.bilibili.com/${randomUP.mid}` });
+        }
+        else {
+            chrome.tabs.update(undefined, { url: `https://space.bilibili.com/${randomUP.mid}` });
+        }
     }
 }
 export function initPopup() {
@@ -222,6 +238,7 @@ export function initPopup() {
     const autoClassifyBtn = document.getElementById("btn-auto-classify");
     const randomUpBtn = document.getElementById("btn-random-up");
     const statsBtn = document.getElementById("btn-stats");
+    const watchStatsBtn = document.getElementById("btn-watch-stats");
     const settingsBtn = document.getElementById("btn-settings");
     updateUpBtn?.addEventListener("click", () => void handleUpdateUpList());
     autoClassifyBtn?.addEventListener("click", () => void handleAutoClassify());
@@ -231,11 +248,31 @@ export function initPopup() {
             chrome.tabs.create({ url: chrome.runtime.getURL("ui/stats/stats.html") });
         }
     });
+    watchStatsBtn?.addEventListener("click", () => {
+        if (typeof chrome !== "undefined") {
+            chrome.tabs.create({ url: chrome.runtime.getURL("ui/watch-stats/watch-stats.html") });
+        }
+    });
     settingsBtn?.addEventListener("click", () => {
         if (typeof chrome !== "undefined") {
             chrome.tabs.create({ url: chrome.runtime.getURL("ui/options/options.html") });
         }
     });
+    if (typeof chrome !== "undefined") {
+        progressListener = (message) => {
+            const msg = message;
+            if (msg.type === "classify_progress") {
+                const payload = msg.payload;
+                showProgress();
+                updateProgress(payload.current, payload.total, payload.text);
+            }
+            else if (msg.type === "classify_complete") {
+                hideProgress();
+            }
+        };
+        chrome.runtime.onMessage.addListener(progressListener);
+    }
+    void hydrateProgress();
     void loadStatus();
 }
 if (typeof document !== "undefined") {

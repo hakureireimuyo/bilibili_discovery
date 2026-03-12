@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8a93b6 0%, #8d6f9e 100%);
   color: #1f2430;
   min-height: 100vh;
   display: flex;
@@ -20,7 +20,7 @@ body {
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8a93b6 0%, #8d6f9e 100%);
   color: white;
   padding: 30px 24px;
   text-align: center;
@@ -80,7 +80,7 @@ body {
 .section-title svg {
   width: 20px;
   height: 20px;
-  color: #667eea;
+  color: #7f89ad;
 }
 
 .form-group {
@@ -118,9 +118,9 @@ body {
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #7f89ad;
   background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(127, 137, 173, 0.15);
 }
 
 .form-input::placeholder {
@@ -151,7 +151,7 @@ body {
   padding: 12px 24px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #8a93b6 0%, #8d6f9e 100%);
   color: white;
   cursor: pointer;
   font-size: 15px;
@@ -161,12 +161,12 @@ body {
   justify-content: center;
   gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(138, 147, 182, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 16px rgba(138, 147, 182, 0.4);
 }
 
 .btn-primary:active {

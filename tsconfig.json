@@ -10,7 +10,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "types": ["chrome"]
   },
   "include": ["extension/**/*.ts"],
   "exclude": ["dist", "node_modules"]

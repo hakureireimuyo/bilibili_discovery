@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>观看统计</title>
+    <link rel="stylesheet" href="./watch-stats.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>观看统计</h1>
+        <p class="subtitle">基于播放器进度的真实观看时长统计</p>
+      </header>
+
+      <section class="cards">
+        <div class="card">
+          <span class="label">总观看时长</span>
+          <span id="stat-total" class="value">-</span>
+        </div>
+        <div class="card">
+          <span class="label">今日观看时长</span>
+          <span id="stat-today" class="value">-</span>
+        </div>
+        <div class="card">
+          <span class="label">近7天观看时长</span>
+          <span id="stat-7days" class="value">-</span>
+        </div>
+        <div class="card">
+          <span class="label">统计更新时间</span>
+          <span id="stat-update" class="value">-</span>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="panel">
+          <h2>近7天</h2>
+          <div id="daily-list" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>标签时长 Top 10</h2>
+          <div id="tag-list" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>UP 时长 Top 10</h2>
+          <div id="up-list" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>视频时长 Top 10</h2>
+          <div id="video-list" class="list"></div>
+        </section>
+        <section class="panel full">
+          <h2>原始统计数据</h2>
+          <pre id="raw-stats" class="raw"></pre>
+        </section>
+        <section class="panel full">
+          <h2>视频明细（全部）</h2>
+          <div id="video-detail" class="list"></div>
+        </section>
+        <section class="panel full">
+          <h2>UP 明细（全部）</h2>
+          <div id="up-detail" class="list"></div>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="./watch-stats.js"></script>
+  </body>
+</html>
