@@ -50,6 +50,15 @@ export interface RuntimeManager {
   };
 }
 
+export interface NotificationManager {
+  create: (options: {
+    type: string;
+    iconUrl: string;
+    title: string;
+    message: string;
+  }) => void;
+}
+
 interface BackgroundOptions {
   getFollowedUPsFn?: typeof getFollowedUPs;
   saveUPListFn?: typeof saveUPList;
@@ -65,6 +74,7 @@ interface BackgroundOptions {
   randomUPFn?: typeof randomUP;
   randomVideoFn?: typeof randomVideo;
   tabs?: TabsManager;
+  notifications?: NotificationManager;
   uid?: number;
   batchSize?: number;
   classifyWithPageDataFn?: (mid: number, pageData: any, existingTags: string[]) => Promise<string[]>;
@@ -74,6 +84,7 @@ declare const chrome: {
   alarms?: AlarmManager;
   runtime?: RuntimeManager;
   tabs?: TabsManager;
+  notifications?: NotificationManager;
 };
 
 /**
@@ -90,24 +101,43 @@ export function scheduleAlarms(alarms: AlarmManager): void {
  */
 export async function updateUpListTask(
   options: BackgroundOptions = {}
-): Promise<boolean> {
+): Promise<{ success: boolean; newCount?: number }> {
   const getFollowedUPsFn = options.getFollowedUPsFn ?? getFollowedUPs;
   const saveUPListFn = options.saveUPListFn ?? saveUPList;
   const getValueFn =
     options.getValueFn ?? ((key: string) => getValue(key));
+  const notifications = options.notifications ?? chrome.notifications;
 
   const settings = (await getValueFn("settings")) as { userId?: number } | null;
   const uid = options.uid ?? (await getValueFn("userId")) ?? settings?.userId;
   const uidValue = typeof uid === "number" ? uid : Number(uid);
   if (!uidValue || Number.isNaN(uidValue)) {
     console.warn("[Background] Missing userId for update");
-    return false;
+    return { success: false };
   }
 
-  const upList = await getFollowedUPsFn(uidValue);
-  await saveUPListFn(upList);
-  console.log("[Background] Updated UP list", upList.length);
-  return true;
+  // Get existing UP list for incremental update
+  const existingCache = (await getValueFn("upList")) as { upList?: UP[] } | null;
+  const existingUPs = existingCache?.upList ?? [];
+
+  // Fetch UP list with incremental update
+  const result = await getFollowedUPsFn(uidValue, {}, existingUPs);
+
+  // Save the updated UP list
+  await saveUPListFn(result.upList);
+  console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
+
+  // Show notification if there are new UPs
+  if (result.newCount > 0 && notifications) {
+    notifications.create({
+      type: "basic",
+      iconUrl: chrome.runtime.getURL("icons/icon128.png"),
+      title: "关注更新",
+      message: `发现 ${result.newCount} 个新关注的UP主！`
+    });
+  }
+
+  return { success: true, newCount: result.newCount };
 }
 
 /**

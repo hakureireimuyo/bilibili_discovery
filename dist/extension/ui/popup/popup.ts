@@ -8,7 +8,16 @@ export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
 }
 
+export interface UP {
+  mid: number;
+  name: string;
+  face: string;
+  sign: string;
+  follow_time: number;
+}
+
 export interface UPCache {
+  upList: UP[];
   lastUpdate: number;
 }
 
@@ -132,17 +141,34 @@ async function loadStatus(): Promise<void> {
   }
 }
 
+async function jumpToRandomUP(): Promise<void> {
+  const upCache = (await getValue<UPCache>("upList")) ?? null;
+  if (!upCache || !upCache.upList || upCache.upList.length === 0) {
+    alert("没有已关注的UP主数据，请先更新关注列表");
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * upCache.upList.length);
+  const randomUP = upCache.upList[randomIndex];
+
+  if (typeof chrome !== "undefined") {
+    chrome.tabs.create({ url: `https://space.bilibili.com/${randomUP.mid}` });
+  }
+}
+
 export function initPopup(): void {
   if (typeof document === "undefined") {
     return;
   }
   const updateUpBtn = document.getElementById("btn-update-up");
   const autoClassifyBtn = document.getElementById("btn-auto-classify");
+  const randomUpBtn = document.getElementById("btn-random-up");
   const statsBtn = document.getElementById("btn-stats");
   const settingsBtn = document.getElementById("btn-settings");
 
   updateUpBtn?.addEventListener("click", () => sendAction("update_up_list"));
   autoClassifyBtn?.addEventListener("click", () => sendAction("start_auto_classification"));
+  randomUpBtn?.addEventListener("click", () => void jumpToRandomUP());
   statsBtn?.addEventListener("click", () => {
     if (typeof chrome !== "undefined") {
       chrome.tabs.create({ url: chrome.runtime.getURL("ui/stats/stats.html") });

@@ -95,16 +95,30 @@ async function loadStatus() {
         classifyEl.textContent = formatTime(classifyCache?.lastUpdate ?? null);
     }
 }
+async function jumpToRandomUP() {
+    const upCache = (await getValue("upList")) ?? null;
+    if (!upCache || !upCache.upList || upCache.upList.length === 0) {
+        alert("没有已关注的UP主数据，请先更新关注列表");
+        return;
+    }
+    const randomIndex = Math.floor(Math.random() * upCache.upList.length);
+    const randomUP = upCache.upList[randomIndex];
+    if (typeof chrome !== "undefined") {
+        chrome.tabs.create({ url: `https://space.bilibili.com/${randomUP.mid}` });
+    }
+}
 export function initPopup() {
     if (typeof document === "undefined") {
         return;
     }
     const updateUpBtn = document.getElementById("btn-update-up");
     const autoClassifyBtn = document.getElementById("btn-auto-classify");
+    const randomUpBtn = document.getElementById("btn-random-up");
     const statsBtn = document.getElementById("btn-stats");
     const settingsBtn = document.getElementById("btn-settings");
     updateUpBtn?.addEventListener("click", () => sendAction("update_up_list"));
     autoClassifyBtn?.addEventListener("click", () => sendAction("start_auto_classification"));
+    randomUpBtn?.addEventListener("click", () => void jumpToRandomUP());
     statsBtn?.addEventListener("click", () => {
         if (typeof chrome !== "undefined") {
             chrome.tabs.create({ url: chrome.runtime.getURL("ui/stats/stats.html") });

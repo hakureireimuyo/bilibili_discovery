@@ -101,14 +101,23 @@ export async function apiRequest<T>(
 
 /**
  * Fetch followed UP list for a user.
+ * @param uid User ID
+ * @param options API request options
+ * @param existingUPs Existing UP list for incremental update (optional)
+ * @returns Object containing all UPs and count of new UPs
  */
 export async function getFollowedUPs(
   uid: number,
-  options: ApiRequestOptions = {}
-): Promise<UP[]> {
+  options: ApiRequestOptions = {},
+  existingUPs?: UP[]
+): Promise<{ upList: UP[]; newCount: number }> {
   const pageSize = 50;
   const all: UP[] = [];
+  const existingSet = new Set(existingUPs?.map(up => up.mid) || []);
   let page = 1;
+  let consecutiveAllExistCount = 0;
+  const maxConsecutiveAllExist = 3; // 连续3页都全部存在则停止拉取
+
   while (true) {
     const url = `https://api.bilibili.com/x/relation/followings?vmid=${uid}&pn=${page}&ps=${pageSize}&order=desc`;
     const data = await apiRequest<{ data?: { list?: any[] } }>(url, options);
@@ -116,12 +125,12 @@ export async function getFollowedUPs(
     if (!Array.isArray(list) || list.length === 0) {
       break;
     }
-    
+
     // Log first item for debugging
     if (page === 1 && list.length > 0) {
       console.log("[API] First UP item:", JSON.stringify(list[0], null, 2));
     }
-    
+
     // Map API response to UP interface
     const upList: UP[] = list.map((item) => ({
       mid: item.mid || item.attribute,
@@ -130,15 +139,32 @@ export async function getFollowedUPs(
       sign: item.sign || item.usign || "",
       follow_time: item.mtime || item.follow_time || 0
     }));
-    
+
+    // Check if all UPs in this page already exist
+    const allExist = upList.every(up => existingSet.has(up.mid));
+    if (allExist) {
+      consecutiveAllExistCount++;
+      console.log(`[API] Page ${page}: All ${upList.length} UPs already exist`);
+      if (consecutiveAllExistCount >= maxConsecutiveAllExist) {
+        console.log(`[API] Stopping after ${maxConsecutiveAllExist} consecutive pages with all existing UPs`);
+        break;
+      }
+    } else {
+      consecutiveAllExistCount = 0;
+    }
+
     all.push(...upList);
     if (list.length < pageSize) {
       break;
     }
     page += 1;
   }
-  console.log("[API] Total UPs fetched:", all.length);
-  return all;
+
+  // Calculate new UPs
+  const newUPs = all.filter(up => !existingSet.has(up.mid));
+  console.log("[API] Total UPs fetched:", all.length, "New UPs:", newUPs.length);
+
+  return { upList: all, newCount: newUPs.length };
 }
 
 /**

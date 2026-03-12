@@ -8,7 +8,16 @@ export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
 }
 
+export interface UP {
+  mid: number;
+  name: string;
+  face: string;
+  sign: string;
+  follow_time: number;
+}
+
 export interface UPCache {
+  upList: UP[];
   lastUpdate: number;
 }
 
@@ -67,6 +76,36 @@ function sendAction(type: string): void {
     return;
   }
   chrome.runtime.sendMessage({ type });
+}
+
+async function handleUpdateUpList(): Promise<void> {
+  if (typeof chrome === "undefined") {
+    console.log("[Popup] Update UP list");
+    return;
+  }
+
+  try {
+    const response = await new Promise<{ success: boolean; newCount?: number }>((resolve) => {
+      chrome.runtime.sendMessage({ type: "update_up_list" }, (response) => {
+        resolve(response as { success: boolean; newCount?: number });
+      });
+    });
+
+    if (response.success) {
+      if (response.newCount && response.newCount > 0) {
+        alert(`更新成功！发现 ${response.newCount} 个新关注的UP主`);
+      } else {
+        alert("更新成功！没有发现新的UP主");
+      }
+      // Reload status after update
+      void loadStatus();
+    } else {
+      alert("更新失败，请检查设置");
+    }
+  } catch (error) {
+    console.error("[Popup] Update UP list error", error);
+    alert("更新失败，请稍后重试");
+  }
 }
 
 function sendActionWithResponse(type: string): Promise<unknown> {
@@ -132,17 +171,34 @@ async function loadStatus(): Promise<void> {
   }
 }
 
+async function jumpToRandomUP(): Promise<void> {
+  const upCache = (await getValue<UPCache>("upList")) ?? null;
+  if (!upCache || !upCache.upList || upCache.upList.length === 0) {
+    alert("没有已关注的UP主数据，请先更新关注列表");
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * upCache.upList.length);
+  const randomUP = upCache.upList[randomIndex];
+
+  if (typeof chrome !== "undefined") {
+    chrome.tabs.create({ url: `https://space.bilibili.com/${randomUP.mid}` });
+  }
+}
+
 export function initPopup(): void {
   if (typeof document === "undefined") {
     return;
   }
   const updateUpBtn = document.getElementById("btn-update-up");
   const autoClassifyBtn = document.getElementById("btn-auto-classify");
+  const randomUpBtn = document.getElementById("btn-random-up");
   const statsBtn = document.getElementById("btn-stats");
   const settingsBtn = document.getElementById("btn-settings");
 
-  updateUpBtn?.addEventListener("click", () => sendAction("update_up_list"));
+  updateUpBtn?.addEventListener("click", () => void handleUpdateUpList());
   autoClassifyBtn?.addEventListener("click", () => sendAction("start_auto_classification"));
+  randomUpBtn?.addEventListener("click", () => void jumpToRandomUP());
   statsBtn?.addEventListener("click", () => {
     if (typeof chrome !== "undefined") {
       chrome.tabs.create({ url: chrome.runtime.getURL("ui/stats/stats.html") });

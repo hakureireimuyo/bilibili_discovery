@@ -1,66 +1,194 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: #f7f7f9;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #1f2430;
+  min-height: 100vh;
 }
 
 .app {
-  width: 280px;
-  padding: 16px;
+  width: 320px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo i {
+  font-size: 28px;
+  color: #fb7299;
 }
 
 h1 {
-  font-size: 18px;
-  margin: 0 0 12px 0;
+  font-size: 20px;
+  margin: 0;
+  font-weight: 600;
+  color: #1f2430;
 }
 
 h2 {
   font-size: 14px;
-  margin: 16px 0 8px 0;
+  margin: 16px 0 12px 0;
+  font-weight: 600;
+  color: #1f2430;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h2 i {
+  color: #667eea;
 }
 
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 button {
-  padding: 8px 12px;
+  padding: 12px 16px;
   border: none;
-  border-radius: 6px;
-  background: #2b6cff;
+  border-radius: 8px;
   color: #fff;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 button:hover {
-  background: #1d5ae0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-#btn-auto-classify {
-  background: #ff6b2b;
+button:active {
+  transform: translateY(0);
 }
 
-#btn-auto-classify:hover {
-  background: #e55a1f;
+button i {
+  font-size: 16px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, #fb7299 0%, #e85d8a 100%);
+}
+
+.btn-accent:hover {
+  background: linear-gradient(135deg, #e06688 0%, #d14d7b 100%);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #ff6b2b 0%, #ff8c42 100%);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #e55a1f 0%, #e67b33 100%);
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #42b983 0%, #35a372 100%);
+}
+
+.btn-info:hover {
+  background: linear-gradient(135deg, #37a875 0%, #2e9264 100%);
+}
+
+.btn-neutral {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+.btn-neutral:hover {
+  background: linear-gradient(135deg, #5c6369 0%, #4a5156 100%);
+}
+
+.section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.status-item:hover {
+  background: #e9ecef;
+}
+
+.status-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #495057;
+}
+
+.status-label i {
+  color: #667eea;
+  font-size: 14px;
+}
+
+.status-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2430;
 }
 
 .interest-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .recommend {
   margin-top: 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: #3a4252;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .recommend-title {
@@ -68,30 +196,20 @@ button:hover {
   color: #1f2430;
 }
 
-.status-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
-  color: #3a4252;
-}
-
 .interest-item {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 13px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
 }
 
 .bar {
   display: inline-block;
   width: 80px;
-  height: 6px;
-  background: #dfe5f2;
+  height: 8px;
+  background: #e9ecef;
   border-radius: 4px;
   overflow: hidden;
   margin-left: 8px;
@@ -99,5 +217,6 @@ button:hover {
 
 .bar-fill {
   height: 100%;
-  background: #2b6cff;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
 }
