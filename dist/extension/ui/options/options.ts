@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiBaseUrl: "https://api.deepseek.com",
   apiModel: "deepseek-chat",
   apiKey: "",
-  classifyMethod: "api",
+  classifyMethod: "page",
   biliCookie: ""
 };
 

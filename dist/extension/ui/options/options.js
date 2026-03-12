@@ -8,7 +8,7 @@ export const DEFAULT_SETTINGS = {
     apiBaseUrl: "https://api.deepseek.com",
     apiModel: "deepseek-chat",
     apiKey: "",
-    classifyMethod: "api",
+    classifyMethod: "page",
     biliCookie: ""
 };
 export function normalizeSettings(input) {

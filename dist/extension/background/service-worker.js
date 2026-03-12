@@ -150,7 +150,64 @@ function toUpUrl(mid) {
 const collectedPageData = new Map();
 // Track classification queue and status
 const classificationQueue = [];
+const pendingClassificationQueue = [];
 let isClassifying = false;
+// Track active collection tabs (mid -> tabId)
+const activeCollectionTabs = new Map();
+const createdCollectionTabs = new Set();
+// Maximum number of concurrent tabs for page collection
+const MAX_CONCURRENT_TABS = 5;
+/**
+ * Open next UP page in an available tab
+ */
+async function openNextUPPage(mid, tabId, options = {}) {
+    const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+    if (!tabs) {
+        console.log("[Background] ✗ Tabs API not available");
+        return;
+    }
+    if (!tabId) {
+        console.log("[Background] ✗ No tabId provided for UP:", mid);
+        return;
+    }
+    console.log("[Background] Updating tab", tabId, "for UP:", mid);
+    tabs.update(tabId, { url: toUpUrl(mid) });
+    activeCollectionTabs.set(mid, tabId);
+}
+function enqueueClassification(mid) {
+    if (!pendingClassificationQueue.includes(mid)) {
+        pendingClassificationQueue.push(mid);
+    }
+}
+async function openNextAvailableUPPage(tabId, options = {}) {
+    if (classificationQueue.length === 0) {
+        await closeCollectionTab(tabId, options);
+        return;
+    }
+    const nextMid = classificationQueue.shift();
+    if (!nextMid) {
+        await closeCollectionTab(tabId, options);
+        return;
+    }
+    await openNextUPPage(nextMid, tabId, options);
+}
+async function closeCollectionTab(tabId, options = {}) {
+    const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+    if (!tabs?.remove) {
+        return;
+    }
+    if (!createdCollectionTabs.has(tabId)) {
+        return;
+    }
+    try {
+        await tabs.remove(tabId);
+        createdCollectionTabs.delete(tabId);
+        console.log("[Background] Closed collection tab", tabId);
+    }
+    catch (error) {
+        console.warn("[Background] Failed to close tab", tabId, error);
+    }
+}
 /**
  * Handle UP page data collection from content script
  */
@@ -167,42 +224,26 @@ export async function handleUPPageCollected(message, options = {}) {
         videoCount: payload.videos?.length ?? 0
     });
     console.log("[Background] Classification queue:", classificationQueue);
-    console.log("[Background] Current UP being classified:", classificationQueue[0]);
+    console.log("[Background] Active collection tabs:", Array.from(activeCollectionTabs.entries()));
+    const tabId = activeCollectionTabs.get(payload.mid);
+    if (tabId) {
+        activeCollectionTabs.delete(payload.mid);
+    }
     // Check if UP is invalid (no name and no videos)
     if (!payload.name && (!payload.videos || payload.videos.length === 0)) {
         console.log("[Background] UP", payload.mid, "appears to be invalid, skipping...");
-        // Remove from queue
-        const queueIndex = classificationQueue.indexOf(payload.mid);
-        if (queueIndex !== -1) {
-            classificationQueue.splice(queueIndex, 1);
-        }
         collectedPageData.delete(payload.mid);
-        // If this was the current UP, process next one
-        if (classificationQueue.length > 0) {
-            const nextMid = classificationQueue[0];
-            console.log("[Background] Moving to next UP:", nextMid);
-            const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
-            if (tabs) {
-                // Get all tabs, excluding DevTools windows
-                const allTabs = await tabs.query?.({}) ?? [];
-                // Find a non-DevTools window with an active tab
-                const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
-                if (targetTab?.id) {
-                    tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
-                }
-            }
+        if (tabId) {
+            await openNextAvailableUPPage(tabId, options);
         }
         return;
     }
     collectedPageData.set(payload.mid, payload);
-    // If we have data for the current UP being classified, process it
-    if (classificationQueue.length > 0 && classificationQueue[0] === payload.mid) {
-        console.log("[Background] Data matches current UP, processing classification...");
-        await processNextClassification(options);
+    if (tabId) {
+        await openNextAvailableUPPage(tabId, options);
     }
-    else {
-        console.log("[Background] Data does not match current UP, waiting...");
-    }
+    enqueueClassification(payload.mid);
+    await processNextClassification(options);
 }
 /**
  * Classify UP using page data instead of API
@@ -259,16 +300,23 @@ async function processNextClassification(options = {}) {
         console.log("[Background] Already classifying, skipping...");
         return;
     }
-    if (classificationQueue.length === 0) {
-        console.log("[Background] Classification queue is empty, all done!");
+    if (pendingClassificationQueue.length === 0) {
+        if (classificationQueue.length === 0 && activeCollectionTabs.size === 0) {
+            console.log("[Background] Classification queue is empty, all done!");
+            await closeAllCollectionTabs(options);
+        }
         return;
     }
     isClassifying = true;
-    const mid = classificationQueue[0];
+    const mid = pendingClassificationQueue.shift();
+    if (mid === undefined) {
+        isClassifying = false;
+        return;
+    }
     const pageData = collectedPageData.get(mid);
     console.log("[Background] Processing classification for UP:", mid);
     console.log("[Background] Queue size:", classificationQueue.length);
-    console.log("[Background] Remaining UPs:", classificationQueue.slice(0, 5));
+    console.log("[Background] Pending classification:", pendingClassificationQueue.slice(0, 5));
     if (!pageData) {
         console.log("[Background] No page data yet for UP", mid, ", waiting...");
         isClassifying = false;
@@ -283,62 +331,27 @@ async function processNextClassification(options = {}) {
         // Skip if UP already has tags
         if (existingTags.length > 0) {
             console.log("[Background] UP", mid, "already has tags, skipping...");
-            classificationQueue.shift();
             collectedPageData.delete(mid);
             isClassifying = false;
-            // Process next UP
-            if (classificationQueue.length > 0) {
-                const nextMid = classificationQueue[0];
-                console.log("[Background] Moving to next UP:", nextMid);
-                const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
-                if (tabs) {
-                    // Get all tabs, excluding DevTools windows
-                    const allTabs = await tabs.query?.({}) ?? [];
-                    // Find a non-DevTools window with an active tab
-                    const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
-                    if (targetTab?.id) {
-                        tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
-                    }
-                }
-            }
+            await processNextClassification(options);
             return;
         }
         const tags = await classifyUPWithPageData(mid, pageData, existingTags, options);
         upTags[String(mid)] = tags;
         await setValueFn("upTags", upTags);
         console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", tags);
-        console.log("[Background] Progress:", classificationQueue.length - 1, "UPs remaining");
-        // Remove from queue and collected data
-        classificationQueue.shift();
+        const remaining = classificationQueue.length + pendingClassificationQueue.length + activeCollectionTabs.size;
+        console.log("[Background] Progress:", remaining, "UPs remaining (including in-flight)");
+        // Remove collected data
         collectedPageData.delete(mid);
         // Update status
         await setValueFn("classifyStatus", { lastUpdate: Date.now() });
         // Process next UP
         isClassifying = false;
-        if (classificationQueue.length > 0) {
-            const nextMid = classificationQueue[0];
-            console.log("[Background] Moving to next UP:", nextMid);
-            const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
-            if (tabs) {
-                // Get all tabs, excluding DevTools windows
-                const allTabs = await tabs.query?.({}) ?? [];
-                // Find a non-DevTools window with an active tab
-                const targetTab = allTabs.find(tab => !tab.url?.startsWith("devtools://"));
-                if (targetTab?.id) {
-                    tabs.update(targetTab.id, { url: toUpUrl(nextMid) });
-                }
-                else {
-                    console.log("[Background] No suitable tab found, skipping navigation");
-                }
-            }
-        }
-        else {
-            console.log("[Background] ✓ All UPs classified successfully!");
-        }
+        await processNextClassification(options);
     }
     catch (error) {
         console.error("[Background] ✗ Classification error for UP", mid, ":", error);
-        classificationQueue.shift();
         collectedPageData.delete(mid);
         isClassifying = false;
     }
@@ -358,7 +371,10 @@ export async function startAutoClassification(options = {}) {
     }
     // Clear existing queue
     classificationQueue.length = 0;
+    pendingClassificationQueue.length = 0;
     collectedPageData.clear();
+    activeCollectionTabs.clear();
+    createdCollectionTabs.clear();
     // Get existing tags
     const upTags = (await getValueFn("upTags")) ?? {};
     // Filter out UPs that already have tags
@@ -376,27 +392,41 @@ export async function startAutoClassification(options = {}) {
     }
     console.log("[Background] ✓ Classification queue created with", classificationQueue.length, "UPs");
     console.log("[Background] First 5 UPs in queue:", classificationQueue.slice(0, 5));
-    // Start by opening first UP page
+    // Start by opening multiple UP pages in newly created tabs
     if (classificationQueue.length > 0) {
-        const firstMid = classificationQueue[0];
-        console.log("[Background] Opening first UP page:", toUpUrl(firstMid));
         const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
-        if (tabs) {
-            // Get current active tab
-            const activeTab = await tabs.query?.({ active: true, currentWindow: true });
-            if (activeTab && activeTab[0]?.id) {
-                console.log("[Background] Updating active tab:", activeTab[0].id);
-                tabs.update(activeTab[0].id, { url: toUpUrl(firstMid) });
-            }
-            else {
-                // Fallback: update the current tab
-                console.log("[Background] Updating current tab (fallback)");
-                tabs.update(undefined, { url: toUpUrl(firstMid) });
+        if (!tabs || !tabs.create) {
+            console.log("[Background] ✗ Tabs API not available for creating new tabs");
+            return;
+        }
+        const toOpen = Math.min(MAX_CONCURRENT_TABS, classificationQueue.length);
+        console.log("[Background] Creating", toOpen, "tabs for concurrent collection");
+        for (let i = 0; i < toOpen; i++) {
+            const nextMid = classificationQueue.shift();
+            if (!nextMid)
+                break;
+            const created = await tabs.create({ url: toUpUrl(nextMid), active: false });
+            if (created?.id) {
+                activeCollectionTabs.set(nextMid, created.id);
+                createdCollectionTabs.add(created.id);
+                console.log("[Background] Created tab", created.id, "for UP:", nextMid);
             }
         }
-        else {
-            console.log("[Background] ✗ Tabs API not available");
-        }
+    }
+}
+async function closeAllCollectionTabs(options = {}) {
+    const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+    if (!tabs?.remove || createdCollectionTabs.size === 0) {
+        return;
+    }
+    const toClose = Array.from(createdCollectionTabs);
+    createdCollectionTabs.clear();
+    try {
+        await tabs.remove(toClose);
+        console.log("[Background] Closed all collection tabs:", toClose.length);
+    }
+    catch (error) {
+        console.warn("[Background] Failed to close all collection tabs", error);
     }
 }
 /**

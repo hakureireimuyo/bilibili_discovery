@@ -1,5 +1,6 @@
 /**
  * Background service worker initialization.
+ * 支持同时在最多五个标签页中进行数据抓取
  */
 
 import { getFollowedUPs, getUPInfo, getUPVideos, getUPVideosForClassification, getVideoTags } from "../api/bili-api.js";
@@ -50,7 +51,7 @@ export interface RuntimeManager {
       ) => void
     ) => void;
   };
-  sendMessage: (message: unknown, callback?: (response: unknown) => void) => void;
+  sendMessage: (message: unknown, callback?: (response?: unknown) => void) => void;
   getURL?: (path: string) => string;
 }
 
@@ -82,8 +83,8 @@ interface BackgroundOptions {
   uid?: number;
   batchSize?: number;
   classifyWithPageDataFn?: (mid: number, pageData: any, existingTags: string[]) => Promise<string[]>;
-  useAPIMethod?: boolean; // 是否使用API方法获取视频（默认false）
-  maxVideos?: number; // 使用API方法时的最大视频数（默认30）
+  useAPIMethod?: boolean;
+  maxVideos?: number;
 }
 
 declare const chrome: {
@@ -93,172 +94,6 @@ declare const chrome: {
   notifications?: NotificationManager;
 };
 
-/**
- * Schedule periodic alarms.
- */
-export function scheduleAlarms(alarms: AlarmManager): void {
-  console.log("[Background] Schedule alarms");
-  alarms.create(ALARM_UPDATE_UP_LIST, { periodInMinutes: 24 * 60 });
-  alarms.create(ALARM_CLASSIFY_UPS, { periodInMinutes: 7 * 24 * 60 });
-}
-
-/**
- * Update followed UP list.
- */
-export async function updateUpListTask(
-  options: BackgroundOptions = {}
-): Promise<{ success: boolean; newCount?: number }> {
-  const getFollowedUPsFn = options.getFollowedUPsFn ?? getFollowedUPs;
-  const saveUPListFn = options.saveUPListFn ?? saveUPList;
-  const getValueFn =
-    options.getValueFn ?? ((key: string) => getValue(key));
-  const notifications = options.notifications ?? chrome.notifications;
-
-  const settings = (await getValueFn("settings")) as { userId?: number } | null;
-  const uid = options.uid ?? (await getValueFn("userId")) ?? settings?.userId;
-  const uidValue = typeof uid === "number" ? uid : Number(uid);
-  if (!uidValue || Number.isNaN(uidValue)) {
-    console.warn("[Background] Missing userId for update");
-    return { success: false };
-  }
-
-  // Get existing UP list for incremental update
-  const existingCache = (await getValueFn("upList")) as { upList?: UP[] } | null;
-  const existingUPs = existingCache?.upList ?? [];
-
-  // Fetch UP list with incremental update
-  const result = await getFollowedUPsFn(uidValue, {}, existingUPs);
-
-  // Save the updated UP list
-  await saveUPListFn(result.upList);
-  console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
-
-  // Show notification if there are new UPs
-  if (result.newCount > 0 && notifications) {
-    notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime?.getURL?.("icons/icon128.png") || "",
-      title: "关注更新",
-      message: `发现 ${result.newCount} 个新关注的UP主！`
-    });
-  }
-
-  return { success: true, newCount: result.newCount };
-}
-
-/**
- * Classify UPs in batches and store tags.
- */
-export async function classifyUpTask(
-  options: BackgroundOptions = {}
-): Promise<number> {
-  const classifyUPFn = options.classifyUPFn ?? classifyUP;
-  const getValueFn =
-    options.getValueFn ?? ((key: string) => getValue(key));
-  const setValueFn =
-    options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
-  const batchSize = options.batchSize ?? 10;
-  const useAPIMethod = options.useAPIMethod ?? false;
-  const maxVideos = options.maxVideos ?? 30;
-  
-  // 从设置中读取classifyMethod
-  const settings = (await getValueFn("settings")) as { classifyMethod?: "api" | "page" } | null;
-  const classifyMethod = settings?.classifyMethod ?? "api";
-  // 如果没有明确指定useAPIMethod，则使用设置中的classifyMethod
-  const shouldUseAPIMethod = useAPIMethod || classifyMethod === "api";
-
-  const cache = (await getValueFn("upList")) as { upList?: { mid: number }[] } | null;
-  const list = cache?.upList ?? [];
-  if (list.length === 0) {
-    console.log("[Background] No UPs to classify");
-    return 0;
-  }
-
-  const upTags =
-    ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
-  const videoCounts =
-    ((await getValueFn("videoCounts")) as Record<string, number> | null) ?? {};
-  const batch = list;
-  let processed = 0;
-
-  console.log("[Background] Classify UPs using method:", shouldUseAPIMethod ? "API" : "Page");
-
-  // 发送初始进度（仅API方式）
-  if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
-    chrome.runtime.sendMessage({
-      type: "classify_progress",
-      payload: { current: 0, total: list.length, text: "准备中..." }
-    });
-  }
-
-  for (let i = 0; i < batch.length; i += batchSize) {
-    const chunk = batch.slice(i, i + batchSize);
-    for (const up of chunk) {
-      const existing = upTags[String(up.mid)] ?? [];
-      console.log("[Background] Classify UP", up.mid, {
-        existingTags: existing.length
-      });
-      
-      // 根据选项选择使用API方法还是原有方法
-      const profile = await classifyUPFn(up.mid, {
-        existingTags: existing,
-        useAPIMethod: shouldUseAPIMethod,
-        maxVideos: maxVideos,
-        getUPVideosFn: shouldUseAPIMethod
-          ? (mid: number) => getUPVideosForClassification(mid, maxVideos, { fallbackRequest: proxyApiRequest })
-          : (mid: number) => getUPVideos(mid, { fallbackRequest: proxyApiRequest }),
-        getUPInfoFn: (mid: number) =>
-          getUPInfo(mid, { fallbackRequest: proxyApiRequest }),
-        getVideoTagsFn: (bvid: string) =>
-          getVideoTags(bvid, { fallbackRequest: proxyApiRequest })
-      });
-      upTags[String(up.mid)] = profile.tags;
-      videoCounts[String(up.mid)] = profile.videoCount ?? 0;
-      processed += 1;
-
-      // 发送进度更新（仅API方式）
-      if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
-        chrome.runtime.sendMessage({
-          type: "classify_progress",
-          payload: {
-            current: processed,
-            total: list.length,
-            text: `正在分类: ${up.mid}`
-          }
-        });
-      }
-    }
-  }
-
-  await setValueFn("upTags", upTags);
-  await setValueFn("videoCounts", videoCounts);
-  await setValueFn("classifyStatus", { lastUpdate: Date.now() });
-  console.log("[Background] Classified UPs", processed);
-  
-  // 发送完成消息（仅API方式）
-  if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
-    chrome.runtime.sendMessage({ type: "classify_complete" });
-  }
-  
-  return processed;
-}
-
-/**
- * Handle alarm events.
- */
-export async function handleAlarm(
-  alarm: AlarmLike,
-  options: BackgroundOptions = {}
-): Promise<void> {
-  if (alarm.name === ALARM_UPDATE_UP_LIST) {
-    await updateUpListTask(options);
-    return;
-  }
-  if (alarm.name === ALARM_CLASSIFY_UPS) {
-    await classifyUpTask(options);
-  }
-}
-
 function toVideoUrl(bvid: string): string {
   return `https://www.bilibili.com/video/${bvid}`;
 }
@@ -267,24 +102,60 @@ function toUpUrl(mid: number): string {
   return `https://space.bilibili.com/${mid}`;
 }
 
-// Store collected page data temporarily
 const collectedPageData = new Map<number, any>();
-
-// Track classification queue and status
 const classificationQueue: number[] = [];
 const pendingClassificationQueue: number[] = [];
 let isClassifying = false;
-
-// Track active collection tabs (mid -> tabId)
 const activeCollectionTabs = new Map<number, number>();
 const createdCollectionTabs = new Set<number>();
 
-// Maximum number of concurrent tabs for page collection
-const MAX_CONCURRENT_TABS = 3;
+export async function handleUPPageCollected(
+  message: MessageLike,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  const payload = message.payload as { mid?: number; name?: string; sign?: string; videos?: any[] } | undefined;
+  if (!payload?.mid) {
+    console.warn("[Background] Invalid UP page data", payload);
+    return;
+  }
 
-/**
- * Open next UP page in an available tab
- */
+  console.log("[Background] UP page data collected:", {
+    mid: payload.mid,
+    name: payload.name,
+    sign: payload.sign,
+    videoCount: payload.videos?.length ?? 0
+  });
+  console.log("[Background] Classification queue:", classificationQueue);
+  console.log("[Background] Active collection tabs:", Array.from(activeCollectionTabs.entries()));
+
+  const tabId = activeCollectionTabs.get(payload.mid);
+  if (tabId) {
+    activeCollectionTabs.delete(payload.mid);
+  }
+
+  if (!payload.name && (!payload.videos || payload.videos.length === 0)) {
+    console.log("[Background] UP", payload.mid, "appears to be invalid, skipping...");
+    const queueIndex = classificationQueue.indexOf(payload.mid);
+    if (queueIndex !== -1) {
+      classificationQueue.splice(queueIndex, 1);
+    }
+    collectedPageData.delete(payload.mid);
+
+    if (tabId) {
+      await openNextAvailableUPPage(tabId, options);
+    }
+    return;
+  }
+
+  collectedPageData.set(payload.mid, payload);
+
+  if (tabId) {
+    await openNextAvailableUPPage(tabId, options);
+  }
+  enqueueClassification(payload.mid);
+  await processNextClassification(options);
+}
+
 async function openNextUPPage(mid: number, tabId: number | undefined, options: BackgroundOptions = {}): Promise<void> {
   const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
   if (!tabs) {
@@ -337,56 +208,7 @@ async function closeCollectionTab(tabId: number, options: BackgroundOptions = {}
     console.warn("[Background] Failed to close tab", tabId, error);
   }
 }
-/**
- * Handle UP page data collection from content script
- */
-export async function handleUPPageCollected(
-  message: MessageLike,
-  options: BackgroundOptions = {}
-): Promise<void> {
-  const payload = message.payload as { mid?: number; name?: string; sign?: string; videos?: any[] } | undefined;
-  if (!payload?.mid) {
-    console.warn("[Background] Invalid UP page data", payload);
-    return;
-  }
-
-  console.log("[Background] UP page data collected:", {
-    mid: payload.mid,
-    name: payload.name,
-    sign: payload.sign,
-    videoCount: payload.videos?.length ?? 0
-  });
-  console.log("[Background] Classification queue:", classificationQueue);
-  console.log("[Background] Active collection tabs:", Array.from(activeCollectionTabs.entries()));
-  const tabId = activeCollectionTabs.get(payload.mid);
-  if (tabId) {
-    activeCollectionTabs.delete(payload.mid);
-  }
-  
-  // Check if UP is invalid (no name and no videos)
-  if (!payload.name && (!payload.videos || payload.videos.length === 0)) {
-    console.log("[Background] UP", payload.mid, "appears to be invalid, skipping...");
-    collectedPageData.delete(payload.mid);
-    
-    if (tabId) {
-      await openNextAvailableUPPage(tabId, options);
-    }
-    return;
-  }
-
-  collectedPageData.set(payload.mid, payload);
-
-  if (tabId) {
-    await openNextAvailableUPPage(tabId, options);
-  }
-  enqueueClassification(payload.mid);
-  await processNextClassification(options);
-}
-
-/**
- * Classify UP using page data instead of API
- */
-export async function classifyUPWithPageData(
+async function classifyUPWithPageData(
   mid: number,
   pageData: any,
   existingTags: string[] = [],
@@ -396,69 +218,29 @@ export async function classifyUPWithPageData(
   return classifyWithPageDataFn(mid, pageData, existingTags);
 }
 
-/**
- * Default implementation of classifyUPWithPageData
- */
 async function defaultClassifyWithPageData(
   mid: number,
   pageData: any,
-  existingTags: string[] = []
+  existingTags: string[]
 ): Promise<string[]> {
-  console.log("[Background] Starting LLM classification for UP:", mid);
-  console.log("[Background] UP name:", pageData.name);
-  console.log("[Background] UP sign:", pageData.sign);
-  console.log("[Background] Existing tags:", existingTags);
-  
-
-
-  // Use page text content for classification
+  const videoTitles = pageData.videos?.map((v: any) => v.title) ?? [];
   const pageText = pageData.pageText ?? "";
-  const titles = pageData.videos?.slice(0, 10).map((v: any) => v.title) ?? [];
-  
-  console.log("[Background] Page text length:", pageText.length);
-  console.log("[Background] Page text preview:", pageText.substring(0, 500));
-  console.log("[Background] Video titles for classification:", titles);
-  
-  const existing = existingTags.length > 0 ? existingTags.join("、") : "无";
-  const prompt = [
-    "You are a content classifier.",
-    "Return a JSON array of 3 to 5 short Chinese tags.",
-    "Prefer existing tags when appropriate and avoid near-duplicate synonyms.",
-    `UP: ${pageData.name}`,
-    `Bio: ${pageData.sign}`,
-    `Existing tags: ${existing}`,
-    `Page content (first 2000 chars): ${pageText.substring(0, 2000)}`,
-    `Video titles: ${titles.join(" | ")}`
-  ].join("\n");
 
-  console.log("[Background] Sending prompt to LLM...");
-  console.log("[Background] Prompt:", prompt);
+  console.log("[Background] Classifying UP", mid, "with", videoTitles.length, "videos");
 
-  const content = await chatComplete([
-    { role: "system", content: "Classify Bilibili UP content into tags." },
-    { role: "user", content: prompt }
-  ]);
+  const tags = parseTagsFromContent(pageText);
 
-  if (!content) {
-    console.log("[Background] LLM empty response for UP:", mid);
-    return [];
-  }
+  console.log("[Background] Parsed tags:", tags);
 
-  console.log("[Background] LLM raw response for UP", mid, ":", content);
-  const tags = parseTagsFromContent(content);
-  console.log("[Background] Parsed tags for UP", mid, ":", tags);
   return tags;
 }
 
-/**
- * Process next UP in classification queue
- */
 async function processNextClassification(options: BackgroundOptions = {}): Promise<void> {
   if (isClassifying) {
     console.log("[Background] Already classifying, skipping...");
     return;
   }
-  
+
   if (pendingClassificationQueue.length === 0) {
     if (classificationQueue.length === 0 && activeCollectionTabs.size === 0) {
       console.log("[Background] Classification queue is empty, all done!");
@@ -477,7 +259,7 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
 
   console.log("[Background] Processing classification for UP:", mid);
   console.log("[Background] Queue size:", classificationQueue.length);
-  console.log("[Background] Pending classification:", pendingClassificationQueue.slice(0, 5));
+  console.log("[Background] Remaining UPs:", classificationQueue.slice(0, 5));
 
   if (!pageData) {
     console.log("[Background] No page data yet for UP", mid, ", waiting...");
@@ -494,12 +276,11 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
 
     console.log("[Background] Existing tags for UP", mid, ":", existingTags);
 
-    // Skip if UP already has tags
     if (existingTags.length > 0) {
       console.log("[Background] UP", mid, "already has tags, skipping...");
       collectedPageData.delete(mid);
       isClassifying = false;
-      
+
       await processNextClassification(options);
       return;
     }
@@ -513,13 +294,10 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
       classificationQueue.length + pendingClassificationQueue.length + activeCollectionTabs.size;
     console.log("[Background] Progress:", remaining, "UPs remaining (including in-flight)");
 
-    // Remove collected data
     collectedPageData.delete(mid);
 
-    // Update status
     await setValueFn("classifyStatus", { lastUpdate: Date.now() });
 
-    // Process next UP
     isClassifying = false;
     await processNextClassification(options);
   } catch (error) {
@@ -529,34 +307,28 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
   }
 }
 
-/**
- * Start automatic classification by visiting UP pages
- */
 export async function startAutoClassification(options: BackgroundOptions = {}): Promise<void> {
   console.log("[Background] ===== Starting auto classification =====");
-  
+
   const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
   const cache = (await getValueFn("upList")) as { upList?: { mid: number }[] } | null;
   const list = cache?.upList ?? [];
-  
+
   console.log("[Background] Loaded UP list:", list.length, "UPs");
-  
+
   if (list.length === 0) {
     console.log("[Background] ✗ No UPs to classify. Please update your UP list first.");
     return;
   }
 
-  // Clear existing queue
   classificationQueue.length = 0;
   pendingClassificationQueue.length = 0;
   collectedPageData.clear();
   activeCollectionTabs.clear();
   createdCollectionTabs.clear();
 
-  // Get existing tags
   const upTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
 
-  // Filter out UPs that already have tags
   const upsWithoutTags = list.filter(up => {
     const existingTags = upTags[String(up.mid)] ?? [];
     const hasTags = existingTags.length > 0;
@@ -566,7 +338,6 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
     return !hasTags;
   });
 
-  // Add UPs without tags to queue
   for (const up of upsWithoutTags) {
     classificationQueue.push(up.mid);
   }
@@ -574,25 +345,26 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
   console.log("[Background] ✓ Classification queue created with", classificationQueue.length, "UPs");
   console.log("[Background] First 5 UPs in queue:", classificationQueue.slice(0, 5));
 
-  // Start by opening multiple UP pages in newly created tabs
-  if (classificationQueue.length > 0) {
+  const MAX_CONCURRENT_TABS = 5;
+  const toOpen = Math.min(MAX_CONCURRENT_TABS, classificationQueue.length);
+
+  if (toOpen > 0) {
+    console.log("[Background] Creating", toOpen, "tabs for concurrent collection");
+
     const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
     if (!tabs || !tabs.create) {
       console.log("[Background] ✗ Tabs API not available for creating new tabs");
       return;
     }
 
-    const toOpen = Math.min(MAX_CONCURRENT_TABS, classificationQueue.length);
-    console.log("[Background] Creating", toOpen, "tabs for concurrent collection");
-
     for (let i = 0; i < toOpen; i++) {
       const nextMid = classificationQueue.shift();
       if (!nextMid) break;
       const created = await tabs.create({ url: toUpUrl(nextMid), active: false });
       if (created?.id) {
+        console.log("[Background] Created tab", created.id, "for UP:", nextMid);
         activeCollectionTabs.set(nextMid, created.id);
         createdCollectionTabs.add(created.id);
-        console.log("[Background] Created tab", created.id, "for UP:", nextMid);
       }
     }
   }
@@ -613,9 +385,6 @@ async function closeAllCollectionTabs(options: BackgroundOptions = {}): Promise<
   }
 }
 
-/**
- * Handle runtime messages.
- */
 export async function handleMessage(
   message: MessageLike,
   options: BackgroundOptions = {}
@@ -630,6 +399,7 @@ export async function handleMessage(
     options.updateInterestFromWatchFn ?? updateInterestFromWatch;
   const randomUPFn = options.randomUPFn ?? randomUP;
   const randomVideoFn = options.randomVideoFn ?? randomVideo;
+  const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
 
   if (!message || !message.type) {
     return;
@@ -641,102 +411,21 @@ export async function handleMessage(
       return;
     }
     const tags = await getVideoTagsFn(payload.bvid);
+    console.log("[Background] Watch event for", payload.bvid, "tags:", tags);
     await updateInterestFromWatchFn({
-      tags,
       watch_time: payload.watch_time ?? 0,
-      duration: payload.duration ?? 0
+      duration: payload.duration ?? 0,
+      tags
     });
     return null;
   }
 
-  if (message.type === "detect_uid") {
-    const payload = message.payload as { uid?: number };
-    if (!payload?.uid) {
-      return null;
-    }
-    const setValueFn =
-      options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
-    const settings = (await getValueFn("settings")) as
-      | { userId?: number }
-      | null;
-    const nextSettings = { ...(settings ?? {}), userId: payload.uid };
-    await setValueFn("settings", nextSettings);
-    await setValueFn("userId", payload.uid);
-    console.log("[Background] Updated userId", payload.uid);
-    return null;
-  }
-
-  const tabs =
-    options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
-  if (!tabs) {
-    console.log("[Background] Tabs unavailable");
-    return null;
-  }
-
-  if (message.type === "random_up") {
-    const cache = (await getValueFn("upList")) as { upList?: UP[] } | null;
-    const upList = cache?.upList ?? [];
-    const up = randomUPFn(upList);
-    if (up) {
-      // Get current active tab
-      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
-      if (activeTab && activeTab[0]?.id) {
-        tabs.update(activeTab[0].id, { url: toUpUrl(up.mid) });
-      } else {
-        // Fallback: update the current tab
-        tabs.update(undefined, { url: toUpUrl(up.mid) });
-      }
-    }
-    return null;
-  }
-
-  if (message.type === "random_video") {
-    const cache = (await getValueFn("upList")) as { upList?: UP[] } | null;
-    const upList = cache?.upList ?? [];
-    const up = randomUPFn(upList);
-    if (!up) return;
-    const videos = await getUPVideosFn(up.mid);
-    const video = randomVideoFn(videos);
-    if (video) {
-      // Get current active tab
-      const activeTab = await tabs.query?.({ active: true, currentWindow: true });
-      if (activeTab && activeTab[0]?.id) {
-        tabs.update(activeTab[0].id, { url: toVideoUrl(video.bvid) });
-      } else {
-        // Fallback: update the current tab
-        tabs.update(undefined, { url: toVideoUrl(video.bvid) });
-      }
-    }
-    return null;
-  }
-
-  if (message.type === "update_up_list") {
-    await updateUpListTask(options);
-    return null;
-  }
-
-  if (message.type === "classify_ups") {
-    // 从设置中读取classifyMethod
+  if (message.type === "start_classification") {
     const settings = (await getValueFn("settings")) as { classifyMethod?: "api" | "page" } | null;
-    const classifyMethod = settings?.classifyMethod ?? "api";
-    
-    if (classifyMethod === "api") {
-      // API方式：直接在后台默默抓取
-      console.log("[Background] Using API method for classification");
-      await classifyUpTask(options);
-    } else {
-      // 网页抓取方式：打开UP主页
-      console.log("[Background] Using page scraping method for classification");
-      await startAutoClassification(options);
-    }
-    return null;
-  }
+    const classifyMethod = settings?.classifyMethod ?? "page";
 
-  if (message.type === "start_auto_classification") {
-    // 此消息保留用于兼容性，但会根据设置自动选择方式
-    const settings = (await getValueFn("settings")) as { classifyMethod?: "api" | "page" } | null;
-    const classifyMethod = settings?.classifyMethod ?? "api";
-    
+    console.log("[Background] Classification method:", classifyMethod);
+
     if (classifyMethod === "api") {
       console.log("[Background] Using API method for auto classification");
       await classifyUpTask(options);
@@ -781,17 +470,20 @@ export async function handleMessage(
     const video = await recommendVideoFn(up.mid);
     if (video) {
       const url = toVideoUrl(video.bvid);
-      // Get current active tab
+      if (!tabs) {
+        return { title: video.title, url };
+      }
       const activeTab = await tabs.query?.({ active: true, currentWindow: true });
       if (activeTab && activeTab[0]?.id) {
         tabs.update(activeTab[0].id, { url });
       } else {
-        // Fallback: update the current tab
         tabs.update(undefined, { url });
       }
       return { title: video.title, url };
     }
   }
+
+
 
   return null;
 }
@@ -820,6 +512,7 @@ export function initBackground(): void {
 if (typeof chrome !== "undefined") {
   initBackground();
 }
+
 async function proxyApiRequest(url: string): Promise<unknown | null> {
   if (typeof chrome === "undefined" || !chrome.tabs?.query || !chrome.tabs?.sendMessage) {
     return null;
@@ -845,4 +538,148 @@ async function proxyApiRequest(url: string): Promise<unknown | null> {
   }
   console.warn("[Background] No proxy response");
   return null;
+}
+
+export async function classifyUpTask(
+  options: BackgroundOptions = {}
+): Promise<number> {
+  const classifyUPFn = options.classifyUPFn ?? classifyUP;
+  const getValueFn =
+    options.getValueFn ?? ((key: string) => getValue(key));
+  const setValueFn =
+    options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+  const batchSize = options.batchSize ?? 10;
+  const useAPIMethod = options.useAPIMethod ?? false;
+  const maxVideos = options.maxVideos ?? 30;
+
+  const settings = (await getValueFn("settings")) as { classifyMethod?: "api" | "page" } | null;
+  const classifyMethod = settings?.classifyMethod ?? "page";
+  const shouldUseAPIMethod = useAPIMethod || classifyMethod === "api";
+
+  const cache = (await getValueFn("upList")) as { upList?: { mid: number }[] } | null;
+  const list = cache?.upList ?? [];
+  if (list.length === 0) {
+    console.log("[Background] No UPs to classify");
+    return 0;
+  }
+
+  const upTags =
+    ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
+  const videoCounts =
+    ((await getValueFn("videoCounts")) as Record<string, number> | null) ?? {};
+  const batch = list;
+  let processed = 0;
+
+  console.log("[Background] Classify UPs using method:", shouldUseAPIMethod ? "API" : "Page");
+
+  if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
+    chrome.runtime.sendMessage({
+      type: "classify_progress",
+      payload: { current: 0, total: list.length, text: "准备中..." }
+    });
+  }
+
+  for (let i = 0; i < batch.length; i += batchSize) {
+    const chunk = batch.slice(i, i + batchSize);
+    for (const up of chunk) {
+      const existing = upTags[String(up.mid)] ?? [];
+      console.log("[Background] Classify UP", up.mid, {
+        existingTags: existing.length
+      });
+
+      const profile = await classifyUPFn(up.mid, {
+        existingTags: existing,
+        useAPIMethod: shouldUseAPIMethod,
+        maxVideos: maxVideos,
+        getUPVideosFn: shouldUseAPIMethod
+          ? (mid: number) => getUPVideosForClassification(mid, maxVideos, { fallbackRequest: proxyApiRequest })
+          : (mid: number) => getUPVideos(mid, { fallbackRequest: proxyApiRequest }),
+        getUPInfoFn: (mid: number) =>
+          getUPInfo(mid, { fallbackRequest: proxyApiRequest }),
+        getVideoTagsFn: (bvid: string) =>
+          getVideoTags(bvid, { fallbackRequest: proxyApiRequest })
+      });
+      upTags[String(up.mid)] = profile.tags;
+      videoCounts[String(up.mid)] = profile.videoCount ?? 0;
+      processed += 1;
+
+      if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
+        chrome.runtime.sendMessage({
+          type: "classify_progress",
+          payload: {
+            current: processed,
+            total: list.length,
+            text: `正在分类: ${up.mid}`
+          }
+        });
+      }
+    }
+  }
+
+  await setValueFn("upTags", upTags);
+  await setValueFn("videoCounts", videoCounts);
+  await setValueFn("classifyStatus", { lastUpdate: Date.now() });
+  console.log("[Background] Classified UPs", processed);
+
+  if (shouldUseAPIMethod && typeof chrome !== "undefined" && chrome.runtime) {
+    chrome.runtime.sendMessage({ type: "classify_complete" });
+  }
+
+  return processed;
+}
+
+export async function updateUpListTask(
+  options: BackgroundOptions = {}
+): Promise<{ success: boolean; newCount?: number }> {
+  const getFollowedUPsFn = options.getFollowedUPsFn ?? getFollowedUPs;
+  const saveUPListFn = options.saveUPListFn ?? saveUPList;
+  const getValueFn =
+    options.getValueFn ?? ((key: string) => getValue(key));
+  const notifications = options.notifications ?? chrome.notifications;
+
+  const settings = (await getValueFn("settings")) as { userId?: number } | null;
+  const uid = options.uid ?? (await getValueFn("userId")) ?? settings?.userId;
+  const uidValue = typeof uid === "number" ? uid : Number(uid);
+  if (!uidValue || Number.isNaN(uidValue)) {
+    console.warn("[Background] Missing userId for update");
+    return { success: false };
+  }
+
+  const existingCache = (await getValueFn("upList")) as { upList?: UP[] } | null;
+  const existingUPs = existingCache?.upList ?? [];
+
+  const result = await getFollowedUPsFn(uidValue, {}, existingUPs);
+
+  await saveUPListFn(result.upList);
+  console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
+
+  if (result.newCount > 0 && notifications) {
+    notifications.create({
+      type: "basic",
+      iconUrl: chrome.runtime?.getURL?.("icons/icon128.png") || "",
+      title: "关注更新",
+      message: `发现 ${result.newCount} 个新关注的UP主！`
+    });
+  }
+
+  return { success: true, newCount: result.newCount };
+}
+
+export function scheduleAlarms(alarms: AlarmManager): void {
+  console.log("[Background] Schedule alarms");
+  alarms.create(ALARM_UPDATE_UP_LIST, { periodInMinutes: 24 * 60 });
+  alarms.create(ALARM_CLASSIFY_UPS, { periodInMinutes: 7 * 24 * 60 });
+}
+
+export async function handleAlarm(
+  alarm: AlarmLike,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  if (alarm.name === ALARM_UPDATE_UP_LIST) {
+    await updateUpListTask(options);
+    return;
+  }
+  if (alarm.name === ALARM_CLASSIFY_UPS) {
+    await classifyUpTask(options);
+  }
 }
