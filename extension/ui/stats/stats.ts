@@ -11,6 +11,7 @@ import {
   setUPManualTags,
   getTagLibrary,
   getTagById,
+  getTagIdByName,
   getCategoryLibrary,
   addTagsToLibrary,
   type UPTagWeights,
@@ -278,9 +279,20 @@ async function addTagToUp(mid: number, tag: string): Promise<void> {
   const key = String(mid);
   const existing = currentUpTags[key] ?? [];
   if (existing.includes(nextTag)) return;
+  
+  // 添加标签到标签库
+  const addedTag = await addTagsToLibrary([nextTag]);
+  const tagId = addedTag[0]?.id;
+  if (!tagId) return;
+  
+  // 更新UP的手动标签
+  const existingTagIds = await getUPManualTags(mid);
+  if (!existingTagIds.includes(tagId)) {
+    await setUPManualTags(mid, [...existingTagIds, tagId]);
+  }
+  
   const next = [...existing, nextTag];
   currentUpTags = { ...currentUpTags, [key]: next };
-  await setValue("upTags", currentUpTags);
   await renderUpList(currentUpList, currentUpTags);
   await renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
@@ -292,9 +304,18 @@ async function removeTagFromUp(mid: number, tag: string): Promise<void> {
   const key = String(mid);
   const existing = currentUpTags[key] ?? [];
   if (!existing.includes(tag)) return;
+  
+  // 从标签库中获取标签ID
+  const tagId = await getTagIdByName(tag);
+  if (!tagId) return;
+  
+  // 从UP的手动标签中移除
+  const existingTagIds = await getUPManualTags(mid);
+  const nextTagIds = existingTagIds.filter(id => id !== tagId);
+  await setUPManualTags(mid, nextTagIds);
+  
   const next = existing.filter((t) => t !== tag);
   currentUpTags = { ...currentUpTags, [key]: next };
-  await setValue("upTags", currentUpTags);
   await renderUpList(currentUpList, currentUpTags);
   await renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
@@ -561,7 +582,7 @@ export async function initStats(): Promise<void> {
 
   // 获取已关注的UP列表
   const followedUPs = await getFollowedUPList();
-  const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
+  const tagLibrary = await getTagLibrary();
   const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
   
@@ -572,6 +593,15 @@ export async function initStats(): Promise<void> {
   // 设置当前UP列表和缓存
   currentUpList = followedUPs;
   upCache = { upList: followedUPs};
+  
+  // 从标签库和UP手动标签构建currentUpTags
+  const upTags: Record<string, string[]> = {};
+  for (const up of followedUPs) {
+    const manualTagIds = await getUPManualTags(up.mid);
+    upTags[String(up.mid)] = manualTagIds
+      .map(tagId => tagLibrary[tagId]?.name)
+      .filter((name): name is string => name !== undefined);
+  }
   currentUpTags = upTags;
   setCurrentCustomTags(customTags);
 

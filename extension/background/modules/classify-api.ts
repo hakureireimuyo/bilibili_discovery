@@ -1,6 +1,6 @@
 import { getUPInfo, getUPVideos, getUPVideosForClassification, getVideoTags } from "../../api/bili-api.js";
 import { classifyUP } from "../../engine/classifier.js";
-import { getValue, setValue } from "../../storage/storage.js";
+import { getValue, setValue, addTagsToLibrary, getUPManualTags, setUPManualTags, getTagLibrary } from "../../storage/storage.js";
 import type { BackgroundOptions } from "./common-types.js";
 import { proxyApiRequest } from "./proxy.js";
 
@@ -25,12 +25,13 @@ export async function classifyUpTask(
     return 0;
   }
 
-  const upTags =
-    ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
   const videoCounts =
     ((await getValueFn("videoCounts")) as Record<string, number> | null) ?? {};
   const batch = list;
   let processed = 0;
+
+  // 获取标签库
+  const tagLibrary = await getTagLibrary({ storage: options.storage });
 
   console.log("[Background] Classify UPs using method:", shouldUseAPIMethod ? "API" : "Page");
 
@@ -44,13 +45,24 @@ export async function classifyUpTask(
   for (let i = 0; i < batch.length; i += batchSize) {
     const chunk = batch.slice(i, i + batchSize);
     for (const up of chunk) {
-      const existing = upTags[String(up.mid)] ?? [];
+      // 获取UP的手动标签ID
+      const existingTagIds = await getUPManualTags(up.mid, { storage: options.storage });
+      
+      // 将标签ID转换为标签名称
+      const existingTagNames: string[] = [];
+      for (const tagId of existingTagIds) {
+        const tag = tagLibrary[tagId];
+        if (tag?.name) {
+          existingTagNames.push(tag.name);
+        }
+      }
+      
       console.log("[Background] Classify UP", up.mid, {
-        existingTags: existing.length
+        existingTags: existingTagNames.length
       });
 
       const profile = await classifyUPFn(up.mid, {
-        existingTags: existing,
+        existingTags: existingTagNames,
         useAPIMethod: shouldUseAPIMethod,
         maxVideos: maxVideos,
         getUPVideosFn: shouldUseAPIMethod
@@ -61,7 +73,14 @@ export async function classifyUpTask(
         getVideoTagsFn: (bvid: string) =>
           getVideoTags(bvid, { fallbackRequest: proxyApiRequest })
       });
-      upTags[String(up.mid)] = profile.tags;
+      
+      // 将标签名称添加到标签库，获取标签ID
+      const addedTags = await addTagsToLibrary(profile.tags, { storage: options.storage });
+      const tagIds = addedTags.map(tag => tag.id);
+      
+      // 保存UP的手动标签
+      await setUPManualTags(up.mid, tagIds, { storage: options.storage });
+      
       videoCounts[String(up.mid)] = profile.videoCount ?? 0;
       processed += 1;
 
@@ -78,7 +97,6 @@ export async function classifyUpTask(
     }
   }
 
-  await setValueFn("upTags", upTags);
   await setValueFn("videoCounts", videoCounts);
   await setValueFn("classifyStatus", { lastUpdate: Date.now() });
   console.log("[Background] Classified UPs", processed);

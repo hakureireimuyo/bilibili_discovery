@@ -197,7 +197,8 @@ export async function handleMessage(
 
   if (message.type === "clear_classify_data") {
     const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
-    await setValueFn("upTags", {});
+    await setValueFn("upManualTagsCache", {});
+    await setValueFn("upTagWeightsCache", {});
     await setValueFn("videoCounts", {});
     await setValueFn("classifyStatus", { lastUpdate: 0 });
     console.log("[Background] Cleared classify data");
