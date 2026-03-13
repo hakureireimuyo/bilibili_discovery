@@ -462,6 +462,18 @@ export async function getUPManualTags(mid: number): Promise<string[]> {
 }
 
 /**
+ * 获取所有UP的手动标签
+ */
+export async function getAllUPManualTags(): Promise<Record<string, string[]>> {
+  const manualTags = await getAllRecords<UPManualTag>("upManualTagsCache");
+  const result: Record<string, string[]> = {};
+  for (const tag of manualTags) {
+    result[String(tag.mid)] = tag.tag_ids;
+  }
+  return result;
+}
+
+/**
  * 设置UP的手动标签
  */
 export async function setUPManualTags(mid: number, tagIds: string[]): Promise<void> {
@@ -739,7 +751,15 @@ export async function getValue<T>(key: string): Promise<T | null> {
     return status as T | null;
   }
 
+  // 对于 upList 键，使用 loadUPList 方法
+  if (key === "upList") {
+    const cache = await loadUPList();
+    return cache as T | null;
+  }
+
   // 对于其他键，使用通用存储
+  // setValue 将数据存储在 classifyStatus 存储中，使用 id 字段作为键
+  // 所以这里需要使用 key 作为 id 来查找记录
   const record = await getRecord<{ id: string; value: T }>("classifyStatus", key);
   return record?.value ?? null;
 }

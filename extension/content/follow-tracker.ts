@@ -99,21 +99,28 @@ function checkFollowButton(): void {
           });
 
           // 发送消息到后台处理
-          chrome.runtime.sendMessage({
-            type: "follow_status_changed",
-            payload: {
-              mid: upInfo.mid,
-              name: upInfo.name,
-              face: upInfo.face,
-              sign: upInfo.sign,
-              followed: newIsFollowed
-            }
-          }, (response) => {
-            // 处理可能的错误响应
-            if (chrome.runtime.lastError) {
-              console.error("[FollowTracker] Failed to send message:", chrome.runtime.lastError);
-            }
-          });
+          if (typeof chrome !== "undefined" && chrome.runtime) {
+            chrome.runtime.sendMessage(
+              {
+                type: "follow_status_changed",
+                payload: {
+                  mid: upInfo.mid,
+                  name: upInfo.name,
+                  face: upInfo.face,
+                  sign: upInfo.sign,
+                  followed: newIsFollowed
+                }
+              },
+              (response) => {
+                // 处理可能的错误响应
+                if (chrome.runtime.lastError) {
+                  console.error("[FollowTracker] Failed to send message:", chrome.runtime.lastError);
+                }
+              }
+            );
+          } else {
+            console.log("[FollowTracker] Chrome runtime not available, skipping message send");
+          }
         }
       }
     }

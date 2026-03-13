@@ -2,14 +2,14 @@
  * Stats page logic.
  */
 
-import { getValue, setValue, getUPTagCounts, type UPTagCache } from "../../storage/storage.js";
+import { getValue, setValue, getUPTagCounts, getUPManualTags, getAllUPManualTags, addTagToUPManualTags, removeTagFromUPManualTags, getTagLibrary, addTagToLibrary, type UPTagCache } from "../../storage/storage.js";
 
 export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
 }
 
 export interface UPCache {
-  upList: { mid: number; name: string; face: string }[];
+  upList: { mid: number; name: string; face: string; is_followed?: boolean }[];
 }
 
 export interface UPTagCount {
@@ -147,6 +147,7 @@ let filteredTags: string[] = [];
 let currentCustomTags: string[] = [];
 let categories: Category[] = [];
 let filteredCategories: Category[] = [];
+let showFollowedOnly = true; // 默认显示已关注的UP
 
 function renderTags(upTags: Record<string, string[]>, searchTerm: string = ""): void {
   const container = document.getElementById("tag-list");
@@ -407,10 +408,17 @@ function renderUpList(
     return;
   }
   
-  // Filter UP list based on include/exclude tags
+  // 根据切换开关过滤UP列表
   let filteredUpList = upList;
+  if (showFollowedOnly) {
+    filteredUpList = upList.filter(up => up.is_followed !== false);
+  } else {
+    filteredUpList = upList.filter(up => up.is_followed === false);
+  }
+  
+  // Filter UP list based on include/exclude tags
   if (includeTags.length > 0 || excludeTags.length > 0 || includeCategories.length > 0 || excludeCategories.length > 0 || searchTerm) {
-    filteredUpList = upList.filter(up => {
+    filteredUpList = filteredUpList.filter(up => {
       const tags = upTags[String(up.mid)] ?? [];
       
       // Check if all include tags are present
@@ -696,6 +704,14 @@ let currentUpTags: Record<string, string[]> = {};
 
 function refreshUpList(): void {
   renderUpList(currentUpList, currentUpTags);
+  updateToggleLabel();
+}
+
+function updateToggleLabel(): void {
+  const toggleLabel = document.querySelector(".toggle-label");
+  if (toggleLabel) {
+    toggleLabel.textContent = showFollowedOnly ? "已关注" : "未关注";
+  }
 }
 
 function normalizeTag(tag: string): string {
@@ -708,9 +724,13 @@ async function addTagToUp(mid: number, tag: string): Promise<void> {
   const key = String(mid);
   const existing = currentUpTags[key] ?? [];
   if (existing.includes(nextTag)) return;
+  
+  // 将 tag 名称添加到标签库，并获取 tag ID
+  const tagObj = await addTagToLibrary(nextTag);
+  
   const next = [...existing, nextTag];
   currentUpTags = { ...currentUpTags, [key]: next };
-  await setValue("upTags", currentUpTags);
+  await addTagToUPManualTags(mid, tagObj.id);
   renderUpList(currentUpList, currentUpTags);
   renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
@@ -719,9 +739,18 @@ async function removeTagFromUp(mid: number, tag: string): Promise<void> {
   const key = String(mid);
   const existing = currentUpTags[key] ?? [];
   if (!existing.includes(tag)) return;
+  
+  // 获取标签库，将 tag 名称转换为 tag ID
+  const tagLibrary = await getTagLibrary();
+  const tagObj = Object.values(tagLibrary).find(t => t.name === tag);
+  
   const next = existing.filter((t) => t !== tag);
   currentUpTags = { ...currentUpTags, [key]: next };
-  await setValue("upTags", currentUpTags);
+  
+  if (tagObj) {
+    await removeTagFromUPManualTags(mid, tagObj.id);
+  }
+  
   renderUpList(currentUpList, currentUpTags);
   renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
@@ -859,9 +888,36 @@ export async function initStats(): Promise<void> {
   });
 
   const upCache = (await getValue<UPCache>("upList")) ?? { upList: [] };
-  const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
+  const upTagCounts = await getUPTagCounts();
+  const upManualTags = await getAllUPManualTags();
   const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
+  
+  // 获取标签库，用于将 tag ID 转换为 tag 名称
+  const tagLibrary = await getTagLibrary();
+  
+  // 将 upTagCounts 转换为 upTags 格式
+  const upTags: Record<string, string[]> = {};
+  for (const [mid, tagData] of Object.entries(upTagCounts)) {
+    upTags[mid] = tagData.tags.map(t => {
+      const tag = tagLibrary[t.tag];
+      return tag ? tag.name : t.tag;
+    });
+  }
+  
+  // 合并手动标签
+  for (const [mid, tagIds] of Object.entries(upManualTags)) {
+    if (!upTags[mid]) {
+      upTags[mid] = [];
+    }
+    for (const tagId of tagIds) {
+      const tag = tagLibrary[tagId];
+      const tagName = tag ? tag.name : tagId;
+      if (!upTags[mid].includes(tagName)) {
+        upTags[mid].push(tagName);
+      }
+    }
+  }
   
   currentUpList = upCache.upList ?? [];
   currentUpTags = upTags;
@@ -889,6 +945,16 @@ export async function initStats(): Promise<void> {
   upSearchInput?.addEventListener("input", () => {
     refreshUpList();
   });
+  
+  // Show followed toggle event
+  const showFollowedToggle = document.getElementById("show-followed-toggle") as HTMLInputElement | null;
+  showFollowedToggle?.addEventListener("change", (e) => {
+    showFollowedOnly = (e.target as HTMLInputElement).checked;
+    refreshUpList();
+  });
+  
+  // 初始化切换开关文本
+  updateToggleLabel();
 
   const addTagBtn = document.getElementById("btn-add-tag");
   addTagBtn?.addEventListener("click", () => {

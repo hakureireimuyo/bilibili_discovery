@@ -273,12 +273,20 @@ function initPageCollector(): void {
         title: v.title
       })));
       
-      chrome.runtime.sendMessage({
-        type: "up_page_collected",
-        payload: data
-      }, (response) => {
-        console.log("[UPPageCollector] Message sent to background, response:", response);
-      });
+      if (typeof chrome !== "undefined" && chrome.runtime) {
+        chrome.runtime.sendMessage({
+          type: "up_page_collected",
+          payload: data
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error("[UPPageCollector] Message send error:", chrome.runtime.lastError);
+          } else {
+            console.log("[UPPageCollector] Message sent to background, response:", response);
+          }
+        });
+      } else {
+        console.log("[UPPageCollector] Chrome runtime not available, skipping message send");
+      }
     } else {
       // Check if UP is invalid by looking at page title and page content
       const pageTitle = document.title;
@@ -297,17 +305,25 @@ function initPageCollector(): void {
       
       if (isInvalidUP) {
         console.log("[UPPageCollector] UP appears to be invalid, sending invalid UP message");
-        chrome.runtime.sendMessage({
-          type: "up_page_collected",
-          payload: {
-            mid: mid,
-            name: "",
-            sign: "",
-            videos: []
-          }
-        }, (response) => {
-          console.log("[UPPageCollector] Invalid UP message sent to background, response:", response);
-        });
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+          chrome.runtime.sendMessage({
+            type: "up_page_collected",
+            payload: {
+              mid: mid,
+              name: "",
+              sign: "",
+              videos: []
+            }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error("[UPPageCollector] Message send error:", chrome.runtime.lastError);
+            } else {
+              console.log("[UPPageCollector] Invalid UP message sent to background, response:", response);
+            }
+          });
+        } else {
+          console.log("[UPPageCollector] Chrome runtime not available, skipping message send");
+        }
       } else {
         console.log("[UPPageCollector] Data collection failed, retrying in 1 second...");
         // Retry after delay

@@ -10,7 +10,18 @@ function extractUidFromWindow(
 }
 
 function postUid(uid: number): void {
-  chrome.runtime.sendMessage({ type: "detect_uid", payload: { uid } });
+  if (typeof chrome !== "undefined" && chrome.runtime) {
+    chrome.runtime.sendMessage(
+      { type: "detect_uid", payload: { uid } },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("[UID] Message send error:", chrome.runtime.lastError);
+        }
+      }
+    );
+  } else {
+    console.log("[UID] Chrome runtime not available, skipping message send");
+  }
 }
 
 function injectPageProbe(): void {
@@ -57,17 +68,19 @@ function initUidDetector(): void {
   injectPageProbe();
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  const payload = message as { type?: string; url?: string };
-  if (!payload || payload.type !== "bili_api_request" || !payload.url) {
-    return;
-  }
-  fetch(payload.url, { credentials: "include" })
-    .then((res) => res.json())
-    .then((data) => sendResponse({ data }))
-    .catch(() => sendResponse({ data: null }));
-  return true;
-});
+if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    const payload = message as { type?: string; url?: string };
+    if (!payload || payload.type !== "bili_api_request" || !payload.url) {
+      return;
+    }
+    fetch(payload.url, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => sendResponse({ data }))
+      .catch(() => sendResponse({ data: null }));
+    return true;
+  });
+}
 
 if (typeof window !== "undefined") {
   initUidDetector();

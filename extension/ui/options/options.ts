@@ -63,6 +63,33 @@ async function loadSettings(): Promise<Settings> {
   return normalizeSettings(saved);
 }
 
+/**
+ * 从根目录的 evn 文件读取开发环境变量
+ * 仅在开发模式下使用，文件不存在时忽略
+ */
+async function loadDevEnv(): Promise<{ uid?: string; sk?: string }> {
+  try {
+    const response = await fetch("../../../../evn");
+    if (!response.ok) {
+      return {};
+    }
+    const content = await response.text();
+    const lines = content.split("\n");
+    const result: { uid?: string; sk?: string } = {};
+    
+    for (const line of lines) {
+      const [key, value] = line.split("=").map(s => s.trim());
+      if (key === "uid") result.uid = value;
+      if (key === "sk") result.sk = value;
+    }
+    
+    return result;
+  } catch {
+    // 文件不存在或读取失败时忽略
+    return {};
+  }
+}
+
 async function saveSettings(settings: Settings): Promise<void> {
   await setValue("settings", settings);
   if (settings.userId) {
@@ -96,6 +123,11 @@ export async function initOptions(): Promise<void> {
   if (apiModelEl) apiModelEl.value = settings.apiModel;
   if (apiKeyEl) apiKeyEl.value = settings.apiKey;
   if (biliCookieEl) biliCookieEl.value = settings.biliCookie;
+  
+  // 开发模式下自动填充 evn 文件中的数据
+  const devEnv = await loadDevEnv();
+  if (devEnv.uid && userIdEl) userIdEl.value = devEnv.uid;
+  if (devEnv.sk && apiKeyEl) apiKeyEl.value = devEnv.sk;
 
   if (statsLink && typeof chrome !== "undefined") {
     statsLink.href = chrome.runtime.getURL("ui/stats/stats.html");
