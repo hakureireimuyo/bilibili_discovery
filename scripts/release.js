@@ -16,12 +16,20 @@ if (!existsSync(outputDir)) {
   mkdirSync(outputDir, { recursive: true });
 }
 
-// Read the manifest to get version
-const manifestPath = join(distExtension, "manifest.json");
-const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-const version = manifest.version;
+// Get version from command line argument or manifest
+let version;
+const versionArg = process.argv[2];
 
-console.log(`\n📦 Packaging extension version ${version}...`);
+if (versionArg) {
+  version = versionArg;
+  console.log(`\n📦 Packaging extension version ${version} (from command line argument)...`);
+} else {
+  // Read the manifest to get version
+  const manifestPath = join(distExtension, "manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  version = manifest.version;
+  console.log(`\n📦 Packaging extension version ${version} (from manifest.json)...`);
+}
 
 // Check if 7-Zip is available
 let zipFile;
@@ -54,34 +62,6 @@ try {
   }
 }
 
-// Git operations
-console.log(`\n📝 Preparing GitHub release for version ${version}...`);
-
-try {
-  // Stage all changes
-  console.log("\n🔄 Staging changes...");
-  execSync("git add -A", { stdio: "inherit" });
-
-  // Commit changes
-  console.log("\n💾 Committing changes...");
-  execSync(`git commit -m "chore: release version ${version}"`, { stdio: "inherit" });
-
-  // Tag the release
-  console.log(`\n🏷️  Creating tag v${version}...`);
-  execSync(`git tag -a v${version} -m "Release version ${version}"`, { stdio: "inherit" });
-
-  // Push to remote
-  console.log("\n⬆️  Pushing to remote repository...");
-  execSync("git push origin main", { stdio: "inherit" });
-  execSync(`git push origin v${version}`, { stdio: "inherit" });
-
-  console.log(`\n✅ Successfully released version ${version}!`);
-  console.log(`\n📦 Package file: ${zipFile}`);
-  console.log(`\n🎉 Don't forget to upload the ZIP file to GitHub Releases!`);
-  console.log(`   Visit: https://github.com/your-username/bili-random-up/releases/new`);
-
-} catch (error) {
-  console.error("\n❌ Error during Git operations:");
-  console.error(error.message);
-  process.exit(1);
-}
+console.log(`\n✅ Successfully packaged version ${version}!`);
+console.log(`\n📦 Package file: ${zipFile}`);
+console.log(`\n🎉 You can now upload the ZIP file to GitHub Releases!`);
