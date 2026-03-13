@@ -96,11 +96,16 @@ async function handleUpdateUpList(): Promise<void> {
   }
 
   try {
-    const response = await new Promise<{ success: boolean; newCount?: number }>((resolve) => {
+    const response = await new Promise<{ success: boolean; newCount?: number } | null>((resolve) => {
       chrome.runtime.sendMessage({ type: "update_up_list" }, (response) => {
-        resolve(response as { success: boolean; newCount?: number });
+        resolve(response as { success: boolean; newCount?: number } | null);
       });
     });
+
+    if (!response) {
+      alert("更新失败，未收到响应");
+      return;
+    }
 
     if (response.success) {
       if (response.newCount && response.newCount > 0) {

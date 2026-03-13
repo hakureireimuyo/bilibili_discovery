@@ -15,7 +15,18 @@ function sendWatchProgress(event) {
         if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
             return;
         }
-        chrome.runtime.sendMessage({ type: "watch_progress", payload: event });
+        chrome.runtime.sendMessage({ type: "watch_progress", payload: event }, (response) => {
+            if (chrome.runtime.lastError) {
+                const errorMsg = chrome.runtime.lastError.message || "";
+                // 忽略扩展上下文失效的错误（扩展重新加载时的正常现象）
+                if (errorMsg.includes("Extension context invalidated")) {
+                    console.log("[Tracker] Extension context invalidated, this is expected during reload");
+                }
+                else {
+                    console.warn("[Tracker] Send watch progress failed:", chrome.runtime.lastError);
+                }
+            }
+        });
     }
     catch (error) {
         console.warn("[Tracker] Send watch progress failed", error);

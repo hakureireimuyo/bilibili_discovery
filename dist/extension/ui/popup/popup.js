@@ -51,6 +51,10 @@ async function handleUpdateUpList() {
                 resolve(response);
             });
         });
+        if (!response) {
+            alert("更新失败，未收到响应");
+            return;
+        }
         if (response.success) {
             if (response.newCount && response.newCount > 0) {
                 alert(`更新成功！发现 ${response.newCount} 个新关注的UP主`);

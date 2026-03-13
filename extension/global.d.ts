@@ -10,6 +10,9 @@ declare const chrome: {
         ) => void
       ) => void;
     };
+    lastError?: {
+      message?: string;
+    };
   };
   tabs?: {
     query?: (queryInfo: { url: string }) => Promise<{ id?: number }[]>;
