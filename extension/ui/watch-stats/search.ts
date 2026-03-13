@@ -1,6 +1,7 @@
 import { formatSeconds } from "./utils.js";
 import type { WatchStats } from "../../background/modules/common-types.js";
 import type { UP } from "../../storage/storage.js";
+import { getTagLibrary } from "../../storage/storage.js";
 
 // 全局状态
 let includeTags: string[] = [];
@@ -65,7 +66,12 @@ function renderVideoResults(
 
       return true;
     })
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => {
+      // 按最近观看时间排序（使用videoFirstWatched或videoCreatedAt）
+      const aTime = stats.videoFirstWatched?.[a[0]] ?? stats.videoCreatedAt?.[a[0]] ?? 0;
+      const bTime = stats.videoFirstWatched?.[b[0]] ?? stats.videoCreatedAt?.[b[0]] ?? 0;
+      return bTime - aTime;
+    })
     .slice(0, 20);
 
   if (videoRows.length === 0) {
@@ -104,7 +110,7 @@ function renderVideoResults(
 /**
  * 初始化标签搜索功能
  */
-export function initTagSearch(stats: WatchStats): void {
+export async function initTagSearch(stats: WatchStats): Promise<void> {
   currentStats = stats;
   const searchInput = document.getElementById("tag-search") as HTMLInputElement;
   const resultsContainer = document.getElementById("tag-search-results");
@@ -112,7 +118,7 @@ export function initTagSearch(stats: WatchStats): void {
   if (!searchInput || !resultsContainer) return;
 
   // 计算所有标签的统计信息
-  const tagStats = calculateTagStats(stats);
+  const tagStats = await calculateTagStats(stats);
 
   // 初始显示所有标签（按观看时长排序）
   renderTagResults(tagStats, resultsContainer, "");
@@ -130,10 +136,13 @@ export function initTagSearch(stats: WatchStats): void {
 /**
  * 计算标签统计信息
  */
-function calculateTagStats(stats: WatchStats): Map<string, { seconds: number; videoCount: number }> {
+async function calculateTagStats(stats: WatchStats): Promise<Map<string, { seconds: number; videoCount: number }>> {
   const tagStats = new Map<string, { seconds: number; videoCount: number }>();
+  
+  // 获取标签库，用于将标签ID转换为标签名称
+  const tagLibrary = await getTagLibrary();
 
-  for (const [videoKey, tags] of Object.entries(stats.videoTags)) {
+  for (const [videoKey, tagIds] of Object.entries(stats.videoTags)) {
     const seconds = stats.videoSeconds[videoKey] ?? 0;
     const upId = stats.videoUpIds[videoKey];
     const upKey = upId ? String(upId) : null;
@@ -142,9 +151,13 @@ function calculateTagStats(stats: WatchStats): Map<string, { seconds: number; vi
     // 使用视频观看时长，如果没有则使用UP观看时长（作为近似值）
     const effectiveSeconds = seconds > 0 ? seconds : upSeconds;
     
-    for (const tag of tags || []) {
-      const existing = tagStats.get(tag) ?? { seconds: 0, videoCount: 0 };
-      tagStats.set(tag, {
+    for (const tagId of tagIds || []) {
+      // 将标签ID转换为标签名称
+      const tag = tagLibrary[tagId];
+      const tagName = tag ? tag.name : tagId;
+      
+      const existing = tagStats.get(tagName) ?? { seconds: 0, videoCount: 0 };
+      tagStats.set(tagName, {
         seconds: existing.seconds + effectiveSeconds,
         videoCount: existing.videoCount + 1
       });

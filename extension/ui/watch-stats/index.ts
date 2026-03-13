@@ -77,7 +77,7 @@ async function initWatchStats(): Promise<void> {
   // 只在有数据时初始化搜索功能
   if (stats) {
     initVideoSearch(stats);
-    initTagSearch(stats);
+    await initTagSearch(stats);
   }
 }
 
