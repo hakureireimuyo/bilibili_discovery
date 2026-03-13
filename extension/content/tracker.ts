@@ -23,89 +23,43 @@ function detectVideoElement(): HTMLVideoElement | null {
   return document.querySelector("video");
 }
 
-function sendWatchProgress(event: WatchProgress): void {
-  console.log("[Tracker] Send watch progress", event);
+// 通用的发送消息函数
+function sendMessage(type: string, event: WatchProgress, logPrefix: string): void {
+  console.log(`[Tracker] ${logPrefix}`, event);
   try {
     if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
       return;
     }
-    chrome.runtime.sendMessage({ type: "watch_progress", payload: event }, (response) => {
+    chrome.runtime.sendMessage({ type, payload: event }, (response) => {
       if (chrome.runtime.lastError) {
         const errorMsg = chrome.runtime.lastError.message || "";
         // 忽略扩展上下文失效的错误（扩展重新加载时的正常现象）
         if (errorMsg.includes("Extension context invalidated")) {
           console.log("[Tracker] Extension context invalidated, this is expected during reload");
         } else {
-          console.warn("[Tracker] Send watch progress failed:", chrome.runtime.lastError);
+          console.warn(`[Tracker] ${logPrefix} failed:`, chrome.runtime.lastError);
         }
       }
     });
   } catch (error) {
-    console.warn("[Tracker] Send watch progress failed", error);
+    console.warn(`[Tracker] ${logPrefix} failed`, error);
   }
+}
+
+function sendWatchProgress(event: WatchProgress): void {
+  sendMessage("watch_progress", event, "Send watch progress");
 }
 
 function sendInitializeVideoInfo(event: WatchProgress): void {
-  console.log("[Tracker] Send initialize video info", event);
-  try {
-    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
-      return;
-    }
-    chrome.runtime.sendMessage({ type: "initialize_video_info", payload: event }, (response) => {
-      if (chrome.runtime.lastError) {
-        const errorMsg = chrome.runtime.lastError.message || "";
-        if (errorMsg.includes("Extension context invalidated")) {
-          console.log("[Tracker] Extension context invalidated, this is expected during reload");
-        } else {
-          console.warn("[Tracker] Send initialize video info failed:", chrome.runtime.lastError);
-        }
-      }
-    });
-  } catch (error) {
-    console.warn("[Tracker] Send initialize video info failed", error);
-  }
+  sendMessage("initialize_video_info", event, "Send initialize video info");
 }
 
 function sendProcessUPInfo(event: WatchProgress): void {
-  console.log("[Tracker] Send process UP info", event);
-  try {
-    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
-      return;
-    }
-    chrome.runtime.sendMessage({ type: "process_up_info", payload: event }, (response) => {
-      if (chrome.runtime.lastError) {
-        const errorMsg = chrome.runtime.lastError.message || "";
-        if (errorMsg.includes("Extension context invalidated")) {
-          console.log("[Tracker] Extension context invalidated, this is expected during reload");
-        } else {
-          console.warn("[Tracker] Send process UP info failed:", chrome.runtime.lastError);
-        }
-      }
-    });
-  } catch (error) {
-    console.warn("[Tracker] Send process UP info failed", error);
-  }
+  sendMessage("process_up_info", event, "Send process UP info");
 }
 
 function sendProcessVideoTags(event: WatchProgress): void {
-  console.log("[Tracker] Send process video tags", event);
-  try {
-    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
-      return;
-    }
-    chrome.runtime.sendMessage({ type: "process_video_tags", payload: event }, (response) => {
-      if (chrome.runtime.lastError) {
-        const errorMsg = chrome.runtime.lastError.message || "";
-        if (errorMsg.includes("Extension context invalidated")) {
-          console.log("[Tracker] Extension context invalidated, this is expected during reload");
-        } else {
-          console.warn("[Tracker] Send process video tags failed:", chrome.runtime.lastError);
-        }
-      }
-    });
-  } catch (error) {
-    console.warn("[Tracker] Send process video tags failed", error);
-  }
+  sendMessage("process_video_tags", event, "Send process video tags");
 }
 
 interface VideoMeta {
@@ -117,19 +71,6 @@ interface VideoMeta {
 }
 
 function extractVideoMeta(): VideoMeta {
-  // 检查页面是否加载完成
-  if (document.readyState !== 'complete') {
-    console.log("[Tracker] Page not fully loaded, waiting...");
-    // 返回空对象，稍后会重试
-    return {
-      title: "",
-      upMid: undefined,
-      upName: undefined,
-      upFace: undefined,
-      tags: []
-    };
-  }
-
   const titleSelectors = [
     "h1.video-title",
     "h1.title",
@@ -292,11 +233,6 @@ function trackVideoPlayback(
 
   const refreshMeta = () => {
     cachedMeta = extractVideoMeta();
-    // 如果页面未加载完成，设置定时器稍后重试
-    if (!cachedMeta.title && document.readyState !== 'complete') {
-      console.log("[Tracker] Page not loaded, scheduling retry...");
-      setTimeout(refreshMeta, 1000);
-    }
   };
 
   const flush = (reason: string) => {
@@ -334,13 +270,24 @@ function trackVideoPlayback(
   // 初始化视频信息、UP信息和标签（只执行一次）
   // 等待页面加载完成后再初始化
   const initializeWhenReady = () => {
+    // 每次都重新获取元数据，确保获取到最新的视频信息
+    refreshMeta();
+
     if (!cachedMeta || !cachedMeta.title) {
       console.log("[Tracker] Meta not ready, waiting...");
-      setTimeout(initializeWhenReady, 500);
+      setTimeout(initializeWhenReady, 3000);
       return;
     }
 
     const meta: VideoMeta = cachedMeta;
+
+    // 检查头像URL是否获取成功，如果没有则重新获取
+    if (!meta.upFace) {
+      console.log("[Tracker] UP face not found, retrying...");
+      setTimeout(initializeWhenReady, 500);
+      return;
+    }
+
     const initEvent: WatchProgress = {
       bvid,
       title: meta.title,
@@ -369,6 +316,37 @@ function trackVideoPlayback(
 
   // 开始初始化流程
   initializeWhenReady();
+
+  // 监听URL变化，当URL中的bvid改变时重新初始化
+  let lastBvid = bvid;
+  const checkUrlChange = () => {
+    const currentBvid = extractBvidFromUrl(window.location.href);
+    if (currentBvid && currentBvid !== lastBvid) {
+      console.log("[Tracker] BVID changed, reinitializing...");
+      console.log("[Tracker] Old BVID:", lastBvid);
+      console.log("[Tracker] New BVID:", currentBvid);
+      lastBvid = currentBvid;
+
+      // 重置缓存和状态
+      cachedMeta = null;
+      accumulated = 0;
+      lastSentAt = Date.now();
+
+      // 更新bvid
+      bvid = currentBvid;
+
+      // 等待页面加载新的内容
+      console.log("[Tracker] Waiting for page to load new content...");
+      setTimeout(() => {
+        console.log("[Tracker] Page should have loaded new content, reinitializing...");
+        refreshMeta();
+        initializeWhenReady();
+      }, 3000); // 等待3秒
+    }
+  };
+
+  // 定期检查URL变化
+  setInterval(checkUrlChange, 4000);
 
   video.addEventListener("timeupdate", () => {
     if (video.seeking) {
