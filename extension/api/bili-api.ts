@@ -139,9 +139,11 @@ export async function getFollowedUPs(
   const pageSize = 50;
   const all: UP[] = [];
   const existingSet = new Set(existingUPs?.map(up => up.mid) || []);
+  const existingUPMap = new Map(existingUPs?.map(up => [up.mid, up]) || []);
   let page = 1;
   let consecutiveAllExistCount = 0;
   const maxConsecutiveAllExist = 3; // 连续3页都全部存在则停止拉取
+  let isIncremental = false; // 是否为增量更新
 
   while (true) {
     const url = `https://api.bilibili.com/x/relation/followings?vmid=${uid}&pn=${page}&ps=${pageSize}&order=desc`;
@@ -165,6 +167,13 @@ export async function getFollowedUPs(
       follow_time: item.mtime || item.follow_time || 0
     }));
 
+    // 判断是否为增量更新：当前批次中至少3个已关注的UP
+    const existingInBatch = upList.filter(up => existingSet.has(up.mid)).length;
+    if (existingInBatch >= 3) {
+      isIncremental = true;
+      console.log(`[API] Page ${page}: Detected incremental update (${existingInBatch} existing UPs in batch)`);
+    }
+
     // Check if all UPs in this page already exist
     const allExist = upList.every(up => existingSet.has(up.mid));
     if (allExist) {
@@ -185,11 +194,32 @@ export async function getFollowedUPs(
     page += 1;
   }
 
-  // Calculate new UPs
-  const newUPs = all.filter(up => !existingSet.has(up.mid));
-  console.log("[API] Total UPs fetched:", all.length, "New UPs:", newUPs.length);
+  // 合并策略：
+  // 1. 如果是增量更新，保留本地已有数据，只添加新的UP
+  // 2. 如果不是增量更新，使用新获取的数据
+  let finalUPList: UP[];
+  if (isIncremental && existingUPs && existingUPs.length > 0) {
+    // 增量更新：合并本地已有数据和新数据
+    const mergedUPMap = new Map(existingUPMap); // 复制本地数据
 
-  return { upList: all, newCount: newUPs.length };
+    // 添加新获取的UP数据（已存在的会更新，不存在的会添加）
+    for (const up of all) {
+      mergedUPMap.set(up.mid, up);
+    }
+
+    finalUPList = Array.from(mergedUPMap.values());
+    console.log(`[API] Incremental update: merged ${existingUPs.length} existing + ${all.length} fetched = ${finalUPList.length} total`);
+  } else {
+    // 全量更新：使用新获取的数据
+    finalUPList = all;
+    console.log(`[API] Full update: using ${all.length} fetched UPs`);
+  }
+
+  // Calculate new UPs (相对于本地已有数据)
+  const newUPs = finalUPList.filter(up => !existingSet.has(up.mid));
+  console.log("[API] Total UPs fetched:", all.length, "New UPs:", newUPs.length, "Is Incremental:", isIncremental);
+
+  return { upList: finalUPList, newCount: newUPs.length };
 }
 
 /**

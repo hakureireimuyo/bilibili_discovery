@@ -23,22 +23,37 @@ export async function updateUpListTask(
     return { success: false };
   }
 
+  // 获取本地已有的UP列表
   const existingCache = (await getValueFn("upList")) as { upList?: UP[] } | null;
   const existingUPs = existingCache?.upList ?? [];
 
-  const result = await getFollowedUPsFn(uidValue, {}, existingUPs);
+  try {
+    // 获取新的关注列表
+    const result = await getFollowedUPsFn(uidValue, {}, existingUPs);
 
-  await saveUPListFn(result.upList);
-  console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
+    // 验证返回的数据有效性
+    if (!result || !result.upList || !Array.isArray(result.upList)) {
+      console.error("[Background] Invalid UP list data received");
+      return { success: false };
+    }
 
-  if (result.newCount > 0 && notifications) {
-    notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime?.getURL?.("icons/icon128.png") || "",
-      title: "关注更新",
-      message: `发现 ${result.newCount} 个新关注的UP主！`
-    });
+    // 只有当获取到的数据有效时才保存
+    await saveUPListFn(result.upList);
+    console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
+
+    if (result.newCount > 0 && notifications) {
+      notifications.create({
+        type: "basic",
+        iconUrl: chrome.runtime?.getURL?.("icons/icon128.png") || "",
+        title: "关注更新",
+        message: `发现 ${result.newCount} 个新关注的UP主！`
+      });
+    }
+
+    return { success: true, newCount: result.newCount };
+  } catch (error) {
+    console.error("[Background] Error updating UP list:", error);
+    // 更新失败时，本地已有的数据保持不变，不会影响stats界面的显示
+    return { success: false };
   }
-
-  return { success: true, newCount: result.newCount };
 }
