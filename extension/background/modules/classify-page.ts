@@ -1,5 +1,12 @@
 import { chatComplete, parseTagsFromContent } from "../../engine/llm-client.js";
-import { getValue, setValue } from "../../storage/storage.js";
+import { 
+  getValue, 
+  setValue, 
+  getFollowedUPList,
+  getUPManualTags,
+  setUPManualTags,
+  addTagsToLibrary
+} from "../../storage/storage.js";
 import type { BackgroundOptions, MessageLike } from "./common-types.js";
 
 declare const chrome: {
@@ -298,13 +305,13 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
     const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
     const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
 
-    const upTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
-    const existingTags = upTags[String(mid)] ?? [];
+    // 获取UP的手动标签
+    const existingTagIds = await getUPManualTags(mid, { storage: options.storage });
 
-    console.log("[Background] Existing tags for UP", mid, ":", existingTags);
+    console.log("[Background] Existing manual tags for UP", mid, ":", existingTagIds);
 
-    if (existingTags.length > 0) {
-      console.log("[Background] UP", mid, "already has tags, skipping...");
+    if (existingTagIds.length > 0) {
+      console.log("[Background] UP", mid, "already has manual tags, skipping...");
       collectedPageData.delete(mid);
       isClassifying = false;
       if (pageClassifyActive) {
@@ -315,11 +322,18 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
       return;
     }
 
-    const tags = await classifyUPWithPageData(mid, pageData, existingTags, options);
-    upTags[String(mid)] = tags;
-
-    await setValueFn("upTags", upTags);
-    console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", tags);
+    // 获取LLM分类的标签名称
+    const tagNames = await classifyUPWithPageData(mid, pageData, [], options);
+    console.log("[Background] LLM classified tags for UP", mid, ":", tagNames);
+    
+    // 将标签名称添加到标签库，获取标签ID
+    const addedTags = await addTagsToLibrary(tagNames, { storage: options.storage });
+    const tagIds = addedTags.map(tag => tag.id);
+    
+    // 保存UP的手动标签
+    await setUPManualTags(mid, tagIds, { storage: options.storage });
+    
+    console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", tagNames, "tagIds:", tagIds);
     const remaining =
       classificationQueue.length + pendingClassificationQueue.length + activeCollectionTabs.size;
     console.log("[Background] Progress:", remaining, "UPs remaining (including in-flight)");
@@ -348,14 +362,14 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
 export async function startAutoClassification(options: BackgroundOptions = {}): Promise<void> {
   console.log("[Background] ===== Starting auto classification =====");
 
-  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
-  const cache = (await getValueFn("upList")) as { upList?: { mid: number }[] } | null;
-  const list = cache?.upList ?? [];
+  // 获取已关注的UP列表
+  const followedUPs = await getFollowedUPList({ storage: options.storage });
 
-  console.log("[Background] Loaded UP list:", list.length, "UPs");
 
-  if (list.length === 0) {
-    console.log("[Background] ✗ No UPs to classify. Please update your UP list first.");
+  console.log("[Background] Loaded followed UP list:", followedUPs.length, "UPs");
+
+  if (followedUPs.length === 0) {
+    console.log("[Background] ✗ No followed UPs to classify. Please follow some UPs first.");
     return;
   }
 
@@ -368,16 +382,18 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
   pageClassifyTotal = 0;
   pageClassifyProcessed = 0;
 
-  const upTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
-
-  const upsWithoutTags = list.filter(up => {
-    const existingTags = upTags[String(up.mid)] ?? [];
-    const hasTags = existingTags.length > 0;
-    if (hasTags) {
-      console.log("[Background] Skipping UP", up.mid, "- already has tags:", existingTags);
+  // 筛选出没有手动标签的已关注UP
+  const upsWithoutTags = [];
+  for (const up of followedUPs) {
+    const existingTagIds = await getUPManualTags(up.mid, { storage: options.storage });
+    if (existingTagIds.length === 0) {
+      upsWithoutTags.push(up);
+      console.log("[Background] UP", up.mid, "has no manual tags, will classify");
+    } else {
+      console.log("[Background] Skipping UP", up.mid, "- already has manual tags");
     }
-    return !hasTags;
-  });
+  }
+
 
   for (const up of upsWithoutTags) {
     classificationQueue.push(up.mid);

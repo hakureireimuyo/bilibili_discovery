@@ -1,5 +1,10 @@
 import { getFollowedUPs } from "../../api/bili-api.js";
-import { getValue, saveUPList, type UP } from "../../storage/storage.js";
+import { 
+  getValue, 
+  saveUPList, 
+  updateUPFollowStatus,
+  type UP 
+} from "../../storage/storage.js";
 import type { BackgroundOptions } from "./common-types.js";
 
 declare const chrome: {
@@ -38,8 +43,18 @@ export async function updateUpListTask(
     }
 
     // 只有当获取到的数据有效时才保存
-    await saveUPListFn(result.upList);
-    console.log("[Background] Updated UP list", result.upList.length, "New UPs:", result.newCount);
+    // 为每个UP添加is_followed属性
+    const upListWithFollowStatus = result.upList.map(up => ({
+      ...up,
+      is_followed: true
+    }));
+    
+    // 更新UP的关注状态
+    for (const up of upListWithFollowStatus) {
+      await updateUPFollowStatus(up.mid, true);
+    }
+    await saveUPListFn(upListWithFollowStatus);
+    console.log("[Background] Updated UP list", upListWithFollowStatus.length, "New UPs:", result.newCount);
 
     if (result.newCount > 0 && notifications) {
       notifications.create({

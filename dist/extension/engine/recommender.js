@@ -2,7 +2,7 @@
  * Recommendation engine.
  */
 import { getUPVideos } from "../api/bili-api.js";
-import { getValue, updateInterest } from "../storage/storage.js";
+import { getValue, updateInterest, getFollowedUPList, getUPTagWeights, getTagLibrary } from "../storage/storage.js";
 const DEFAULT_INTEREST_WEIGHT = 0.6;
 const DEFAULT_POPULARITY_WEIGHT = 0.2;
 const DEFAULT_FRESHNESS_WEIGHT = 0.2;
@@ -27,14 +27,26 @@ export async function updateInterestFromWatch(event, options = {}) {
     return updated;
 }
 /**
- * Score a UP based on overlap between UP tags and user interest.
+ * Score a UP based on tag weights and user interest.
  */
-export function scoreUP(upTags, userInterest) {
+export async function scoreUP(mid, userInterest) {
     let score = 0;
-    for (const tag of upTags) {
-        const interest = userInterest[tag];
-        if (interest) {
-            score += interest.score;
+    // 获取UP的标签权重
+    const upTagWeights = await getUPTagWeights(mid);
+    if (!upTagWeights) {
+        return score;
+    }
+    // 获取标签库
+    const tagLibrary = await getTagLibrary();
+    // 基于标签权重和用户兴趣计算分数
+    for (const tagWeight of upTagWeights.tags) {
+        const tag = tagLibrary[tagWeight.tag_id];
+        if (tag) {
+            const interest = userInterest[tag.name];
+            if (interest) {
+                // 权重越高，用户兴趣越大，分数越高
+                score += tagWeight.weight * interest.score;
+            }
         }
     }
     return score;
@@ -54,12 +66,17 @@ function computePopularityScore(play, maxPlay) {
     }
     return Math.min(1, play / maxPlay);
 }
-function computeInterestScore(tags, profile) {
+async function computeInterestScore(tagIds, profile) {
     let score = 0;
-    for (const tag of tags || []) {
-        const interest = profile[tag];
-        if (interest) {
-            score += interest.score;
+    // 获取标签库
+    const tagLibrary = await getTagLibrary();
+    for (const tagId of tagIds || []) {
+        const tag = tagLibrary[tagId];
+        if (tag) {
+            const interest = profile[tag.name];
+            if (interest) {
+                score += interest.score;
+            }
         }
     }
     return score;
@@ -70,21 +87,19 @@ function computeInterestScore(tags, profile) {
 export async function recommendUP(options = {}) {
     const getValueFn = options.getValueFn ?? getValue;
     const randomFn = options.randomFn ?? Math.random;
-    const upCache = await getValueFn("upList");
-    const upTags = await getValueFn("upTags");
+    // 获取已关注的UP列表
+    const upList = await getFollowedUPList();
     const interestProfile = (await getValueFn("interestProfile")) ?? {};
-    const upList = upCache?.upList ?? [];
     if (upList.length === 0) {
         return null;
     }
-    if (!upTags || Object.keys(interestProfile).length === 0) {
+    if (Object.keys(interestProfile).length === 0) {
         return randomUP(upList, { randomFn });
     }
     let best = null;
     let bestScore = -1;
     for (const up of upList) {
-        const tags = upTags[String(up.mid)] ?? [];
-        const score = scoreUP(tags, interestProfile);
+        const score = await scoreUP(up.mid, interestProfile);
         if (score > bestScore) {
             bestScore = score;
             best = up;
@@ -108,7 +123,7 @@ export async function recommendVideo(mid, options = {}) {
     const nowMs = nowFn();
     let best = null;
     for (const video of videos) {
-        const interestScore = computeInterestScore(video.tags || [], interestProfile);
+        const interestScore = await computeInterestScore(video.tags || [], interestProfile);
         const popularityScore = computePopularityScore(video.play, maxPlay);
         const freshnessScore = computeFreshnessScore(video.pubdate, nowMs);
         const score = DEFAULT_INTEREST_WEIGHT * interestScore +

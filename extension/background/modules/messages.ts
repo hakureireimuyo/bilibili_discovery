@@ -1,6 +1,16 @@
 import { getUPInfo, getUPVideos, getVideoTags } from "../../api/bili-api.js";
 import { randomUP, randomVideo, recommendUP, recommendVideo, updateInterestFromWatch } from "../../engine/recommender.js";
-import { getValue, setValue, updateUPTagCounts, loadUPList, saveUPList, type UP } from "../../storage/storage.js";
+import { 
+  getValue, 
+  setValue, 
+  loadUPList, 
+  saveUPList, 
+  updateUPTagWeights,
+  addTagsToLibrary,
+  getTagIdByName,
+  updateUPFollowStatus,
+  type UP 
+} from "../../storage/storage.js";
 import type { BackgroundOptions, MessageLike, WatchProgressPayload } from "./common-types.js";
 import { classifyUpTask } from "./classify-api.js";
 import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification } from "./classify-page.js";
@@ -73,32 +83,16 @@ export async function handleMessage(
     
     // 只在第一次观看时更新 UP 标签统计
     if (isFirstWatch && payload.tags && payload.tags.length > 0) {
-      // 更新UP的标签统计
+      // 将标签名称添加到标签库，并获取标签ID
+      const addedTags = await addTagsToLibrary(payload.tags);
+      const tagIds = addedTags.map(tag => tag.id);
+      
+      // 更新UP的标签权重
       if (payload.upMid) {
-        await updateUPTagCounts(payload.upMid, payload.tags);
-        console.log(`[Background] Updated tag counts for UP ${payload.upMid}:`, payload.tags);
+        await updateUPTagWeights(payload.upMid, tagIds);
+        console.log(`[Background] Updated tag weights for UP ${payload.upMid}:`, tagIds);
       }
 
-      // 更新自定义标签列表
-      const existingTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
-      const customTags = ((await getValueFn("customTags")) as string[] | null) ?? [];
-      const knownTagSet = new Set<string>([
-        ...Object.values(existingTags).flat(),
-        ...customTags
-      ]);
-      const nextCustom = [...customTags];
-      for (const tag of payload.tags) {
-        if (tag && !knownTagSet.has(tag)) {
-          knownTagSet.add(tag);
-          nextCustom.push(tag);
-        }
-      }
-      if (nextCustom.length !== customTags.length) {
-        await (options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value)))(
-          "customTags",
-          nextCustom
-        );
-      }
     }
     return null;
   }
@@ -252,7 +246,8 @@ export async function handleMessage(
             name: payload.name || "",
             face: payload.face || "",
             sign: payload.sign || "",
-            follow_time: Date.now()
+            follow_time: Date.now(),
+            is_followed: true
           };
           upList.push(newUP);
           await saveUPList(upList);
