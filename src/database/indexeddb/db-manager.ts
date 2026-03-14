@@ -3,14 +3,15 @@
  * 负责数据库的初始化、连接和版本管理
  */
 
-import { DB_NAME, DB_VERSION, STORE_NAMES, INDEX_DEFINITIONS, KEY_PATHS } from './config';
+import { DB_NAME, DB_VERSION, STORE_NAMES, INDEX_DEFINITIONS, KEY_PATHS } from './config.js';
 
 /**
  * 数据库管理器类
  */
-class DBManager {
+export class DBManager {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  private dbName: string = DB_NAME;
 
   /**
    * 初始化数据库
@@ -27,14 +28,18 @@ class DBManager {
    * - 不处理数据迁移
    * - 不处理数据备份
    */
-  async init(): Promise<IDBDatabase> {
+  async init(customDbName?: string): Promise<IDBDatabase> {
+    if (customDbName) {
+      this.dbName = customDbName;
+    }
+    
     if (this.initPromise) {
       await this.initPromise;
       return this.db!;
     }
 
     this.initPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(this.dbName, DB_VERSION);
 
       request.onerror = () => {
         reject(new Error(`Failed to open database: ${request.error}`));
@@ -74,10 +79,10 @@ class DBManager {
           autoIncrement: false
         });
 
-        // 创建索引
-        const indexes = INDEX_DEFINITIONS[storeName];
+        // 创建索引（如果定义了索引）
+        const indexes = INDEX_DEFINITIONS[storeName as keyof typeof INDEX_DEFINITIONS];
         if (indexes) {
-          indexes.forEach(index => {
+          indexes.forEach((index: { name: string; keyPath: string; options: IDBIndexParameters }) => {
             if (!store.indexNames.contains(index.name)) {
               store.createIndex(index.name, index.keyPath, index.options);
             }
@@ -129,10 +134,27 @@ class DBManager {
    */
   async deleteDatabase(): Promise<void> {
     this.close();
+    
+    // 等待一段时间，确保所有事务完成
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     return new Promise((resolve, reject) => {
-      const request = indexedDB.deleteDatabase(DB_NAME);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(new Error(`Failed to delete database: ${request.error}`));
+      const request = indexedDB.deleteDatabase(this.dbName);
+      
+      // 设置超时，防止无限等待
+      const timeout = setTimeout(() => {
+        resolve();
+      }, 5000);
+      
+      request.onsuccess = () => {
+        clearTimeout(timeout);
+        resolve();
+      };
+      
+      request.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error(`Failed to delete database: ${request.error}`));
+      };
     });
   }
 

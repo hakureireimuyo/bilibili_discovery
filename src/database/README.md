@@ -130,7 +130,7 @@ const videoRepo = new VideoRepository();
 // 创建创作者
 const creator: Creator = {
   creatorId: '123456',
-  platform: 'bilibili',
+  platform: Platform.BILIBILI,
   name: 'UP主名称',
   avatar: '头像URL',
   isLogout: false,
@@ -144,12 +144,12 @@ const creator: Creator = {
 await creatorRepo.upsertCreator(creator);
 
 // 获取创作者
-const creatorData = await creatorRepo.getCreator('123456', 'bilibili');
+const creatorData = await creatorRepo.getCreator('123456', Platform.BILIBILI);
 
 // 创建视频
 const video: Video = {
   videoId: 'BV123456',
-  platform: 'bilibili',
+  platform: Platform.BILIBILI,
   creatorId: '123456',
   title: '视频标题',
   description: '视频描述',
@@ -162,7 +162,7 @@ const video: Video = {
 await videoRepo.upsertVideo(video);
 
 // 获取视频
-const videoData = await videoRepo.getVideo('BV123456', 'bilibili');
+const videoData = await videoRepo.getVideo('BV123456', Platform.BILIBILI);
 ```
 
 ## 接口规范

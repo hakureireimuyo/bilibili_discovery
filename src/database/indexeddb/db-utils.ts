@@ -3,8 +3,8 @@
  * 提供通用的数据库操作方法
  */
 
-import { dbManager } from './db-manager';
-import { STORE_NAMES } from './config';
+import { dbManager } from './db-manager.js';
+import { STORE_NAMES } from './config.js';
 
 /**
  * 数据库操作工具类

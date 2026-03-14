@@ -166,6 +166,8 @@ export class WatchEventRepository implements IWatchEventRepository {
       endTime: timeRange.endTime,
       totalWatchCount,
       totalWatchTime,
+      totalInteractionCount: 0,
+      totalSearchCount: 0,
       watchedCreatorCount: uniqueCreators,
       watchedVideoCount: uniqueVideos,
       completeWatchCount

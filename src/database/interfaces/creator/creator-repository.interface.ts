@@ -3,8 +3,8 @@
  * 定义创作者（UP主/Channel）相关的数据库操作接口
  */
 
-import { Creator, CreatorStats } from '../../types/creator';
-import { Platform, PaginationParams, PaginationResult } from '../../types/base';
+import { Creator, CreatorStats } from '../../types/creator.js';
+import { Platform, PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * Creator 数据库接口

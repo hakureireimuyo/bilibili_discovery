@@ -3,7 +3,7 @@
  * 定义收藏项相关的数据库操作接口
  */
 
-import { CollectionItem } from '../../types/collection';
+import { CollectionItem, Collection } from '../../types/collection';
 import { PaginationParams, PaginationResult } from '../../types/base';
 
 /**

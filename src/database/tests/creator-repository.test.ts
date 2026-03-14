@@ -3,10 +3,11 @@
  * 测试创作者相关的数据库操作
  */
 
-import { test, assert } from './test-runner';
-import { setupTestDatabase, cleanupTestDatabase } from './db-test-utils';
-import { CreatorRepository } from '../implementations/creator-repository.impl';
-import { Creator, Platform } from '../types/creator';
+import { test, assert } from './test-runner.js';
+import { setupTestDatabase, cleanupTestDatabase } from './db-test-utils.js';
+import { CreatorRepository } from '../implementations/creator-repository.impl.js';
+import { Creator } from '../types/creator.js';
+import { Platform, TagSource } from '../types/base.js';
 
 test('upsertCreator should create or update a creator', async () => {
   const dbManager = await setupTestDatabase();
@@ -158,7 +159,7 @@ test('getFollowingCreators should return creators filtered by platform and sorte
       },
       {
         creatorId: 'creator4',
-        platform: Platform.ARCOPEN,
+        platform: Platform.YOUTUBE,
         name: 'Creator 4',
         avatar: 'avatar4.jpg',
         isLogout: 0,
@@ -181,11 +182,11 @@ test('getFollowingCreators should return creators filtered by platform and sorte
     assert(bilibiliCreators[0].creatorId === 'creator2', 'First creator should be creator2 (newest followTime)');
     assert(bilibiliCreators[1].creatorId === 'creator1', 'Second creator should be creator1 (older followTime)');
 
-    // 测试获取 ARCOPEN 平台关注的创作者
-    const arcopenCreators = await creatorRepository.getFollowingCreators(Platform.ARCOPEN);
+    // 测试获取 YOUTUBE 平台关注的创作者
+    const arcopenCreators = await creatorRepository.getFollowingCreators(Platform.YOUTUBE);
 
     // 验证结果
-    assert(arcopenCreators.length === 1, 'Should return 1 creator for ARCOPEN platform');
+    assert(arcopenCreators.length === 1, 'Should return 1 creator for YOUTUBE platform');
     assert(arcopenCreators[0].creatorId === 'creator4', 'Creator should be creator4');
   } finally {
     await cleanupTestDatabase(dbManager);
@@ -221,7 +222,7 @@ test('updateFollowStatus should update creator follow status', async () => {
     // 验证关注状态是否已更新
     const updatedCreator = await creatorRepository.getCreator('test-creator-1', Platform.BILIBILI);
     assert(updatedCreator?.isFollowing === 1, 'Follow status should be updated to 1');
-    assert(updatedCreator?.followTime > testCreator.followTime, 'Follow time should be updated');
+    assert(updatedCreator?.followTime !== undefined && updatedCreator.followTime > testCreator.followTime, 'Follow time should be updated');
   } finally {
     await cleanupTestDatabase(dbManager);
   }
@@ -247,7 +248,7 @@ test('updateTagWeights should update creator tag weights', async () => {
       tagWeights: [
         {
           tagId: 'tag1',
-          source: 'system',
+          source: TagSource.SYSTEM,
           count: 5,
           createdAt: Date.now()
         }
@@ -261,13 +262,13 @@ test('updateTagWeights should update creator tag weights', async () => {
     const newTagWeights = [
       {
         tagId: 'tag1',
-        source: 'system' as const,
+        source: TagSource.SYSTEM,
         count: 3,
         createdAt: Date.now()
       },
       {
         tagId: 'tag2',
-        source: 'user' as const,
+        source: TagSource.USER,
         count: 0,
         createdAt: Date.now()
       }
@@ -323,7 +324,7 @@ test('searchCreators should return creators matching the keyword', async () => {
       },
       {
         creatorId: 'creator3',
-        platform: Platform.ARCOPEN,
+        platform: Platform.YOUTUBE,
         name: 'Test Creator 3',
         avatar: 'avatar3.jpg',
         isLogout: 0,

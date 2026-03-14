@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/build-extension.js",
     "dev": "npm run build && node -e \"console.log('Load extension from: D:\\\\ProjectFloder\\\\TS\\\\bilibili_discovery\\\\dist\\\\extension')\"",
-    "test:db": "tsc -p tsconfig.json && node ./scripts/run-db-tests.js",
+    "test:db": "tsc -p tsconfig.json && node --experimental-specifier-resolution=node ./scripts/run-db-tests.js",
     "probe:bili": "node ./scripts/probe-bili-api.js",
     "probe:arcopen": "node ./scripts/probe-arcopen.js",
     "package": "node ./scripts/package-extension.js",

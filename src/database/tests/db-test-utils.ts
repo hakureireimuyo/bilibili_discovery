@@ -3,8 +3,14 @@
  * 提供在非浏览器环境中测试数据库的功能
  */
 
-import { DBManager } from '../indexeddb/db-manager';
-import { DB_NAME, DB_VERSION } from '../indexeddb/config';
+import { DBManager } from '../indexeddb/db-manager.js';
+import { DB_NAME, DB_VERSION } from '../indexeddb/config.js';
+
+// 生成唯一的数据库名称
+let testDbCounter = 0;
+function generateTestDbName(): string {
+  return `${DB_NAME}_test_${++testDbCounter}_${Date.now()}`;
+}
 
 // 导入 fake-indexeddb
 // 注意：这需要在测试环境中安装 fake-indexeddb 库
@@ -14,15 +20,15 @@ import { DB_NAME, DB_VERSION } from '../indexeddb/config';
  * 初始化测试环境
  * 使用 fake-indexeddb 替代浏览器环境的 IndexedDB
  */
-export function initTestEnvironment(): void {
+export async function initTestEnvironment(): Promise<void> {
   // 检查是否在浏览器环境中
   if (typeof indexedDB === 'undefined') {
     // 如果不在浏览器环境中，使用 fake-indexeddb
     try {
       // 动态导入 fake-indexeddb
-      const fakeIndexedDB = require('fake-indexeddb');
+      const fakeIndexedDB = await import('fake-indexeddb');
       // @ts-ignore
-      global.indexedDB = fakeIndexedDB;
+      global.indexedDB = fakeIndexedDB.default || fakeIndexedDB;
       console.log('[Test] Using fake-indexeddb for testing');
     } catch (error) {
       console.error('[Test] Failed to load fake-indexeddb:', error);
@@ -38,13 +44,14 @@ export function initTestEnvironment(): void {
  */
 export async function setupTestDatabase(): Promise<DBManager> {
   // 初始化测试环境
-  initTestEnvironment();
+  await initTestEnvironment();
 
   // 创建新的数据库管理器实例
   const dbManager = new DBManager();
-
+  const testDbName = generateTestDbName();
+  
   // 初始化数据库
-  await dbManager.init();
+  await dbManager.init(testDbName);
 
   return dbManager;
 }
@@ -54,7 +61,17 @@ export async function setupTestDatabase(): Promise<DBManager> {
  * 删除测试数据库并关闭连接
  */
 export async function cleanupTestDatabase(dbManager: DBManager): Promise<void> {
-  await dbManager.deleteDatabase();
+  try {
+    // 添加超时保护
+    await Promise.race([
+      dbManager.deleteDatabase(),
+      new Promise<void>((_, reject) => 
+        setTimeout(() => reject(new Error('Database cleanup timeout')), 6000)
+      )
+    ]);
+  } catch (error) {
+    // 即使删除失败也继续执行，不阻塞测试
+  }
 }
 
 /**

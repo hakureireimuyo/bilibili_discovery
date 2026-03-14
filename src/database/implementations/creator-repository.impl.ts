@@ -3,10 +3,10 @@
  * 实现创作者相关的数据库操作
  */
 
-import { ICreatorRepository } from '../interfaces/creator/creator-repository.interface';
-import { Creator, CreatorStats } from '../types/creator';
-import { Platform, PaginationParams, PaginationResult } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { ICreatorRepository } from '../interfaces/creator/creator-repository.interface.js';
+import { Creator, CreatorStats } from '../types/creator.js';
+import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CreatorRepository 实现类

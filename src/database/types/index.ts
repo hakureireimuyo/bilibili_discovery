@@ -15,14 +15,14 @@ export type {
   PaginationParams,
   PaginationResult,
   TimeRange
-} from './base';
+} from './base.js';
 
 // Creator 类型
 export type {
   Creator,
   CreatorStats,
   CreatorTagWeight
-} from './creator';
+} from './creator.js';
 
 // Video 类型
 export type {

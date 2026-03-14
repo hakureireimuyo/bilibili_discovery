@@ -3,7 +3,7 @@
  * 定义创作者（UP主/Channel）相关的数据模型
  */
 
-import { Platform, Timestamp, ID } from './base';
+import { Platform, Timestamp, ID, TagSource } from './base.js';
 
 /**
  * 创作者标签权重
@@ -19,7 +19,7 @@ export interface CreatorTagWeight {
    * user: 用户手动添加，可编辑，权重固定为0
    * system: 系统添加，根据行为计数器增长
    */
-  source: 'user' | 'system';
+  source: TagSource;
   /**
    * 计数器
    * 用于统计system标签的优先级
@@ -41,6 +41,7 @@ export interface Creator {
   /**
    * 创作者唯一ID
    * 在平台内唯一，结合platform使用
+   * bili是数字字符串,youtube是字母字符串,本身具备辨识度,不会混淆
    */
   creatorId: ID;
   /**

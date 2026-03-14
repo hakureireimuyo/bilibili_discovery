@@ -22,7 +22,7 @@ function findTestFiles(dir) {
   return files;
 }
 
-const root = resolve(process.cwd(), "dist", "extension", "database", "tests");
+const root = resolve(process.cwd(), "dist", "src", "database", "tests");
 const runnerPath = join(root, "test-runner.js");
 const runnerModule = await import(pathToFileURL(runnerPath).href);
 const testFiles = findTestFiles(root);

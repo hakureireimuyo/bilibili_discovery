@@ -7,30 +7,53 @@
  * 平台类型
  * 用于区分不同视频平台
  */
-export type Platform = 'bilibili' | 'youtube';
+export enum Platform {
+  BILIBILI = 'bilibili',
+  YOUTUBE = 'youtube'
+}
 
 /**
  * 标签来源类型
  * user: 用户手动添加的标签，可编辑
  * system: 系统自动添加的标签，带有计数器
  */
-export type TagSource = 'user' | 'system';
+export enum TagSource {
+  USER = 'user',
+  SYSTEM = 'system'
+}
 
 /**
  * 视频来源类型
  * 记录用户从哪个入口进入观看视频
  */
-export type VideoSource = 'recommend' | 'search' | 'follow' | 'hot' | 'collection' | 'direct' | 'other';
+export enum VideoSource {
+  RECOMMEND = 'recommend',
+  SEARCH = 'search',
+  FOLLOW = 'follow',
+  HOT = 'hot',
+  COLLECTION = 'collection',
+  DIRECT = 'direct',
+  OTHER = 'other'
+}
 
 /**
  * 互动行为类型
  */
-export type InteractionType = 'like' | 'comment' | 'favorite' | 'share';
+export enum InteractionType {
+  LIKE = 'like',
+  COMMENT = 'comment',
+  FAVORITE = 'favorite',
+  SHARE = 'share'
+}
 
 /**
  * 笔记类型
  */
-export type NoteType = 'summary' | 'manual' | 'qa';
+export enum NoteType {
+  SUMMARY = 'summary',
+  MANUAL = 'manual',
+  QA = 'qa'
+}
 
 /**
  * 时间戳类型

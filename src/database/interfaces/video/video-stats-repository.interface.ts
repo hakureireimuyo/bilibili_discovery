@@ -3,7 +3,7 @@
  * 定义视频统计和热度相关的数据库操作接口
  */
 
-import { VideoStats, VideoHotness } from '../../types/video';
+import { VideoStats, VideoHotness, Video } from '../../types/video';
 import { Platform } from '../../types/base';
 
 /**
