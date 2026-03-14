@@ -10,7 +10,7 @@ import {
   getVideoTags,
   getUPVideos,
   __resetRateLimiter
-} from "../dist/extension/api/bili-api.js";
+} from "../dist/src/api/bili-api.js";
 
 // 测试用的UP主ID（可以替换成你想测试的UP主ID）
 const TEST_UP_ID = 62351857; // 示例UP主ID

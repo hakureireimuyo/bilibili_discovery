@@ -73,8 +73,8 @@
 
 ```bash
 # 克隆仓库
-git git@github.com:hakureireimuyo/bilibili_discovery.git
-cd bili-random-up
+git clone git@github.com:hakureireimuyo/bilibili_discovery.git
+cd bilibili_discovery
 
 # 安装依赖
 npm install

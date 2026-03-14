@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 const root = process.cwd();
-const srcExtension = resolve(root, "extension");
+const srcExtension = resolve(root, "src");
 const distExtension = resolve(root, "dist", "extension");
 
 mkdirSync(distExtension, { recursive: true });

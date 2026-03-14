@@ -1,221 +1,174 @@
-
-# Bilibili Discovery 数据库设计文档
+# Database 模块说明
 
 ## 概述
 
-本数据库设计用于支持视频兴趣分析与知识管理的浏览器扩展系统。基于IndexedDB实现，支持多平台（B站/YouTube）数据管理。
+本模块负责管理 Bilibili Discovery 系统的所有数据存储和访问，基于 IndexedDB 实现。模块设计遵循以下原则：
 
-## 设计目标
-
-1. **高扩展性** - 支持未来功能扩展
-2. **可分析性** - 支持行为数据分析
-3. **语义计算** - 支持AI语义计算
-4. **多平台支持** - 统一管理不同平台数据
-5. **行为日志** - 完整记录用户行为
-
-## 数据层级
-
-数据库分为四个层级：
-
-```
-Content Layer (内容层)
-  ├─ Creator (创作者)
-  ├─ Video (视频)
-  └─ Collection (收藏)
-
-Behavior Layer (行为层)
-  ├─ WatchEvent (观看事件)
-  ├─ InteractionEvent (互动事件)
-  └─ SearchEvent (搜索事件)
-
-Semantic Layer (语义层)
-  ├─ Tag (标签)
-  ├─ TagAlias (标签映射)
-  └─ Category (分区)
-
-Notes Layer (笔记层)
-  └─ VideoNote (视频笔记)
-
-Analytics Layer (分析层)
-  ├─ InterestScore (兴趣权重)
-  ├─ InterestNode (兴趣节点)
-  ├─ CreatorRank (创作者排名)
-  └─ WatchTimeStats (观看时间统计)
-```
+1. **数据结构独立** - 每个数据结构单独一个文件
+2. **接口规范分离** - 数据结构定义和接口实现分开存储
+3. **职责明确** - 每个接口都有清晰的职责和能力边界
+4. **可扩展性** - 支持未来功能扩展
 
 ## 目录结构
 
 ```
-src/database/
-├── types/                    # 类型定义
-│   ├── index.ts             # 核心类型
-│   ├── content-layer.ts     # 内容层类型
-│   ├── behavior-layer.ts    # 行为层类型
-│   ├── semantic-layer.ts    # 语义层类型
-│   ├── notes-layer.ts       # 笔记层类型
-│   └── analytics-layer.ts   # 分析层类型
-├── interfaces/              # 接口定义
-│   ├── index.ts             # 统一接口
-│   ├── content-manager.ts   # 内容管理接口
-│   ├── behavior-manager.ts  # 行为管理接口
-│   ├── semantic-manager.ts  # 语义管理接口
-│   ├── notes-manager.ts     # 笔记管理接口
-│   ├── analytics-manager.ts # 分析管理接口
-│   ├── search-manager.ts    # 搜索管理接口
-│   ├── recommendation-manager.ts # 推荐管理接口
-│   └── storage-manager.ts   # 存储管理接口
-└── README.md                # 本文档
+database/
+├── types/              # 数据结构定义
+│   ├── base.ts        # 基础类型定义
+│   ├── creator.ts     # 创作者数据结构
+│   ├── video.ts       # 视频数据结构
+│   ├── behavior.ts    # 行为数据结构
+│   ├── semantic.ts    # 语义数据结构
+│   ├── note.ts        # 笔记数据结构
+│   ├── collection.ts  # 收藏数据结构
+│   ├── analytics.ts   # 分析数据结构
+│   └── index.ts       # 类型统一导出
+├── interfaces/         # 接口规范定义
+│   ├── creator.interface.ts
+│   ├── video.interface.ts
+│   ├── behavior.interface.ts
+│   ├── semantic.interface.ts
+│   ├── note.interface.ts
+│   ├── collection.interface.ts
+│   ├── analytics.interface.ts
+│   └── index.ts       # 接口统一导出
+└── README.md          # 本文件
 ```
 
-## 核心接口说明
+## 数据层级
 
-### 1. 内容管理接口 (IContentManager)
+系统数据分为四个层级：
 
-负责管理创作者、视频和收藏夹的基础信息。
+### 1. Content Layer（内容层）
+- Creator（UP主/Channel）
+- Video（视频基础信息）
 
-主要功能：
-- 创作者管理：创建、查询、更新创作者信息
-- 视频管理：创建、查询、更新视频信息
-- 收藏管理：创建、查询、更新收藏夹
+### 2. Behavior Layer（行为数据层）
+- WatchEvent（观看事件）
+- InteractionEvent（互动行为）
+- SearchEvent（搜索行为）
 
-### 2. 行为管理接口 (IBehaviorManager)
+### 3. Semantic Layer（语义层）
+- Tag（标签）
+- TagAlias（标签映射）
+- TagEmbedding（标签向量）
+- Category（标签分区）
 
-负责记录和管理用户的所有行为数据。
+### 4. Notes Layer（笔记层）
+- VideoNote（视频笔记）
+- NoteSegment（笔记分段）
+- NoteRelation（笔记关联）
+- KnowledgeEntry（知识条目）
 
-主要功能：
-- 观看行为：记录观看事件、统计观看数据
-- 互动行为：记录点赞、评论、收藏、分享
-- 搜索行为：记录搜索历史、分析搜索模式
+### 5. Collection Layer（收藏层）
+- Collection（收藏夹）
+- CollectionItem（收藏项）
 
-### 3. 语义管理接口 (ISemanticManager)
+### 6. Analytics Layer（分析层）
+- InterestScore（兴趣分数）
+- InterestNode（兴趣节点）
+- InterestHistory（兴趣历史）
+- CreatorRank（创作者排名）
+- WatchTimeStats（观看时间统计）
+- WatchTimeDistribution（观看时间分布）
+- UserInterestProfile（用户兴趣画像）
 
-负责管理标签和语义相关数据。
+## 使用方式
 
-主要功能：
-- 标签管理：创建、查询、更新标签
-- 标签映射：管理标签别名和映射关系
-- 分区管理：管理标签分区
-
-### 4. 笔记管理接口 (INotesManager)
-
-负责管理视频笔记和AI总结。
-
-主要功能：
-- 笔记管理：创建、查询、更新笔记
-- 语义搜索：基于向量搜索笔记
-- 笔记统计：统计笔记数据
-
-### 5. 分析管理接口 (IAnalyticsManager)
-
-负责管理分析结果数据。
-
-主要功能：
-- 兴趣权重：管理用户兴趣权重
-- 兴趣星球：管理兴趣节点和树结构
-- 创作者排名：管理UP主排名
-- 观看时间统计：分析观看时间分布
-
-### 6. 搜索管理接口 (ISearchManager)
-
-负责实现各种搜索功能。
-
-主要功能：
-- 视频搜索：关键词、标签、UP主、兴趣搜索
-- 收藏搜索：搜索收藏夹和收藏视频
-- LLM搜索：自然语言查询
-
-### 7. 推荐管理接口 (IRecommendationManager)
-
-负责实现推荐系统。
-
-主要功能：
-- 推荐候选：获取推荐候选视频
-- 推荐评分：计算视频推荐分数
-- 推荐列表：生成和管理推荐列表
-
-### 8. 存储管理接口 (IStorageManager)
-
-负责数据库的初始化和基础操作。
-
-主要功能：
-- 数据库初始化：创建和升级数据库
-- 浏览器存储：管理用户UID和API配置
-
-## 使用示例
+### 导入类型定义
 
 ```typescript
-import { IDatabase } from './interfaces';
+import { Creator, Video, WatchEvent } from '../database/types';
+import { Platform, PaginationParams } from '../database/types';
+```
 
-// 初始化数据库
-const db: IDatabase = new DatabaseImpl();
-await db.initialize({
-  name: 'bilibili_discovery',
-  version: 1,
-  stores: [...]
-});
+### 导入接口定义
 
-// 记录观看事件
-await db.recordWatchEvent({
+```typescript
+import {
+  ICreatorRepository,
+  IVideoRepository,
+  IWatchEventRepository
+} from '../database/interfaces';
+```
+
+### 使用示例
+
+```typescript
+// 创建创作者
+const creator: Creator = {
+  creatorId: '123456',
   platform: 'bilibili',
-  video_id: 'BV123456',
-  creator_id: 'up123',
-  watch_time: Date.now(),
-  watch_duration: 300,
-  video_duration: 600,
-  progress: 0.5,
-  source: 'recommend'
-});
+  name: 'UP主名称',
+  avatar: '头像URL',
+  isLogout: false,
+  description: 'UP主简介',
+  createdAt: Date.now(),
+  followTime: Date.now(),
+  isFollowing: true,
+  tagWeights: []
+};
 
-// 查询视频
-const result = await db.queryVideos({
-  platform: 'bilibili',
-  tag_ids: ['tag1', 'tag2']
-}, { page: 1, page_size: 20 });
+// 使用接口操作
+await creatorRepository.upsertCreator(creator);
+const creatorData = await creatorRepository.getCreator('123456', 'bilibili');
+```
 
-// 获取推荐
-const recommendations = await db.generateRecommendations({
-  limit: 10,
-  source: 'mixed'
-});
+## 接口规范
+
+每个接口都包含以下信息：
+
+1. **方法签名** - 明确的输入输出类型
+2. **职责说明** - 方法的主要职责
+3. **能力边界** - 方法的限制和不处理的内容
+
+示例：
+
+```typescript
+/**
+ * 创建或更新创作者信息
+ * 
+ * @param creator - 创作者信息
+ * @returns Promise<void>
+ * 
+ * 职责：
+ * - 如果creatorId已存在则更新，否则创建新记录
+ * - 自动设置createdAt和lastUpdate时间
+ * - 验证必填字段
+ * 
+ * 能力边界：
+ * - 不处理创作者的视频列表
+ * - 不处理创作者的统计数据
+ */
+upsertCreator(creator: Creator): Promise<void>;
 ```
 
 ## 设计原则
 
-1. **行为数据独立** - 行为数据单独存储，便于分析
-2. **分析数据可重建** - 分析结果可以重新计算
-3. **语义数据独立** - 语义数据单独管理，支持AI计算
-4. **平台数据隔离** - 不同平台数据统一管理但隔离存储
-5. **避免重复数据** - 合理设计数据关系，减少冗余
+1. **单一职责** - 每个接口只负责一类数据的操作
+2. **明确边界** - 每个方法都有清晰的能力边界
+3. **可测试性** - 接口设计便于单元测试
+4. **可扩展性** - 支持未来功能扩展
+5. **类型安全** - 完整的 TypeScript 类型定义
 
-## 扩展性
+## 注意事项
 
-本设计支持以下扩展：
+1. 所有时间戳使用毫秒级时间戳
+2. 所有 ID 为字符串类型
+3. 批量操作有数量限制（通常为1000条）
+4. 涉及分页的操作使用 PaginationParams
+5. 时间范围查询使用 TimeRange
+6. 平台类型使用 Platform 类型
 
-1. **新平台支持** - 通过platform字段轻松添加新平台
-2. **新行为类型** - 通过扩展InteractionType添加新行为
-3. **新笔记类型** - 通过扩展NoteType添加新笔记类型
-4. **新分析维度** - 通过扩展分析层添加新分析维度
-5. **新推荐策略** - 通过扩展推荐接口添加新推荐策略
+## 未来扩展
 
-## 性能考虑
+该数据结构设计支持以下未来功能：
 
-1. **索引设计** - 为常用查询字段创建索引
-2. **分页支持** - 所有列表查询支持分页
-3. **批量操作** - 支持批量获取和更新
-4. **缓存策略** - 热点数据可缓存到内存
-5. **异步操作** - 所有操作都是异步的，不阻塞UI
-
-## 安全性
-
-1. **敏感数据** - 用户UID和API配置存储在浏览器存储中
-2. **数据隔离** - 不同平台数据隔离存储
-3. **权限控制** - 通过接口控制数据访问权限
-4. **数据验证** - 所有输入数据进行验证
-
-## 未来优化方向
-
-1. **数据压缩** - 对大量文本数据进行压缩存储
-2. **增量同步** - 支持增量数据同步
-3. **离线支持** - 支持离线数据访问
-4. **数据导出** - 支持数据导出和导入
-5. **性能监控** - 添加性能监控和优化建议
+- 多平台支持（B站/YouTube）
+- AI 语义搜索
+- 兴趣分析
+- 标签合并
+- 视频推荐
+- 知识库管理
+- LLM 对话
+- 用户行为分析
