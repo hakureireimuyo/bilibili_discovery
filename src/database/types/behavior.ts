@@ -40,7 +40,7 @@ export interface WatchEvent {
   videoDuration: number;
   /**
    * 观看进度
-   * 0-1之间的数值，表示观看比例
+   * 0-无穷之间的数值，表示观看视频的比例,视频可以观看任意多次
    */
   progress: number;
   /**
@@ -52,9 +52,9 @@ export interface WatchEvent {
    * 是否完整观看
    * 观看进度超过90%视为完整观看
    */
-  isComplete: boolean;
+  isComplete: number;
   /**
-   * 观看结束时间
+   * 最近一次观看结束时间
    */
   endTime: Timestamp;
 }

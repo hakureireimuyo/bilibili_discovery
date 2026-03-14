@@ -56,7 +56,7 @@ export class CreatorRepository implements ICreatorRepository {
     const allCreators = await DBUtils.getByIndex<Creator>(
       STORE_NAMES.CREATORS,
       'isFollowing',
-      true
+      1
     );
     return allCreators
       .filter(c => c.platform === platform)

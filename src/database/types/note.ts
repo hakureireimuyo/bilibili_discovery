@@ -55,7 +55,7 @@ export interface VideoNote {
   /**
    * 是否公开
    */
-  isPublic?: boolean;
+  isPublic?: number;
   /**
    * 笔记元数据
    * 存储额外的笔记信息

@@ -59,7 +59,7 @@ export interface Creator {
   /**
    * 是否已注销
    */
-  isLogout: boolean;
+  isLogout: number;
   /**
    * 创作者简介
    */
@@ -75,7 +75,7 @@ export interface Creator {
   /**
    * 是否关注/订阅
    */
-  isFollowing: boolean;
+  isFollowing: number;
   /**
    * 标签权重列表
    * 记录当前创作者的标签及每个标签的权重
