@@ -16,6 +16,7 @@ import { createInitialState, setLoading, showError, updatePagination } from "./h
 import { bindPageActions } from "./page-actions.js";
 import { renderVideos, changePage } from "./video-list.js";
 import type { FavoritesState } from "./types.js";
+import "./debug.js";
 
 // DOM元素
 const elements = {
@@ -44,7 +45,15 @@ let state: FavoritesState;
 /**
  * 重新渲染页面
  */
-function rerenderPage(): void {
+async function rerenderPage(): Promise<void> {
+  console.log('[Favorites] Rerendering page...');
+  console.log('[Favorites] Current state:', {
+    currentCollectionId: state.currentCollectionId,
+    aggregatedVideosCount: state.aggregatedVideos.length,
+    filteredVideosCount: state.filteredVideos.length,
+    currentPage: state.currentPage
+  });
+
   const setLoadingState = (loading: boolean) => {
     state.isLoading = loading;
     setLoading(loading, elements);
@@ -52,7 +61,7 @@ function rerenderPage(): void {
 
   const showErrorState = (message: string) => showError(message, elements);
 
-  renderVideos(state, elements);
+  await renderVideos(state, elements);
   renderCollectionTabs(state, (id) => switchCollection(state, id, rerenderPage));
   updatePagination(state, elements);
   renderFilterTags(state, rerenderPage);
@@ -62,11 +71,16 @@ function rerenderPage(): void {
  * 加载状态
  */
 async function loadState(): Promise<void> {
+  console.log('[Favorites] Loading state...');
+
   try {
     setLoading(true, elements);
     await loadCollections(state);
 
+    console.log('[Favorites] Loaded collections:', state.collections.length);
+
     if (state.collections.length === 0) {
+      console.log('[Favorites] No collections found');
       showEmptyCollections();
       state.aggregatedVideos = [];
       state.filteredVideos = [];
@@ -75,6 +89,7 @@ async function loadState(): Promise<void> {
 
     if (!state.currentCollectionId || !state.collections.find(c => c.collectionId === state.currentCollectionId)) {
       state.currentCollectionId = state.collections[0].collectionId;
+      console.log('[Favorites] Set current collection ID:', state.currentCollectionId);
     }
 
     await loadCollectionData(state);
@@ -82,6 +97,7 @@ async function loadState(): Promise<void> {
     renderFilterTags(state, rerenderPage);
   } catch (error) {
     console.error('[Favorites] Error loading state:', error);
+    console.error('[Favorites] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     showError('加载数据失败', elements);
     state.aggregatedVideos = [];
     state.filteredVideos = [];
@@ -108,11 +124,15 @@ function bindInputs(): void {
 
   clearFilterBtn?.addEventListener('click', async () => {
     clearFilters(state);
-    rerenderPage();
+    await rerenderPage();
   });
 
-  prevPage?.addEventListener('click', () => changePage(state, -1, rerenderPage));
-  nextPage?.addEventListener('click', () => changePage(state, 1, rerenderPage));
+  prevPage?.addEventListener('click', async () => {
+    await changePage(state, -1, rerenderPage);
+  });
+  nextPage?.addEventListener('click', async () => {
+    await changePage(state, 1, rerenderPage);
+  });
 }
 
 /**
@@ -122,7 +142,7 @@ async function handleSearch(): Promise<void> {
   try {
     setLoading(true, elements);
     await applyFilters(state);
-    rerenderPage();
+    await rerenderPage();
   } catch (error) {
     console.error('[Favorites] Error searching videos:', error);
     showError('搜索失败', elements);
@@ -135,11 +155,15 @@ async function handleSearch(): Promise<void> {
  * 初始化
  */
 export async function initFavorites(): Promise<void> {
+  console.log('[Favorites] Initializing favorites page...');
+
   if (typeof document === "undefined") {
+    console.log('[Favorites] Document is undefined, skipping initialization');
     return;
   }
 
   state = createInitialState();
+  console.log('[Favorites] Created initial state');
 
   const setLoadingState = (loading: boolean) => {
     state.isLoading = loading;
@@ -151,9 +175,18 @@ export async function initFavorites(): Promise<void> {
   bindPageActions(state, rerenderPage, setLoadingState, showErrorState);
   bindInputs();
 
+  console.log('[Favorites] Loading state...');
   await loadState();
+
+  // 默认选择"全部"
+  state.currentCollectionId = 'all';
+  await loadCollectionData(state);
+  await updateFilterOptions(state);
+
   setupDragAndDrop(state, rerenderPage);
-  rerenderPage();
+
+  console.log('[Favorites] Initial render...');
+  await rerenderPage();
 }
 
 // 页面加载完成后初始化

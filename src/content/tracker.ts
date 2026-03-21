@@ -413,12 +413,47 @@ function initTracker(): void {
   console.log(`[Tracker] Video detected: ${bvid}`);
   const video = detectVideoElement();
   if (!video) {
-    console.log("[Tracker] Video element not found");
+    console.log("[Tracker] Video element not found, retrying...");
+    // 如果视频元素未找到，延迟重试
+    setTimeout(() => {
+      console.log("[Tracker] Retrying video element detection...");
+      const retryVideo = detectVideoElement();
+      if (retryVideo) {
+        console.log("[Tracker] Video element found on retry");
+        trackVideoPlayback(retryVideo, bvid, sendWatchProgress);
+      } else {
+        console.log("[Tracker] Video element still not found, will try again later");
+        // 继续尝试
+        setTimeout(() => initTracker(), 2000);
+      }
+    }, 1000);
     return;
   }
   trackVideoPlayback(video, bvid, sendWatchProgress);
 }
 
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  initTracker();
+// 确保页面完全加载后再初始化
+function safeInitTracker() {
+  try {
+    if (typeof window !== "undefined" && typeof document !== "undefined") {
+      initTracker();
+    }
+  } catch (error) {
+    console.error("[Tracker] Error during initialization:", error);
+    // 如果初始化出错，延迟重试
+    setTimeout(safeInitTracker, 2000);
+  }
 }
+
+// 使用多种方式确保初始化
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", safeInitTracker);
+} else {
+  safeInitTracker();
+}
+
+// 监听页面完全加载事件，确保所有资源已加载
+window.addEventListener("load", () => {
+  console.log("[Tracker] Page fully loaded, checking tracker...");
+  safeInitTracker();
+});

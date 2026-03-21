@@ -21,7 +21,9 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     platform: string,
     note?: string
   ): Promise<string> {
+
     const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     const item: CollectionItem = {
       itemId,
       collectionId,
@@ -31,7 +33,13 @@ export class CollectionItemRepository implements ICollectionItemRepository {
       order: Date.now()
     };
 
-    await DBUtils.add(STORE_NAMES.COLLECTION_ITEMS, item);
+
+    try {
+      await DBUtils.add(STORE_NAMES.COLLECTION_ITEMS, item);
+    } catch (error) {
+      console.error(`[CollectionItemRepository] Error adding item to database:`, error);
+      throw error;
+    }
 
     // 更新收藏夹的lastUpdate时间
     await this.updateCollectionLastUpdate(collectionId);
@@ -140,8 +148,8 @@ export class CollectionItemRepository implements ICollectionItemRepository {
       'collectionId',
       collectionId
     );
-
-    return items.some(item => item.videoId === videoId);
+    const isInCollection = items.some(item => item.videoId === videoId);
+    return isInCollection;
   }
 
   /**

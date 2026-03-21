@@ -18,7 +18,9 @@ export async function handleSync(state: FavoritesState, refresh: RefreshFn): Pro
     // 同步收藏视频
     const syncResponse = await chrome.runtime.sendMessage({
       type: 'sync_favorite_videos',
-      payload: { uid: settings.userId, shouldStop: () => state.shouldStopSync }
+      payload: { 
+        uid: settings.userId
+      }
     }) as unknown as ChromeMessageResponse<{ count: number }>;
 
     if (syncResponse?.success) {
@@ -36,6 +38,12 @@ export async function handleSync(state: FavoritesState, refresh: RefreshFn): Pro
 export function handleStopSync(state: FavoritesState): void {
   state.shouldStopSync = true;
   console.log('[Favorites] Stop sync requested');
+
+  // 通知后台服务停止同步
+  chrome.runtime.sendMessage({
+    type: 'set_should_stop_sync',
+    payload: { shouldStop: true }
+  });
 }
 
 export function showStopSyncButton(show: boolean): void {

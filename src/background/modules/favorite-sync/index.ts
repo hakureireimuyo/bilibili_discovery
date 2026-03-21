@@ -4,7 +4,7 @@
  * 负责从B站同步收藏数据到本地数据库
  */
 
-import { getAllFavoriteVideos, getVideoDetail, getVideoTagsDetail, getFavoriteFolders } from "../../../api/bili-api.js";
+import { getAllFavoriteVideos, getVideoDetail, getVideoTagsDetail, getFavoriteFolders, getFavoriteVideos } from "../../../api/bili-api.js";
 import { VideoRepository } from "../../../database/implementations/video-repository.impl.js";
 import { CollectionRepository } from "../../../database/implementations/collection-repository.impl.js";
 import { CollectionItemRepository } from "../../../database/implementations/collection-item-repository.impl.js";
@@ -12,6 +12,7 @@ import { CreatorRepository } from "../../../database/implementations/creator-rep
 import { TagRepository } from "../../../database/implementations/tag-repository.impl.js";
 import { FavoriteSyncService } from "./favorite-sync-service.js";
 import { BiliApiVideoDataSource, BiliApiFavoriteDataSource } from "./data-adapters.js";
+import {DEFAULT_FAVORITE_SYNC_CONFIG } from './config.js'
 import type { FavoriteVideoDetail } from "./types.js";
 
 // 创建单例服务实例
@@ -22,9 +23,12 @@ let syncServiceInstance: FavoriteSyncService | null = null;
  */
 function getSyncService(): FavoriteSyncService {
   if (!syncServiceInstance) {
-    // 创建数据源适配器
-    const videoDataSource = new BiliApiVideoDataSource(getVideoDetail, getVideoTagsDetail);
-    const favoriteDataSource = new BiliApiFavoriteDataSource(getAllFavoriteVideos, getFavoriteFolders);
+    // 获取默认配置
+    const { requestInterval } = DEFAULT_FAVORITE_SYNC_CONFIG;
+    
+    // 创建数据源适配器，只在获取收藏夹视频列表数据的时候生效，视频信息获取不使用间隔
+    const videoDataSource = new BiliApiVideoDataSource(getVideoDetail, getVideoTagsDetail, 0);
+    const favoriteDataSource = new BiliApiFavoriteDataSource(getAllFavoriteVideos, getFavoriteFolders, getFavoriteVideos, requestInterval);
 
     // 创建依赖对象
     const dependencies = {
@@ -48,7 +52,7 @@ function getSyncService(): FavoriteSyncService {
  * @param shouldStop 停止同步的回调函数
  * @returns 同步的视频数量
  */
-export async function syncFavoriteVideos(up_mid: number, shouldStop?: () => boolean): Promise<number> {
+export async function syncFavoriteVideos(up_mid: number, shouldStop?: () => Promise<boolean>): Promise<number> {
   const service = getSyncService();
   const result = await service.syncFavoriteVideos(up_mid, shouldStop);
   return result.syncedCount;

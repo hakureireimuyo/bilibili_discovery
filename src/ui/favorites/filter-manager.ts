@@ -1,32 +1,60 @@
 import { getInputValue, colorFromTag, removeFromList, resetFilters } from "./helpers.js";
 import type { FavoritesState, ChromeMessageResponse } from "./types.js";
+import { DBUtils, STORE_NAMES } from "../../database/indexeddb/index.js";
+import type { Tag } from "../../database/types/semantic.js";
 
 type RefreshFn = () => void;
 
-function createFilterTag(tag: string, type: "include" | "exclude", state: FavoritesState, refresh: RefreshFn): HTMLElement {
+// 标签缓存
+const tagCache = new Map<string, string>();
+
+/**
+ * 获取标签名称
+ */
+async function getTagName(tagId: string): Promise<string> {
+  // 先从缓存中查找
+  if (tagCache.has(tagId)) {
+    return tagCache.get(tagId)!;
+  }
+
+  // 从数据库中获取
+  try {
+    const tag = await DBUtils.get<Tag>(STORE_NAMES.TAGS, tagId);
+    const tagName = tag?.name || tagId;
+    tagCache.set(tagId, tagName);
+    return tagName;
+  } catch (error) {
+    console.error('[FilterManager] Error getting tag name:', error);
+    return tagId;
+  }
+}
+
+async function createFilterTag(tag: string, type: "include" | "exclude", state: FavoritesState, refresh: RefreshFn): Promise<HTMLElement> {
+  const tagName = await getTagName(tag);
   const tagEl = document.createElement("div");
   tagEl.className = "filter-tag";
-  tagEl.textContent = tag;
-  tagEl.style.backgroundColor = colorFromTag(tag);
+  tagEl.textContent = tagName;
+  tagEl.style.backgroundColor = colorFromTag(tagName);
 
   const removeBtn = document.createElement("span");
   removeBtn.className = "remove-tag";
   removeBtn.textContent = "×";
-  removeBtn.addEventListener("click", () => {
+  removeBtn.addEventListener("click", async () => {
     if (type === "include") {
       state.filters.includeTags = removeFromList(state.filters.includeTags, tag);
     } else {
       state.filters.excludeTags = removeFromList(state.filters.excludeTags, tag);
     }
-    renderFilterTags(state, refresh);
-    refresh();
+    await applyFilters(state);
+    await renderFilterTags(state, refresh);
+    await refresh();
   });
 
   tagEl.appendChild(removeBtn);
   return tagEl;
 }
 
-export function renderFilterTags(state: FavoritesState, refresh: RefreshFn): void {
+export async function renderFilterTags(state: FavoritesState, refresh: RefreshFn): Promise<void> {
   const includeContainer = document.getElementById("filter-include-tags");
   const excludeContainer = document.getElementById("filter-exclude-tags");
   if (!includeContainer || !excludeContainer) {
@@ -36,12 +64,17 @@ export function renderFilterTags(state: FavoritesState, refresh: RefreshFn): voi
   includeContainer.innerHTML = "";
   excludeContainer.innerHTML = "";
 
-  for (const tag of state.filters.includeTags) {
-    includeContainer.appendChild(createFilterTag(tag, "include", state, refresh));
-  }
-  for (const tag of state.filters.excludeTags) {
-    excludeContainer.appendChild(createFilterTag(tag, "exclude", state, refresh));
-  }
+  const includePromises = state.filters.includeTags.map(async (tag) => {
+    const tagEl = await createFilterTag(tag, "include", state, refresh);
+    includeContainer.appendChild(tagEl);
+  });
+
+  const excludePromises = state.filters.excludeTags.map(async (tag) => {
+    const tagEl = await createFilterTag(tag, "exclude", state, refresh);
+    excludeContainer.appendChild(tagEl);
+  });
+
+  await Promise.all([...includePromises, ...excludePromises]);
 }
 
 function applyTagFilter(state: FavoritesState, tag: string, type: "include" | "exclude"): void {
@@ -95,8 +128,12 @@ export async function applyFilters(state: FavoritesState): Promise<void> {
     }
 
     // UP主过滤
-    if (creatorName && !video.creatorId.toLowerCase().includes(creatorName.toLowerCase())) {
-      return false;
+    if (creatorName) {
+      const creatorIdMatch = video.creatorId.toLowerCase().includes(creatorName.toLowerCase());
+      const creatorNameMatch = video.creatorName?.toLowerCase().includes(creatorName.toLowerCase()) || false;
+      if (!creatorIdMatch && !creatorNameMatch) {
+        return false;
+      }
     }
 
     // 包含标签过滤
@@ -135,10 +172,10 @@ export async function updateFilterOptions(state: FavoritesState): Promise<void> 
   });
 
   // 渲染标签列表
-  renderTagList(state, Array.from(allTags));
+  await renderTagList(state, Array.from(allTags));
 }
 
-function renderTagList(state: FavoritesState, tags: string[]): void {
+async function renderTagList(state: FavoritesState, tags: string[]): Promise<void> {
   const container = document.getElementById("tag-list");
   if (!container) {
     return;
@@ -154,12 +191,15 @@ function renderTagList(state: FavoritesState, tags: string[]): void {
   }
 
   for (const tag of tags) {
+    const tagName = await getTagName(tag);
     const item = document.createElement("div");
     item.className = "list-item";
+    item.dataset.tagId = tag;
+
     const label = document.createElement("span");
     label.className = "tag-pill";
-    label.textContent = tag;
-    label.style.backgroundColor = colorFromTag(tag);
+    label.textContent = tagName;
+    label.style.backgroundColor = colorFromTag(tagName);
     label.draggable = true;
 
     // 拖拽事件
@@ -188,8 +228,18 @@ export function clearFilters(state: FavoritesState): void {
 export function setupDragAndDrop(state: FavoritesState, refresh: RefreshFn): void {
   const includeZone = document.getElementById("filter-include-tags");
   const excludeZone = document.getElementById("filter-exclude-tags");
+  const tagSearchInput = document.getElementById("tagSearchInput") as HTMLInputElement | null;
+
   if (!includeZone || !excludeZone) {
     return;
+  }
+
+  // 标签搜索功能
+  if (tagSearchInput) {
+    tagSearchInput.addEventListener("input", (e) => {
+      const searchTerm = (e.target as HTMLInputElement).value.toLowerCase().trim();
+      filterTagList(searchTerm);
+    });
   }
 
   const zones = [
@@ -205,7 +255,7 @@ export function setupDragAndDrop(state: FavoritesState, refresh: RefreshFn): voi
     zone.element.addEventListener("dragleave", () => {
       zone.element.classList.remove("drag-over");
     });
-    zone.element.addEventListener("drop", (e) => {
+    zone.element.addEventListener("drop", async (e) => {
       e.preventDefault();
       zone.element.classList.remove("drag-over");
 
@@ -215,8 +265,25 @@ export function setupDragAndDrop(state: FavoritesState, refresh: RefreshFn): voi
       }
 
       applyTagFilter(state, tag, zone.type);
-      renderFilterTags(state, refresh);
-      refresh();
+      await applyFilters(state);
+      await renderFilterTags(state, refresh);
+      await refresh();
     });
   }
+}
+
+function filterTagList(searchTerm: string): void {
+  const container = document.getElementById("tag-list");
+  if (!container) {
+    return;
+  }
+
+  const items = container.querySelectorAll(".list-item");
+  items.forEach(item => {
+    const element = item as HTMLElement;
+    const tagLabel = element.querySelector(".tag-pill")?.textContent?.toLowerCase() || "";
+
+    const shouldShow = searchTerm === "" || tagLabel.includes(searchTerm);
+    element.style.display = shouldShow ? "flex" : "none";
+  });
 }

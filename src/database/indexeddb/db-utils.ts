@@ -18,12 +18,23 @@ export class DBUtils {
    * @returns Promise<void>
    */
   static async add<T>(storeName: string, data: T): Promise<void> {
-    const store = await dbManager.getStore(storeName, 'readwrite');
-    return new Promise((resolve, reject) => {
-      const request = store.add(data);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(new Error(`Failed to add data: ${request.error}`));
-    });
+    try {
+      const store = await dbManager.getStore(storeName, 'readwrite');
+      return new Promise((resolve, reject) => {
+        const request = store.add(data);
+
+        request.onsuccess = () => {
+          resolve();
+        };
+
+        request.onerror = () => {
+          reject(new Error(`Failed to add data: ${request.error}`));
+        };
+      });
+    } catch (error) {
+      console.error(`[DBUtils] Error in add operation:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -191,8 +202,13 @@ export class DBUtils {
     const index = store.index(indexName);
     return new Promise((resolve, reject) => {
       const request = index.getAll(value);
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(new Error(`Failed to get by index: ${request.error}`));
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+      request.onerror = () => {
+        console.error(`[DBUtils] Failed to query by index: ${request.error}`);
+        reject(new Error(`Failed to get by index: ${request.error}`));
+      };
     });
   }
 

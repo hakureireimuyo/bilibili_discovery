@@ -23,49 +23,56 @@
     </div>
 
     <div class="content-area">
-      <div class="collection-tabs" id="collectionTabs">
-        <div class="loading-tabs">
-          <div class="spinner"></div>
-          <p>加载收藏夹...</p>
-        </div>
-      </div>
-
-      <div class="filter-section">
-        <h3>标签筛选</h3>
-        <div class="filter-zones">
-          <div class="filter-zone filter-include">
-            <h4>必须包含</h4>
-            <div id="filter-include-tags" class="filter-tags"></div>
+      <!-- 左侧视频列表区域 -->
+      <div class="video-list-container">
+        <div class="video-list" id="videoList">
+          <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>加载中...</p>
           </div>
-          <div class="filter-zone filter-exclude">
-            <h4>不能包含</h4>
-            <div id="filter-exclude-tags" class="filter-tags"></div>
+          <div class="empty" id="empty" style="display: none;">
+            <p>暂无收藏视频</p>
+          </div>
+          <div class="error" id="error" style="display: none;">
+            <p id="errorMessage"></p>
           </div>
         </div>
-      </div>
 
-      <div class="tag-section">
-        <h3>所有标签</h3>
-        <div id="tag-list" class="list tag-list-scrollable"></div>
-      </div>
-
-      <div class="video-list" id="videoList">
-        <div class="loading" id="loading">
-          <div class="spinner"></div>
-          <p>加载中...</p>
-        </div>
-        <div class="empty" id="empty" style="display: none;">
-          <p>暂无收藏视频</p>
-        </div>
-        <div class="error" id="error" style="display: none;">
-          <p id="errorMessage"></p>
+        <div class="pagination" id="pagination" style="display: none;">
+          <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
+          <span id="pageInfo">第 1 页</span>
+          <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
         </div>
       </div>
 
-      <div class="pagination" id="pagination" style="display: none;">
-        <button id="prevPage" class="btn btn-secondary" disabled>上一页</button>
-        <span id="pageInfo">第 1 页</span>
-        <button id="nextPage" class="btn btn-secondary" disabled>下一页</button>
+      <!-- 右侧控制面板 -->
+      <div class="control-panel">
+        <div class="collection-tabs" id="collectionTabs">
+          <div class="loading-tabs">
+            <div class="spinner"></div>
+            <p>加载收藏夹...</p>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <h3>标签筛选</h3>
+          <div class="filter-zones">
+            <div class="filter-zone filter-include">
+              <h4>必须包含</h4>
+              <div id="filter-include-tags" class="filter-tags"></div>
+            </div>
+            <div class="filter-zone filter-exclude">
+              <h4>不能包含</h4>
+              <div id="filter-exclude-tags" class="filter-tags"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tag-section">
+          <h3>所有标签</h3>
+          <input type="text" id="tagSearchInput" class="search-input" placeholder="搜索标签..." style="margin-bottom: 12px;">
+          <div id="tag-list" class="list tag-list-scrollable"></div>
+        </div>
       </div>
     </div>
   </div>

@@ -13,5 +13,6 @@ export const DEFAULT_FAVORITE_SYNC_CONFIG: FavoriteSyncConfig = {
   defaultCollectionName: "B站收藏夹",
   defaultCollectionDescription: "从B站同步的收藏视频",
   batchSize: 10,
-  createMultipleCollections: true
+  createMultipleCollections: true,
+  requestInterval: 2500 // 2.5秒间隔，避免触发风控
 };

@@ -186,9 +186,19 @@ export class DBManager {
    * - 创建事务
    */
   async getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
-    const db = await this.getDB();
-    const transaction = db.transaction(storeName, mode);
-    return transaction.objectStore(storeName);
+
+    try {
+      const db = await this.getDB();
+
+      const transaction = db.transaction(storeName, mode);
+
+      const store = transaction.objectStore(storeName);
+      
+      return store;
+    } catch (error) {
+      console.error(`[DBManager] Error getting store ${storeName}:`, error);
+      throw error;
+    }
   }
 }
 

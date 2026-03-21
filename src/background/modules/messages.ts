@@ -1,5 +1,8 @@
 import { getUPInfo, getUPVideos, getVideoTags, getVideoDetail, getVideoTagsDetail } from "../../api/bili-api.js";
 import { randomUP, randomVideo, recommendUP, recommendVideo, updateInterestFromWatch } from "../../engine/recommender.js";
+
+// 全局变量，用于存储是否应该停止同步
+let shouldStopSync = false;
 import { 
   getValue, 
   setValue, 
@@ -21,6 +24,8 @@ import { createInterestManager } from "./interest-manager.js";
 import { syncFavoriteVideos, searchFavoriteVideos } from "./favorite-sync/index.js";
 import { CollectionRepository } from "../../database/implementations/collection-repository.impl.js";
 import { Platform, TagSource } from "../../database/types/base.js";
+import { getCollectionVideos, getAllCollectionVideos } from "../../database/implementations/collection-data-access.impl.js";
+import { VideoRepository, CreatorRepository, TagRepository, CollectionItemRepository } from "../../database/implementations/index.js";
 
 declare const chrome: {
   tabs?: {
@@ -407,7 +412,6 @@ export async function handleMessage(
         const videoTags = await getVideoTagsDetail(payload.bvid, { fallbackRequest: proxyApiRequest });
         
         // 保存视频信息到数据库
-        const { VideoRepository, CreatorRepository, TagRepository } = await import("../../database/implementations/index.js");
         const videoRepo = new VideoRepository();
         const creatorRepo = new CreatorRepository();
         const tagRepo = new TagRepository();
@@ -460,7 +464,6 @@ export async function handleMessage(
         });
         
         // 添加到收藏夹
-        const { CollectionRepository, CollectionItemRepository } = await import("../../database/implementations/index.js");
         const collectionRepo = new CollectionRepository();
         const collectionItemRepo = new CollectionItemRepository();
         
@@ -492,7 +495,6 @@ export async function handleMessage(
         }
       } else if (payload.action === "remove") {
         // 从收藏夹移除视频
-        const { CollectionRepository, CollectionItemRepository } = await import("../../database/implementations/index.js");
         const collectionRepo = new CollectionRepository();
         const collectionItemRepo = new CollectionItemRepository();
         
@@ -512,14 +514,38 @@ export async function handleMessage(
     }
   }
 
+  if (message.type === "get_should_stop_sync") {
+    return { success: true, shouldStop: shouldStopSync };
+  }
+
+  if (message.type === "set_should_stop_sync") {
+    const payload = message.payload as { shouldStop?: boolean };
+    if (payload?.shouldStop !== undefined) {
+      shouldStopSync = payload.shouldStop;
+      console.log(`[Background] shouldStopSync set to: ${shouldStopSync}`);
+      return { success: true };
+    }
+    return { success: false, error: "Missing shouldStop" };
+  }
+
   if (message.type === "sync_favorite_videos") {
-    const payload = message.payload as { uid?: number; shouldStop?: () => boolean };
+    const payload = message.payload as { uid?: number };
     if (!payload?.uid) {
       return { success: false, error: "Missing uid" };
     }
     
     try {
-      const count = await syncFavoriteVideos(payload.uid, payload.shouldStop);
+      // 重置 shouldStop 状态
+      shouldStopSync = false;
+      console.log(`[Background] Starting sync, shouldStopSync reset to: ${shouldStopSync}`);
+
+      // 创建 shouldStop 函数
+      const shouldStop = async () => {
+        console.log(`[Background] Checking shouldStopSync: ${shouldStopSync}`);
+        return shouldStopSync;
+      };
+
+      const count = await syncFavoriteVideos(payload.uid, shouldStop);
       return { success: true, count };
     } catch (error) {
       console.error("[Background] Error syncing favorite videos:", error);
@@ -539,13 +565,27 @@ export async function handleMessage(
 
   if (message.type === "get_collection_videos") {
     const payload = message.payload as { collectionId: string };
+    console.log("[Background] Getting collection videos for:", payload.collectionId);
 
     try {
-      const { getCollectionVideos } = await import("../../database/implementations/collection-data-access.impl.js");
       const videos = await getCollectionVideos(payload.collectionId, Platform.BILIBILI);
+      console.log("[Background] Collection videos result:", videos);
       return { success: true, videos };
     } catch (error) {
       console.error("[Background] Error getting collection videos:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  if (message.type === "get_all_collection_videos") {
+    console.log("[Background] Getting all collection videos");
+
+    try {
+      const videos = await getAllCollectionVideos(Platform.BILIBILI);
+      console.log("[Background] All collection videos result:", videos);
+      return { success: true, videos };
+    } catch (error) {
+      console.error("[Background] Error getting all collection videos:", error);
       return { success: false, error: String(error) };
     }
   }

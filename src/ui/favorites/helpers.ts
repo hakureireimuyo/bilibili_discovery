@@ -49,7 +49,7 @@ export function createInitialState(): FavoritesState {
     aggregatedVideos: [],
     filteredVideos: [],
     currentPage: 0,
-    pageSize: 20,
+    pageSize: 9,
     isLoading: false,
     shouldStopSync: false,
     filters: {

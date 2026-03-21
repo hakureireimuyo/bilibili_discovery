@@ -21,6 +21,8 @@ export interface FavoriteSyncConfig {
   batchSize: number;
   /** 是否为每个B站收藏夹创建对应的本地收藏夹 */
   createMultipleCollections: boolean;
+  /** 请求间隔时间（毫秒），用于避免触发风控 */
+  requestInterval: number;
 }
 
 /**
@@ -72,9 +74,11 @@ export interface IVideoDataSource {
  */
 export interface IFavoriteDataSource {
   /** 获取所有收藏视频 */
-  getAllFavoriteVideos(up_mid: number): Promise<Array<{ bvid: string; intro: string }>>;
+  getAllFavoriteVideos(up_mid: number, shouldStop?: () => Promise<boolean>): Promise<Array<{ bvid: string; intro: string }>>;
   /** 获取收藏夹列表 */
   getFavoriteFolders(up_mid: number): Promise<Array<{ id: number; title: string; media_count: number }>>;
+  /** 获取收藏夹视频 */
+  getFavoriteVideos(media_id: number, pn: number, ps: number): Promise<Array<{ bvid: string; intro: string }>>;
 }
 
 /**

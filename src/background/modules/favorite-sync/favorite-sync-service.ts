@@ -30,46 +30,135 @@ export class FavoriteSyncService {
    * @param shouldStop 停止同步的回调函数
    * @returns 同步结果
    */
-  async syncFavoriteVideos(up_mid: number, shouldStop?: () => boolean): Promise<FavoriteSyncResult> {
-    console.log("[FavoriteSync] Start syncing favorite videos for user:", up_mid);
-
+  async syncFavoriteVideos(up_mid: number, shouldStop?: () => Promise<boolean>): Promise<FavoriteSyncResult> {
+  
     const result: FavoriteSyncResult = {
       syncedCount: 0,
       failedVideos: []
     };
 
-    try {
-      // 获取所有收藏视频
-      const favoriteVideos = await this.dependencies.favoriteDataSource.getAllFavoriteVideos(up_mid);
-      console.log(`[FavoriteSync] Found ${favoriteVideos.length} favorite videos`);
+    console.log(`[FavoriteSync] Result object created`);
 
+    try {
       // 获取或创建收藏夹
       let collection;
       if (this.config.createMultipleCollections) {
         // 获取B站收藏夹列表
         const folders = await this.dependencies.favoriteDataSource.getFavoriteFolders(up_mid);
-        console.log(`[FavoriteSync] Found ${folders.length} favorite folders`);
         
         // 为每个B站收藏夹创建对应的本地收藏夹
         for (const folder of folders) {
+          // 检查是否应该停止同步
+          if (shouldStop) {
+            const shouldStopValue = await shouldStop();
+            console.log(`[FavoriteSync] Checking shouldStop before processing folder: ${shouldStopValue}`);
+            if (shouldStopValue) {
+              console.log("[FavoriteSync] Sync stopped by user");
+              break;
+            }
+          }
+
           // 使用B站API返回的收藏夹ID作为本地收藏夹ID
           const collectionId = folder.id.toString();
           const folderCollection = await this.getOrCreateCollection(collectionId, folder.title, `从B站收藏夹"${folder.title}"同步的收藏视频`);
           if (folderCollection) {
-            // 过滤出属于该收藏夹的视频
-            const folderVideos = favoriteVideos.filter(v => v.intro === folder.id.toString());
-            console.log(`[FavoriteSync] Processing folder "${folder.title}" with ${folderVideos.length} videos`);
-            
-            // 批量处理收藏视频
-            for (let i = 0; i < folderVideos.length; i += this.config.batchSize) {
+            // 获取本地收藏夹中的视频数量
+            const localVideoCount = await this.dependencies.collectionItemRepository.countCollectionItems(collectionId);
+            console.log(`[FavoriteSync] Folder ${folder.title}: local count = ${localVideoCount}, API count = ${folder.media_count}`);
+
+            // 如果本地存储的条目数量大于等于API返回的数量，则跳过该收藏夹
+            if (localVideoCount >= folder.media_count) {
+              console.log(`[FavoriteSync] Skipping folder ${folder.title}: local count (${localVideoCount}) >= API count (${folder.media_count})`);
+              continue;
+            }
+
+            // 获取本地收藏夹中的所有视频ID
+            const { items: localItems } = await this.dependencies.collectionItemRepository.getCollectionVideos(
+              collectionId,
+              { page: 0, pageSize: 10000 }
+            );
+            const localVideoIds = new Set(localItems.map((item: any) => item.videoId));
+
+            // 计算预期的差值：API总数 - 本地总数
+            const expectedDiff = folder.media_count - localVideoCount;
+            console.log(`[FavoriteSync] Folder ${folder.title}: expected diff = ${expectedDiff}`);
+
+            // 获取该收藏夹的视频
+            let page = 1;
+            const pageSize = 20;
+            let fetchedVideos: Array<{ bvid: string; intro: string }> = [];
+            let hasMore = true;
+            let consecutiveExistingCount = 0; // 连续已存在视频计数
+            const maxConsecutiveExisting = 10; // 最大连续已存在视频数
+
+            while (hasMore) {
               // 检查是否应该停止同步
-              if (shouldStop && shouldStop()) {
-                console.log("[FavoriteSync] Sync stopped by user");
+              if (shouldStop) {
+                const shouldStopValue = await shouldStop();
+                console.log(`[FavoriteSync] Checking shouldStop while fetching videos: ${shouldStopValue}`);
+                if (shouldStopValue) {
+                  console.log("[FavoriteSync] Sync stopped by user");
+                  break;
+                }
+              }
+
+              const videos = await this.dependencies.favoriteDataSource.getFavoriteVideos(folder.id, page, pageSize);
+              if (videos.length === 0) {
+                hasMore = false;
                 break;
               }
-              
-              const batch = folderVideos.slice(i, i + this.config.batchSize);
-              await this.processBatch(batch, folderCollection.collectionId, result, shouldStop);
+
+              // 过滤掉已存在的视频
+              let newVideosInPage = 0;
+              for (const video of videos) {
+                if (!localVideoIds.has(video.bvid)) {
+                  fetchedVideos.push(video);
+                  newVideosInPage++;
+                  consecutiveExistingCount = 0; // 重置计数器
+                } else {
+                  consecutiveExistingCount++;
+                  // 如果连续遇到多个已存在的视频，检查是否已经获取了足够的新视频
+                  if (consecutiveExistingCount >= maxConsecutiveExisting) {
+                    // 如果已经获取的新视频数量达到或超过预期差值，可以停止
+                    if (fetchedVideos.length >= expectedDiff) {
+                      console.log(`[FavoriteSync] Found ${consecutiveExistingCount} consecutive existing videos and fetched ${fetchedVideos.length} videos (expected ${expectedDiff}), stopping fetch`);
+                      hasMore = false;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              // 如果获取的视频数小于页大小，说明已经没有更多视频
+              if (videos.length < pageSize) {
+                hasMore = false;
+              }
+              page++;
+            }
+
+            console.log(`[FavoriteSync] Folder ${folder.title}: fetched ${fetchedVideos.length} new videos`);
+
+            // 批量处理收藏视频
+            for (let i = 0; i < fetchedVideos.length; i += this.config.batchSize) {
+              // 检查是否应该停止同步
+              if (shouldStop) {
+                const shouldStopValue = await shouldStop();
+                console.log(`[FavoriteSync] Checking shouldStop: ${shouldStopValue}`);
+                if (shouldStopValue) {
+                  console.log("[FavoriteSync] Sync stopped by user");
+                  break;
+                }
+              }
+
+              // 获取当前批次
+              const batch = fetchedVideos.slice(i, i + this.config.batchSize);
+
+              // 处理批次
+              const shouldStopProcessing = await this.processBatch(batch, collectionId, result, shouldStop);
+              if (shouldStopProcessing) {
+                console.log(`[FavoriteSync] Stopping further processing for folder ${folder.title}`);
+                break;
+              }
             }
           }
         }
@@ -80,17 +169,32 @@ export class FavoriteSyncService {
           throw new Error("Failed to create or get collection");
         }
 
+        // 获取所有收藏视频
+        const favoriteVideos = await this.dependencies.favoriteDataSource.getAllFavoriteVideos(up_mid, shouldStop);
+
         // 批量处理收藏视频
         for (let i = 0; i < favoriteVideos.length; i += this.config.batchSize) {
           // 检查是否应该停止同步
-          if (shouldStop && shouldStop()) {
-            console.log("[FavoriteSync] Sync stopped by user");
+          if (shouldStop) {
+            const shouldStopValue = await shouldStop();
+            console.log(`[FavoriteSync] Checking shouldStop (default collection): ${shouldStopValue}`);
+            if (shouldStopValue) {
+              console.log("[FavoriteSync] Sync stopped by user");
+              break;
+            }
+          }
+
+          // 获取当前批次
+          const batch = favoriteVideos.slice(i, i + this.config.batchSize);
+
+          // 处理批次
+          const shouldStopProcessing = await this.processBatch(batch, collection.collectionId, result, shouldStop);
+          if (shouldStopProcessing) {
+            console.log(`[FavoriteSync] Stopping further processing for default collection`);
             break;
           }
-          
-          const batch = favoriteVideos.slice(i, i + this.config.batchSize);
-          await this.processBatch(batch, collection.collectionId, result, shouldStop);
         }
+
       }
 
       console.log(`[FavoriteSync] Synced ${result.syncedCount} new videos`);
@@ -191,54 +295,72 @@ export class FavoriteSyncService {
 
   /**
    * 批量处理收藏视频
+   * @returns 是否应该停止处理该收藏夹的后续批次
    */
-  private async processBatch(
+    private async processBatch(
     batch: Array<{ bvid: string; intro: string }>,
     collectionId: string,
     result: FavoriteSyncResult,
-    shouldStop?: () => boolean
-  ): Promise<void> {
+    shouldStop?: () => Promise<boolean>
+  ): Promise<boolean> {
     for (const favVideo of batch) {
       // 检查是否应该停止同步
-      if (shouldStop && shouldStop()) {
-        console.log("[FavoriteSync] Sync stopped by user during batch processing");
-        break;
+      if (shouldStop) {
+        const shouldStopValue = await shouldStop();
+        console.log(`[FavoriteSync] Checking shouldStop in batch: ${shouldStopValue}`);
+        if (shouldStopValue) {
+          console.log("[FavoriteSync] Sync stopped by user during batch processing");
+          return true;
+        }
       }
       try {
-        // 获取视频详细信息
-        const videoDetail = await this.dependencies.videoDataSource.getVideoDetail(favVideo.bvid);
-        if (!videoDetail) {
-          console.warn(`[FavoriteSync] Failed to get video detail for ${favVideo.bvid}`);
-          result.failedVideos.push({ bvid: favVideo.bvid, error: "Failed to get video detail" });
-          continue;
-        }
-
-        // 获取视频标签
-        const videoTags = await this.dependencies.videoDataSource.getVideoTags(favVideo.bvid);
-
-        // 确保UP主存在
-        await this.ensureCreatorExists(videoDetail.owner.mid, videoDetail.owner.name);
-
-        // 确保标签存在
-        const tagIds = await this.ensureTagsExist(videoTags);
-
-        // 保存视频信息
-        const video = toDBVideo(videoDetail, tagIds);
-        await this.dependencies.videoRepository.upsertVideo(video);
-
-        // 添加到收藏夹
+        // 先检查视频是否已在收藏夹中
         const isInCollection = await this.dependencies.collectionItemRepository.isVideoInCollection(
           collectionId,
           favVideo.bvid
         );
-
+        // 如果不在收藏夹中，需要获取视频详细信息并添加
         if (!isInCollection) {
-          await this.dependencies.collectionItemRepository.addVideoToCollection(
-            collectionId,
-            favVideo.bvid,
-            BILIBILI
-          );
-          result.syncedCount++;
+          // 获取视频详细信息
+          const videoDetail = await this.dependencies.videoDataSource.getVideoDetail(favVideo.bvid);
+          if (!videoDetail) {
+            console.warn(`[FavoriteSync] Failed to get video detail for ${favVideo.bvid}`);
+            result.failedVideos.push({ bvid: favVideo.bvid, error: "Failed to get video detail" });
+            continue;
+          }
+
+          // 获取视频标签
+          const videoTags = await this.dependencies.videoDataSource.getVideoTags(favVideo.bvid);
+
+          // 确保UP主存在
+          await this.ensureCreatorExists(videoDetail.owner.mid, videoDetail.owner.name);
+
+          // 确保标签存在
+          const tagIds = await this.ensureTagsExist(videoTags);
+
+          // 保存视频信息
+          const video = toDBVideo(videoDetail, tagIds);
+          await this.dependencies.videoRepository.upsertVideo(video);
+
+          // 添加到收藏夹
+          try {
+            const itemId = await this.dependencies.collectionItemRepository.addVideoToCollection(
+              collectionId,
+              favVideo.bvid,
+              BILIBILI
+            );
+            result.syncedCount++;
+          } catch (error) {
+            console.error(`[FavoriteSync] Error adding video ${favVideo.bvid} to collection ${collectionId}:`, error);
+            result.failedVideos.push({
+              bvid: favVideo.bvid,
+              error: error instanceof Error ? error.message : String(error)
+            });
+            continue;
+          }
+
+        } else {
+          console.log(`[FavoriteSync] Video ${favVideo.bvid} already in collection, skipping`);
         }
       } catch (error) {
         console.error(`[FavoriteSync] Error processing video ${favVideo.bvid}:`, error);
@@ -248,7 +370,11 @@ export class FavoriteSyncService {
         });
       }
     }
+    
+    // 只在用户主动停止时返回 true，否则始终返回 false 继续处理
+    return false;
   }
+
 
   /**
    * 确保UP主存在

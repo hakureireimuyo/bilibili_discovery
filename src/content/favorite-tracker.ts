@@ -3,14 +3,14 @@
  * 监听B站页面的收藏操作，同步到本地数据库
  */
 
+import { extractBvidFromUrl } from "./tracker-core";
+
 interface FavoriteEvent {
   bvid: string;
   title: string;
   action: "add" | "remove";
   timestamp: number;
 }
-
-// 使用tracker.ts中已定义的extractBvidFromUrl函数
 
 function detectFavoriteButton(): HTMLElement | null {
   // B站收藏按钮的选择器
@@ -55,59 +55,84 @@ function sendFavoriteMessage(event: FavoriteEvent): void {
 }
 
 function setupFavoriteObserver(): void {
-  const favoriteButton = detectFavoriteButton();
-  if (!favoriteButton) {
-    console.log("[FavoriteTracker] Favorite button not found, retrying...");
-    setTimeout(setupFavoriteObserver, 1000);
-    return;
-  }
+  try {
+    const favoriteButton = detectFavoriteButton();
+    if (!favoriteButton) {
+      console.log("[FavoriteTracker] Favorite button not found, retrying...");
+      setTimeout(setupFavoriteObserver, 1000);
+      return;
+    }
 
-  console.log("[FavoriteTracker] Favorite button found, setting up observer");
+    console.log("[FavoriteTracker] Favorite button found, setting up observer");
 
-  // 使用MutationObserver监听收藏按钮状态变化
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === "attributes" && mutation.attributeName === "class") {
-        const target = mutation.target as HTMLElement;
-        const isFavorited = target.classList.contains("on");
+    // 使用MutationObserver监听收藏按钮状态变化
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "attributes" && mutation.attributeName === "class") {
+          const target = mutation.target as HTMLElement;
+          const isFavorited = target.classList.contains("on");
 
-        // 获取当前视频信息
-        const url = window.location.href;
-        const bvid = extractBvidFromUrl(url);
+          // 获取当前视频信息
+          const url = window.location.href;
+          const bvid = extractBvidFromUrl(url);
 
-        if (!bvid) {
-          return;
+          if (!bvid) {
+            return;
+          }
+
+          const titleElement = document.querySelector("h1.video-title, h1.title");
+          const title = titleElement?.textContent?.trim() || "";
+
+          // 发送收藏事件
+          sendFavoriteMessage({
+            bvid,
+            title,
+            action: isFavorited ? "add" : "remove",
+            timestamp: Date.now()
+          });
         }
-
-        const titleElement = document.querySelector("h1.video-title, h1.title");
-        const title = titleElement?.textContent?.trim() || "";
-
-        // 发送收藏事件
-        sendFavoriteMessage({
-          bvid,
-          title,
-          action: isFavorited ? "add" : "remove",
-          timestamp: Date.now()
-        });
-      }
+      });
     });
-  });
 
-  // 开始观察
-  observer.observe(favoriteButton, {
-    attributes: true,
-    attributeFilter: ["class"]
-  });
+    // 开始观察
+    observer.observe(favoriteButton, {
+      attributes: true,
+      attributeFilter: ["class"]
+    });
 
-  console.log("[FavoriteTracker] Observer setup complete");
+    console.log("[FavoriteTracker] Observer setup complete");
+  } catch (error) {
+    console.error("[FavoriteTracker] Error setting up observer:", error);
+    // 如果出错，延迟重试
+    setTimeout(setupFavoriteObserver, 2000);
+  }
+}
+
+// 安全的初始化函数，带有错误处理
+function safeInitFavoriteTracker() {
+  try {
+    if (typeof window !== "undefined" && typeof document !== "undefined") {
+      setupFavoriteObserver();
+    }
+  } catch (error) {
+    console.error("[FavoriteTracker] Error during initialization:", error);
+    // 如果初始化出错，延迟重试
+    setTimeout(safeInitFavoriteTracker, 2000);
+  }
 }
 
 // 页面加载完成后设置观察器
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", setupFavoriteObserver);
+  document.addEventListener("DOMContentLoaded", safeInitFavoriteTracker);
 } else {
-  setupFavoriteObserver();
+  safeInitFavoriteTracker();
 }
+
+// 监听页面完全加载事件，确保所有资源已加载
+window.addEventListener("load", () => {
+  console.log("[FavoriteTracker] Page fully loaded, checking favorite tracker...");
+  safeInitFavoriteTracker();
+});
 
 // 监听URL变化（SPA页面）
 let lastUrl = location.href;
@@ -116,6 +141,6 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     console.log("[FavoriteTracker] URL changed, reinitializing...");
-    setupFavoriteObserver();
+    safeInitFavoriteTracker();
   }
-}).observe(document, { subtree: true, childList: true });
+}).observe(document.body, { subtree: true, childList: true });
