@@ -1,7 +1,7 @@
-import { getValue, loadUPList } from "../../database/implementations/index.js";
+import { getValue, loadUPList, type ClassifyStatus, type InterestProfile } from "../../database/implementations/index.js";
 import { armProgressTimeout, bindProgressListener, hideProgress, showProgress, updateProgress } from "./popup-progress.js";
 import { hasChromeRuntime, navigateCurrentTab, openExtensionPage, sendMessage } from "./popup-runtime.js";
-import type { ClassifyCache, InterestProfile, InterestRow } from "./popup-types.js";
+import type { InterestRow } from "./popup-types.js";
 
 export function sortInterests(profile: InterestProfile): InterestRow[] {
   return Object.values(profile)
@@ -53,7 +53,7 @@ async function hydrateProgress(): Promise<void> {
 async function loadStatus(): Promise<void> {
   const settings = (await getValue<{ userId?: number }>("settings")) ?? {};
   const upCache = await loadUPList();
-  const classifyCache = (await getValue<ClassifyCache>("classifyStatus")) ?? null;
+  const classifyCache = (await getValue<ClassifyStatus>("classifyStatus")) ?? null;
 
   setText("status-user-id", settings.userId ? String(settings.userId) : "-");
   setText("status-up-update", formatTime(upCache?.lastUpdate ?? null));

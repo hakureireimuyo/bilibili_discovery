@@ -12,7 +12,8 @@ import { addCategory, renderCategories } from "./category-manager.js";
 import { clearFilters, renderFilterTags, setupDragAndDrop } from "./filter-manager.js";
 import { countUpTags, countVideoTotals, createInitialState, getInputValue, setText, updateToggleLabel } from "./helpers.js";
 import { addCustomTag, renderTagList } from "./tag-manager.js";
-import type { Category, StatsState, UPCache } from "./types.js";
+import type { Category, StatsState } from "./types.js";
+import type { UPCache } from "../../database/implementations/index.js";
 import { refreshUpList } from "./up-list.js";
 
 export { countVideoTotals, countUpTags, colorFromTag } from "./helpers.js";
@@ -96,7 +97,7 @@ function bindInputs(state: StatsState): void {
 }
 
 async function loadState(state: StatsState): Promise<void> {
-  const upCache = (await loadUPList()) ?? ({ upList: [] } as UPCache);
+  const upCache = (await loadUPList()) ?? ({ upList: [], lastUpdate: 0 } as UPCache);
   const upTagCounts = await getUPTagCounts();
   const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};

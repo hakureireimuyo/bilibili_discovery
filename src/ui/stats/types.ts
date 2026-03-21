@@ -1,9 +1,5 @@
 import type { UP, UPTagCache } from "../../database/implementations/index.js";
 
-export interface UPCache {
-  upList: UP[];
-}
-
 export interface Category {
   id: string;
   name: string;
@@ -32,7 +28,7 @@ export interface StatsState {
   filteredCategories: Category[];
   showFollowedOnly: boolean;
   filters: FilterState;
-  currentUpList: UPCache["upList"];
+  currentUpList: UP[];
   currentUpTags: Record<string, string[]>;
   upTagCache: UPTagCache;
   upManualTagsMap: Record<string, string[]>;

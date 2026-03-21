@@ -82,3 +82,17 @@ export interface AppCategory {
 }
 
 export type CategoryLibrary = Record<string, AppCategory>;
+
+export interface ClassifyStatus {
+  lastUpdate: Timestamp;
+}
+
+export interface AppSettings {
+  cacheHours: number;
+  userId: number | null;
+  apiBaseUrl: string;
+  apiModel: string;
+  apiKey: string;
+  classifyMethod: "api" | "page";
+  biliCookie: string;
+}

@@ -8,10 +8,12 @@ export { TagRepository } from './tag-repository.impl.js';
 export { CategoryRepository } from './category-repository.impl.js';
 export * from './bilibili-data-access.impl.js';
 export type {
+  AppSettings,
   AppCategory,
   AppTag,
   AppVideo,
   CategoryLibrary,
+  ClassifyStatus,
   InterestProfile,
   TagLibrary,
   UPCache,

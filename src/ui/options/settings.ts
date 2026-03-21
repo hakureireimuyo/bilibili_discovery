@@ -1,14 +1,4 @@
-import { getValue, setValue } from "../../database/implementations/index.js";
-
-export interface Settings {
-  cacheHours: number;
-  userId: number | null;
-  apiBaseUrl: string;
-  apiModel: string;
-  apiKey: string;
-  classifyMethod: "api" | "page";
-  biliCookie: string;
-}
+import { getValue, setValue, type AppSettings as Settings } from "../../database/implementations/index.js";
 
 export const DEFAULT_SETTINGS: Settings = {
   cacheHours: 24,

@@ -1,11 +1,12 @@
-import type { StatsState, UPCache } from "./types.js";
+import type { StatsState } from "./types.js";
+import type { UP } from "../../database/implementations/index.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue, updateToggleLabel } from "./helpers.js";
-import { addTagToUp, getAutoTagsForUp, removeTagFromUp, renderAutoTagPill } from "./tag-manager.js";
+import { addTagToUp, getAutoTagsForUp, removeTagFromUp, renderAutoTagPill, renderTagPill } from "./tag-manager.js";
 
 type RenderFn = () => void;
 
-function matchesFilters(state: StatsState, up: UPCache["upList"][number]): boolean {
+function matchesFilters(state: StatsState, up: UP): boolean {
   const tags = state.currentUpTags[String(up.mid)] ?? [];
   const searchTerm = getInputValue("up-search").toLowerCase();
 
@@ -30,11 +31,14 @@ function matchesFilters(state: StatsState, up: UPCache["upList"][number]): boole
   return hasAllIncludeTags && hasNoExcludeTags && hasIncludeCategory && hasNoExcludeCategory && matchesSearch;
 }
 
-function filterUpList(state: StatsState): UPCache["upList"] {
-  const visibleByFollowState = state.showFollowedOnly
-    ? state.currentUpList.filter((up) => up.is_followed !== false)
-    : state.currentUpList.filter((up) => up.is_followed === false);
-  return visibleByFollowState.filter((up) => matchesFilters(state, up));
+function filterUpList(state: StatsState): UP[] {
+  const filteredByFollow = state.currentUpList.filter((up) => {
+    if (state.showFollowedOnly) {
+      return up.is_followed !== false;
+    }
+    return up.is_followed === false;
+  });
+  return filteredByFollow.filter((up) => matchesFilters(state, up));
 }
 
 function setupUpTagDropZone(tagsEl: HTMLElement, mid: number, state: StatsState, rerender: RenderFn): void {
@@ -61,31 +65,7 @@ function setupUpTagDropZone(tagsEl: HTMLElement, mid: number, state: StatsState,
 }
 
 function renderUpTagPill(tag: string, mid: number, state: StatsState, rerender: RenderFn): HTMLSpanElement {
-  const pill = document.createElement("span");
-  pill.className = "tag-pill";
-  pill.textContent = tag;
-  pill.style.backgroundColor = colorFromTag(tag);
-  pill.draggable = true;
-  pill.addEventListener("click", () => {
-    const keyword = encodeURIComponent(tag);
-    window.open(`https://search.bilibili.com/all?keyword=${keyword}`, "_blank", "noreferrer");
-  });
-  pill.addEventListener("dragstart", (e) => {
-    if (e.dataTransfer) {
-      e.dataTransfer.setData("application/x-bili-tag", tag);
-      e.dataTransfer.effectAllowed = "move";
-    }
-    createDragGhost(e, tag);
-    setDragContext({ tag, originUpMid: mid, dropped: false });
-  });
-  pill.addEventListener("dragend", () => {
-    removeDragGhost();
-    if (getDragContext()?.originUpMid === mid && !getDragContext()?.dropped) {
-      void removeTagFromUp(state, mid, tag, rerender);
-    }
-    setDragContext(null);
-  });
-  return pill;
+  return renderTagPill(tag, { mid, state, rerender });
 }
 
 async function buildTagContainer(state: StatsState, mid: number, rerender: RenderFn): Promise<HTMLElement> {

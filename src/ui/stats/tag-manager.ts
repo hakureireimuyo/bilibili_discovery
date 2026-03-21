@@ -42,63 +42,81 @@ function resolveDetach(): boolean {
 
 export function renderTagPill(
   tag: string,
-  count?: number,
-  onDetached?: () => void
+  options?: {
+    count?: number;
+    onDetached?: () => void;
+    isAuto?: boolean;
+    mid?: number;
+    state?: StatsState;
+    rerender?: RenderFn;
+  }
 ): HTMLSpanElement {
+  const {
+    count,
+    onDetached,
+    isAuto = false,
+    mid,
+    state,
+    rerender
+  } = options ?? {};
+
   const pill = document.createElement("span");
-  pill.className = "tag-pill";
+  pill.className = isAuto ? "tag-pill tag-pill-auto" : "tag-pill";
   pill.textContent = count !== undefined ? `${tag} (${count})` : tag;
   pill.style.backgroundColor = colorFromTag(tag);
   pill.draggable = true;
+
+  if (isAuto) {
+    pill.style.cursor = "grab";
+    const icon = document.createElement("i");
+    icon.className = "auto-tag-icon";
+    icon.textContent = "✧";
+    pill.appendChild(icon);
+  }
+
+  pill.addEventListener("click", () => {
+    const keyword = encodeURIComponent(tag);
+    window.open(`https://search.bilibili.com/all?keyword=${keyword}`, "_blank", "noreferrer");
+  });
+
   pill.addEventListener("dragstart", (e) => {
     if (e.dataTransfer) {
       e.dataTransfer.setData("application/x-bili-tag", tag);
-      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.effectAllowed = isAuto ? "copy" : "move";
     }
     createDragGhost(e, tag);
-    setDragContext({ tag, dropped: false });
+    if (isAuto) {
+      setDragContext({ tag, dropped: false });
+      pill.style.cursor = "grabbing";
+    } else {
+      setDragContext({ tag, originUpMid: mid, dropped: false });
+    }
   });
+
   pill.addEventListener("dragend", () => {
     removeDragGhost();
-    if (onDetached && resolveDetach()) {
-      onDetached();
+    if (isAuto) {
+      setDragContext(null);
+      pill.style.cursor = "grab";
+    } else {
+      if (mid !== undefined && state && rerender) {
+        if (getDragContext()?.originUpMid === mid && !getDragContext()?.dropped) {
+          void removeTagFromUp(state, mid, tag, rerender);
+        }
+      } else if (onDetached && resolveDetach()) {
+        onDetached();
+      }
+      setDragContext(null);
     }
-    setDragContext(null);
   });
+
   return pill;
 }
 
 export function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
-  const pill = document.createElement("span");
-  pill.className = "tag-pill tag-pill-auto";
-  pill.textContent = `${tag} (${count})`;
-  pill.style.backgroundColor = colorFromTag(tag);
-  pill.draggable = true;
-  pill.style.cursor = "grab";
-
-  const icon = document.createElement("i");
-  icon.className = "auto-tag-icon";
-  icon.textContent = "✧";
-  pill.appendChild(icon);
-
-  pill.addEventListener("dragstart", (e) => {
-    if (e.dataTransfer) {
-      e.dataTransfer.setData("application/x-bili-tag", tag);
-      e.dataTransfer.effectAllowed = "copy";
-    }
-    createDragGhost(e, tag);
-    setDragContext({ tag, dropped: false });
-    pill.style.cursor = "grabbing";
-  });
-
-  pill.addEventListener("dragend", () => {
-    removeDragGhost();
-    setDragContext(null);
-    pill.style.cursor = "grab";
-  });
-
-  return pill;
+  return renderTagPill(tag, { count, isAuto: true });
 }
+
 
 async function resolveTagByName(tag: string): Promise<Tag | undefined> {
   const tagLibrary = await getTagLibrary();
@@ -200,7 +218,7 @@ export function renderTagList(state: StatsState): void {
     const item = document.createElement("div");
     item.className = "list-item";
     const label = document.createElement("span");
-    label.appendChild(renderTagPill(tag, count));
+    label.appendChild(renderTagPill(tag, { count }));
     const value = document.createElement("span");
     value.textContent = String(count);
     item.appendChild(label);
