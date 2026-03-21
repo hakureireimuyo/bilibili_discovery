@@ -12,6 +12,4 @@
 - 具体功能逻辑尽量下沉到 `background/modules`
 
 主要文件：
-- `service-worker.ts`：基础后台入口
-- `service-worker-progress.ts`：带进度反馈的后台入口
-- `service-worker-complete.ts`：完整后台入口组合
+- `service-worker.ts`：唯一后台入口，负责监听注册与模块装配

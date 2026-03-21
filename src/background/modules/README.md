@@ -17,6 +17,7 @@
 - `up-list.ts`：关注列表更新任务
 - `classify-api.ts`：通过 API 数据进行分类
 - `classify-page.ts`：通过页面采集数据进行分类
+- `classify-progress.ts`：分类进度消息发送工具
 - `watch-stats.ts`：观看统计写入与聚合
 - `alarms.ts`：定时任务注册
 - `proxy.ts`：接口代理请求

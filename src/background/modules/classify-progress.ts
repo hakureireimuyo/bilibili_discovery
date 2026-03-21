@@ -1,5 +1,3 @@
-// 进度更新辅助函数
-
 export interface ProgressPayload {
   current: number;
   total: number;
