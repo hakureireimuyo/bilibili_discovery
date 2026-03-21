@@ -28,6 +28,19 @@ export class CollectionRepository implements ICollectionRepository {
   }
 
   /**
+   * 使用指定ID创建收藏夹
+   */
+  async createCollectionWithId(collectionId: string, collection: Omit<Collection, 'collectionId'>): Promise<void> {
+    const newCollection: Collection = {
+      collectionId,
+      ...collection,
+      createdAt: Date.now(),
+      lastUpdate: Date.now()
+    };
+    await DBUtils.add(STORE_NAMES.COLLECTIONS, newCollection);
+  }
+
+  /**
    * 获取收藏夹
    */
   async getCollection(collectionId: string): Promise<Collection | null> {

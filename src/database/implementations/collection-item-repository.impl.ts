@@ -28,7 +28,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
       videoId,
       addedAt: Date.now(),
       note,
-      tags: [],
       order: Date.now()
     };
 

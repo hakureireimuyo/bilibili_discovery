@@ -41,6 +41,7 @@ export { SearchEventRepository } from './search-event-repository.impl.js';
 // Collection 实现
 export { CollectionRepository } from './collection-repository.impl.js';
 export { CollectionItemRepository } from './collection-item-repository.impl.js';
+export * from './collection-data-access.impl.js';
 
 // Analytics 实现
 export { InterestScoreRepository } from './interest-score-repository.impl.js';

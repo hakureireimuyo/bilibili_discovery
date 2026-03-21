@@ -219,3 +219,255 @@ body {
   font-size: 14px;
   color: #666;
 }
+
+/* 收藏夹选项卡 */
+.collection-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 8px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.collection-tab {
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.collection-tab:hover {
+  background-color: #f5f5f5;
+}
+
+.collection-tab.active {
+  background-color: #00a1d6;
+  color: white;
+}
+
+.loading-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  color: #666;
+  width: 100%;
+}
+
+.empty-collections {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+/* 内容区域 */
+.content-area {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 标签筛选区域 */
+.filter-section {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filter-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212121;
+}
+
+.filter-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.filter-zone h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+}
+
+.filter-tags {
+  min-height: 60px;
+  padding: 12px;
+  border: 2px dashed #ddd;
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.filter-tags.drag-over {
+  border-color: #00a1d6;
+  background-color: #f0f9ff;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  gap: 6px;
+}
+
+.filter-tag .remove-tag {
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.filter-tag .remove-tag:hover {
+  opacity: 1;
+}
+
+/* 标签列表区域 */
+.tag-section {
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tag-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212121;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.tag-list-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* 标签药丸样式 */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: grab;
+  transition: transform 0.2s;
+}
+
+.tag-pill:active {
+  cursor: grabbing;
+}
+
+.video-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: grab;
+  transition: transform 0.2s;
+}
+
+.video-tag:active {
+  cursor: grabbing;
+}
+
+/* 视频卡片 */
+.video-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.video-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.video-cover {
+  width: 200px;
+  height: 125px;
+  flex-shrink: 0;
+}
+
+.video-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.video-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .filter-zones {
+    grid-template-columns: 1fr;
+  }
+
+  .video-card {
+    flex-direction: column;
+  }
+
+  .video-cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16/9;
+  }
+}

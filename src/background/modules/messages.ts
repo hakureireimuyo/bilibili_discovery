@@ -18,7 +18,7 @@ import { updateUpListTask } from "./up-list.js";
 import { proxyApiRequest } from "./proxy.js";
 import { updateWatchStats, initializeVideoInfo, processUPInfo, processVideoTags } from "./watch-stats.js";
 import { createInterestManager } from "./interest-manager.js";
-import { syncFavoriteVideos, searchFavoriteVideos } from "./favorite-sync.js";
+import { syncFavoriteVideos, searchFavoriteVideos } from "./favorite-sync/index.js";
 import { CollectionRepository } from "../../database/implementations/collection-repository.impl.js";
 import { Platform, TagSource } from "../../database/types/base.js";
 
@@ -470,7 +470,6 @@ export async function handleMessage(
             platform: Platform.BILIBILI,
             name: "B站收藏夹",
             description: "从B站同步的收藏视频",
-            videoIds: [],
             createdAt: Date.now(),
             lastUpdate: Date.now()
           });
@@ -514,13 +513,13 @@ export async function handleMessage(
   }
 
   if (message.type === "sync_favorite_videos") {
-    const payload = message.payload as { uid?: number };
+    const payload = message.payload as { uid?: number; shouldStop?: () => boolean };
     if (!payload?.uid) {
       return { success: false, error: "Missing uid" };
     }
     
     try {
-      const count = await syncFavoriteVideos(payload.uid);
+      const count = await syncFavoriteVideos(payload.uid, payload.shouldStop);
       return { success: true, count };
     } catch (error) {
       console.error("[Background] Error syncing favorite videos:", error);
@@ -534,6 +533,19 @@ export async function handleMessage(
       return { success: true, collections };
     } catch (error) {
       console.error("[Background] Error getting collections:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  if (message.type === "get_collection_videos") {
+    const payload = message.payload as { collectionId: string };
+
+    try {
+      const { getCollectionVideos } = await import("../../database/implementations/collection-data-access.impl.js");
+      const videos = await getCollectionVideos(payload.collectionId, Platform.BILIBILI);
+      return { success: true, videos };
+    } catch (error) {
+      console.error("[Background] Error getting collection videos:", error);
       return { success: false, error: String(error) };
     }
   }

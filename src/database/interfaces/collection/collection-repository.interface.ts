@@ -29,6 +29,23 @@ export interface ICollectionRepository {
   createCollection(collection: Omit<Collection, 'collectionId'>): Promise<string>;
 
   /**
+   * 使用指定ID创建收藏夹
+   *
+   * @param collectionId - 收藏夹ID
+   * @param collection - 收藏夹信息
+   * @returns Promise<void>
+   *
+   * 职责：
+   * - 使用指定的ID创建新收藏夹
+   * - 验证必填字段
+   *
+   * 能力边界：
+   * - 不验证视频是否存在
+   * - 不验证标签是否存在
+   */
+  createCollectionWithId(collectionId: string, collection: Omit<Collection, 'collectionId'>): Promise<void>;
+
+  /**
    * 获取收藏夹
    * 
    * @param collectionId - 收藏夹ID

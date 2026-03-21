@@ -27,10 +27,6 @@ export interface Collection {
    */
   description?: string;
   /**
-   * 收藏的视频ID列表
-   */
-  videoIds: ID[];
-  /**
    * 创建时间
    */
   createdAt: Timestamp;
@@ -86,11 +82,6 @@ export interface CollectionItem {
    * 添加备注
    */
   note?: string;
-  /**
-   * 自定义标签
-   * 仅对该收藏项有效的标签
-   */
-  tags?: ID[];
   /**
    * 排序权重
    * 用于自定义排序

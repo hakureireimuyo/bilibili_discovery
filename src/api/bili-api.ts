@@ -387,6 +387,19 @@ export interface VideoDetail {
   };
 }
 
+export interface VideoStat {
+  aid: number;
+  view: number;
+  danmaku: number;
+  reply: number;
+  favorite: number;
+  coin: number;
+  share: number;
+  now_rank: number;
+  his_rank: number;
+  like: number;
+}
+
 /**
  * 获取视频详情
  * @param bvid BV号
@@ -419,9 +432,9 @@ export async function getVideoDetail(
 export async function getVideoStat(
   bvid: string,
   options: ApiRequestOptions = {}
-): Promise<VideoDetail["stat"] | null> {
+): Promise<VideoStat | null> {
   const url = `https://api.bilibili.com/x/web-interface/archive/stat?bvid=${bvid}`;
-  const data = await apiRequest<{ data?: VideoDetail["stat"] }>(url, options);
+  const data = await apiRequest<{ data?: VideoStat }>(url, options);
   return data?.data ?? null;
 }
 
