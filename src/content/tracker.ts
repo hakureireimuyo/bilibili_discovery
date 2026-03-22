@@ -226,6 +226,7 @@ function trackVideoPlayback(
   let accumulated = 0;
   let lastSentAt = Date.now();
   let cachedMeta: VideoMeta | null = null;
+  let isFlushing = false;
 
   const refreshMeta = () => {
     cachedMeta = extractVideoMeta();
@@ -246,6 +247,10 @@ function trackVideoPlayback(
       return;
     }
 
+    const currentTimestamp = Date.now();
+    // 使用两次触发时携带的时间戳数据来计算实际观看时长（毫秒转秒）
+    const watchedSeconds = (currentTimestamp - lastSentAt) / 1000;
+
     const event: WatchProgress = {
       bvid,
       title: meta.title,
@@ -253,15 +258,16 @@ function trackVideoPlayback(
       upName: meta.upName,
       upFace: meta.upFace,
       tags: meta.tags,
-      watchedSeconds: accumulated,
+      watchedSeconds,
       currentTime: video.currentTime,
       duration: Number.isFinite(video.duration) ? video.duration : 0,
-      timestamp: Date.now()
+      timestamp: currentTimestamp
     };
-    console.log("[Tracker] Flush watch progress", reason, event);
+    // console.log("[Tracker] Flush watch progress", reason, event);
     sendFn(event);
+    // 重置累积时间和更新时间戳
     accumulated = 0;
-    lastSentAt = Date.now();
+    lastSentAt = currentTimestamp;
   };
 
   refreshMeta();
@@ -353,14 +359,18 @@ function trackVideoPlayback(
       return;
     }
     if (!video.paused) {
+      const now = Date.now();
+      // 计算实际观看时长（毫秒转秒）
+      const watchedSeconds = (now - lastSentAt) / 1000;
+      // 将实际观看时长累加到 accumulated
+      accumulated = watchedSeconds;
+      
       const delta = video.currentTime - lastTime;
       if (delta > 0 && delta < 5) {
-        accumulated += delta;
+        lastTime = video.currentTime;
       }
-      lastTime = video.currentTime;
-      const now = Date.now();
-      // 每7秒发送一次进度更新，或者累积观看时间达到5秒时发送
-      if (accumulated >= 5 && now - lastSentAt >= 7000) {
+      // 只有当实际观看时长大于7秒时才发送进度更新
+      if (watchedSeconds > 7) {
         flush("tick");
       }
     }
@@ -426,8 +436,8 @@ if (document.readyState === "loading") {
   safeInitTracker();
 }
 
-// 监听页面完全加载事件，确保所有资源已加载
-window.addEventListener("load", () => {
-  console.log("[Tracker] Page fully loaded, checking tracker...");
-  safeInitTracker();
-});
+// 移除 window.load 事件监听器，避免重复初始化
+// window.addEventListener("load", () => {
+//   console.log("[Tracker] Page fully loaded, checking tracker...");
+//   safeInitTracker();
+// });
