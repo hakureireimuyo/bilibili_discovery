@@ -14,12 +14,17 @@ function createFilterTag(tag: string, type: "include" | "exclude", state: StatsS
   removeBtn.className = "remove-tag";
   removeBtn.textContent = "×";
   removeBtn.addEventListener("click", () => {
+    // 立即移除 DOM 元素
+    tagEl.remove();
+    
+    // 更新状态
     if (type === "include") {
       state.filters.includeTags = removeFromList(state.filters.includeTags, tag);
     } else {
       state.filters.excludeTags = removeFromList(state.filters.excludeTags, tag);
     }
-    renderFilterTags(state, refresh);
+    
+    // 只刷新 UP 列表，不重新渲染筛选标签
     refresh();
   });
 
@@ -44,12 +49,17 @@ function createFilterCategory(
   removeBtn.className = "remove-tag";
   removeBtn.textContent = "×";
   removeBtn.addEventListener("click", () => {
+    // 立即移除 DOM 元素
+    categoryEl.remove();
+    
+    // 更新状态
     if (type === "include") {
       state.filters.includeCategories = removeFromList(state.filters.includeCategories, categoryId);
     } else {
       state.filters.excludeCategories = removeFromList(state.filters.excludeCategories, categoryId);
     }
-    renderFilterTags(state, refresh);
+    
+    // 只刷新 UP 列表，不重新渲染筛选标签
     refresh();
   });
 

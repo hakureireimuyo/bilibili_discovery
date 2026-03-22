@@ -114,6 +114,36 @@ async function loadState(state: StatsState): Promise<void> {
   state.currentUpTags = await hydrateTagState(state, upTagCounts);
   state.currentCustomTags = customTags;
   state.categories = categories;
+  state.tagLibrary = tagLibrary;
+  
+  // 预加载所有 UP 的标签数据到缓存
+  state.upDataCache = {};
+  for (const up of state.currentUpList) {
+    const manualTags = state.upManualTagsMap[String(up.mid)] ?? [];
+    const autoTags = Object.values(state.upTagCache[String(up.mid)]?.tags ?? [])
+      .map((tag) => {
+        const tagInfo = tagLibrary[tag.tag];
+        return {
+          tag: tagInfo ? tagInfo.name : tag.tag,
+          count: tag.count,
+          editable: tag.editable ?? false
+        };
+      })
+      .filter((tag) => !manualTags.includes(tag.tag) && !tag.editable)
+      .sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.tag.localeCompare(b.tag, "zh-CN");
+      })
+      .slice(0, 5);
+    
+    state.upDataCache[up.mid] = {
+      up,
+      manualTags,
+      autoTags
+    };
+  }
 
   setText("stat-up-count", String(state.currentUpList.length));
   setText("stat-tag-count", String(countUpTags(state.currentUpTags)));

@@ -59,7 +59,9 @@ export function createInitialState(): StatsState {
     currentUpTags: {},
     upTagCache: {},
     upManualTagsMap: {},
-    upAutoTags: {}
+    upAutoTags: {},
+    tagLibrary: {},
+    upDataCache: {}
   };
 }
 

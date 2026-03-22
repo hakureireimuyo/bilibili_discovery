@@ -33,4 +33,11 @@ export interface StatsState {
   upTagCache: UPTagCache;
   upManualTagsMap: Record<string, string[]>;
   upAutoTags: Record<string, string[]>;
+  tagLibrary: Record<string, { id: string; name: string; editable?: boolean }>;
+  // 缓存所有 UP 的完整数据，包括标签
+  upDataCache: Record<number, {
+    up: UP;
+    manualTags: string[];
+    autoTags: { tag: string; count: number }[];
+  }>;
 }

@@ -3,8 +3,11 @@ import type { UP } from "../../database/implementations/index.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue, updateToggleLabel } from "./helpers.js";
 import { addTagToUp, getAutoTagsForUp, removeTagFromUp, renderAutoTagPill, renderTagPill } from "./tag-manager.js";
+import { VirtualList } from "./virtual-list.js";
 
 type RenderFn = () => void;
+
+let virtualListInstance: VirtualList<UP> | null = null;
 
 function matchesFilters(state: StatsState, up: UP): boolean {
   const tags = state.currentUpTags[String(up.mid)] ?? [];
@@ -111,8 +114,8 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     return;
   }
 
-  container.innerHTML = "";
   if (state.currentUpList.length === 0) {
+    container.innerHTML = "";
     const item = document.createElement("div");
     item.className = "list-item";
     item.textContent = "暂无关注UP";
@@ -121,36 +124,77 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
   }
 
   const list = filterUpList(state);
-  for (const up of list) {
-    const item = document.createElement("div");
-    item.className = "up-item";
-    item.dataset.mid = String(up.mid);
+  
+  // 如果虚拟列表实例不存在，创建一个新的
+  if (!virtualListInstance) {
+    virtualListInstance = new VirtualList<UP>({
+      container,
+      itemHeight: 80, // 估计的 UP 项高度
+      estimatedItemHeight: 80,
+      renderItem: (up, index) => {
+        const item = document.createElement("div");
+        item.className = "up-item";
+        item.dataset.mid = String(up.mid);
 
-    const avatarLink = document.createElement("a");
-    avatarLink.href = `https://space.bilibili.com/${up.mid}`;
-    avatarLink.target = "_blank";
-    avatarLink.rel = "noreferrer";
+        const avatarLink = document.createElement("a");
+        avatarLink.href = `https://space.bilibili.com/${up.mid}`;
+        avatarLink.target = "_blank";
+        avatarLink.rel = "noreferrer";
 
-    const avatar = document.createElement("img");
-    avatar.className = "up-avatar";
-    avatar.src = up.face || "";
-    avatar.alt = up.name;
-    avatarLink.appendChild(avatar);
+        const avatar = document.createElement("img");
+        avatar.className = "up-avatar";
+        avatar.src = up.face || "";
+        avatar.alt = up.name;
+        avatarLink.appendChild(avatar);
 
-    const info = document.createElement("div");
-    info.className = "up-info";
+        const info = document.createElement("div");
+        info.className = "up-info";
 
-    const name = document.createElement("a");
-    name.className = "up-name";
-    name.href = `https://space.bilibili.com/${up.mid}`;
-    name.target = "_blank";
-    name.rel = "noreferrer";
-    name.textContent = up.name;
+        const name = document.createElement("a");
+        name.className = "up-name";
+        name.href = `https://space.bilibili.com/${up.mid}`;
+        name.target = "_blank";
+        name.rel = "noreferrer";
+        name.textContent = up.name;
 
-    info.appendChild(name);
-    info.appendChild(await buildTagContainer(state, up.mid, rerender));
-    item.appendChild(avatarLink);
-    item.appendChild(info);
-    container.appendChild(item);
+        info.appendChild(name);
+        // 使用缓存的数据
+        const cachedData = state.upDataCache[up.mid];
+        if (cachedData) {
+          const tagsContainer = document.createElement("div");
+          tagsContainer.className = "up-tags";
+          setupUpTagDropZone(tagsContainer, up.mid, state, rerender);
+          
+          if (cachedData.manualTags.length === 0 && cachedData.autoTags.length === 0) {
+            tagsContainer.textContent = "暂无分类";
+          } else {
+            for (const tag of cachedData.manualTags) {
+              tagsContainer.appendChild(renderUpTagPill(tag, up.mid, state, rerender));
+            }
+            if (cachedData.manualTags.length > 0 && cachedData.autoTags.length > 0) {
+              const separator = document.createElement("span");
+              separator.className = "tag-separator";
+              separator.textContent = "|";
+              separator.style.margin = "0 12px";
+              separator.style.opacity = "0.5";
+              separator.style.fontSize = "16px";
+              separator.style.height = "20px";
+              separator.style.display = "inline-block";
+              tagsContainer.appendChild(separator);
+            }
+            for (const autoTag of cachedData.autoTags) {
+              tagsContainer.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
+            }
+          }
+          info.appendChild(tagsContainer);
+        }
+        item.appendChild(avatarLink);
+        item.appendChild(info);
+        return item;
+      }
+    });
   }
+  
+  // 更新虚拟列表的数据
+  virtualListInstance.setItems(list);
 }

@@ -1,7 +1,6 @@
 import {
   addTagToLibrary,
   addTagToUPManualTags,
-  getTagLibrary,
   removeTagFromUPManualTags,
   setValue,
   type AppTag as Tag,
@@ -20,8 +19,8 @@ export async function getAutoTagsForUp(
 ): Promise<{ tag: string; count: number }[]> {
   const autoTags = state.upTagCache[String(mid)]?.tags ?? [];
   const manualTagSet = new Set(manualTags);
-  const tagLibrary = await getTagLibrary();
-  const tagLibraryMap = new Map(Object.values(tagLibrary).map((tag) => [tag.id, tag]));
+  // 使用缓存的 tagLibrary，避免重复查询数据库
+  const tagLibraryMap = new Map(Object.values(state.tagLibrary).map((tag) => [tag.id, tag]));
 
   return autoTags
     .map((tag) => {
@@ -130,9 +129,8 @@ export function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
 }
 
 
-async function resolveTagByName(tag: string): Promise<Tag | undefined> {
-  const tagLibrary = await getTagLibrary();
-  return Object.values(tagLibrary).find((entry) => entry.name === tag);
+function resolveTagByName(state: StatsState, tag: string): { id: string; name: string; editable?: boolean } | undefined {
+  return Object.values(state.tagLibrary).find((entry) => entry.name === tag);
 }
 
 export async function addTagToUp(
@@ -156,6 +154,12 @@ export async function addTagToUp(
   const next = [...existing, nextTag];
   state.upManualTagsMap = { ...state.upManualTagsMap, [key]: next };
   state.currentUpTags[key] = [...new Set([...(state.upAutoTags[key] || []), ...next])];
+  
+  // 更新缓存
+  if (state.upDataCache[mid]) {
+    state.upDataCache[mid].manualTags = next;
+  }
+  
   await addTagToUPManualTags(mid, tagObj.id);
   onChanged();
 }
@@ -176,7 +180,12 @@ export async function removeTagFromUp(
   state.upManualTagsMap = { ...state.upManualTagsMap, [key]: next };
   state.currentUpTags[key] = [...new Set([...(state.upAutoTags[key] || []), ...next])];
 
-  const tagObj = await resolveTagByName(tag);
+  // 更新缓存
+  if (state.upDataCache[mid]) {
+    state.upDataCache[mid].manualTags = next;
+  }
+
+  const tagObj = resolveTagByName(state, tag);
   if (tagObj) {
     await removeTagFromUPManualTags(mid, tagObj.id);
   }
