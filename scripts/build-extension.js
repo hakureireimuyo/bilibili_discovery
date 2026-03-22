@@ -17,7 +17,7 @@ function copyStaticAssets() {
 }
 
 function copyCompiledCode() {
-  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui"];
+  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui", "utls"];
   for (const dir of runtimeDirs) {
     cpSync(join(compiledRoot, dir), join(extensionRoot, dir), { recursive: true });
   }
@@ -41,7 +41,8 @@ function patchHtmlEntryScripts() {
     join(extensionRoot, "ui", "popup", "popup.html"),
     join(extensionRoot, "ui", "options", "options.html"),
     join(extensionRoot, "ui", "stats", "stats.html"),
-    join(extensionRoot, "ui", "watch-stats", "watch-stats.html")
+    join(extensionRoot, "ui", "watch-stats", "watch-stats.html"),
+    join(extensionRoot, "ui", "image-compress", "image-compress.html")
   ];
 
   for (const file of htmlFiles) {

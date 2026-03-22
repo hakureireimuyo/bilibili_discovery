@@ -202,19 +202,26 @@ export class VideoRepository implements IVideoRepository {
 
   /**
    * 更新视频封面缓存
+   * @param videoId 视频ID
+   * @param platform 平台
+   * @param picture 图片数据（base64）
+   * @param url 图片URL（可选，用于判断是否为同一图片）
    */
   async updateVideoPicture(
     videoId: string,
     platform: Platform,
-    picture: string
+    picture: string,
+    url?: string
   ): Promise<void> {
     const video = await this.getVideo(videoId, platform);
     if (!video) {
       throw new Error(`Video not found: ${videoId}`);
     }
 
-    // 如果完全相同，跳过
-    if (video.picture === picture) {
+    // 如果提供了 URL，通过 URL 判断是否为同一图片
+    // 只有当 URL 相同且 picture 已存在时才跳过
+    if (url && video.coverUrl === url && video.picture) {
+      console.log(`[VideoRepository] Picture already cached for ${videoId}`);
       return;
     }
 
