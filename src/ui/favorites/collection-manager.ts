@@ -183,7 +183,7 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
       console.log('[Favorites] All videos result:', result);
 
       state.aggregatedVideos = result.videos || [];
-      state.filteredVideos = [...state.aggregatedVideos];
+      state.filteredVideos = state.aggregatedVideos;
       state.total = result.total || 0;
 
       console.log('[Favorites] Loaded all videos:', state.aggregatedVideos.length, 'total:', state.total);
@@ -207,7 +207,7 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
     console.log('[Favorites] Videos result:', result);
 
     state.aggregatedVideos = result.videos || [];
-    state.filteredVideos = [...state.aggregatedVideos];
+    state.filteredVideos = state.aggregatedVideos;
     state.total = result.total || 0;
 
     console.log('[Favorites] Loaded videos:', state.aggregatedVideos.length, 'total:', state.total);

@@ -197,7 +197,7 @@ export function clearFilters(state: FavoritesState): void {
   const searchInput = document.getElementById('searchInput') as HTMLInputElement | null;
   if (searchInput) searchInput.value = '';
 
-  state.filteredVideos = [...state.aggregatedVideos];
+  state.filteredVideos = state.aggregatedVideos;
   state.currentPage = 0;
 }
 
