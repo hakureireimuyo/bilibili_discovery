@@ -49,6 +49,13 @@ export type {
   VideoHotness
 } from './video.js';
 
+// Image 类型
+export type {
+  Image
+} from './image.js';
+
+export { ImagePurpose } from './image.js';
+
 // Behavior 类型
 export type {
   WatchEvent,

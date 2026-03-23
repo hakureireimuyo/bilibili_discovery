@@ -1,17 +1,18 @@
 /**
  * CollectionRepository 实现
- * 实现收藏夹相关的数据库操作
+ * 职责：管理收藏夹及其收藏项的所有操作
+ * 包括收藏夹的CRUD以及收藏项的添加/移除/删除，并自动维护计数器等信息
  */
 
-import { ICollectionRepository } from '../interfaces/collection/collection-repository.interface.js';
-import { Collection } from '../types/collection.js';
-import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
+// 接口已移除，直接实现功能
+import { Collection, CollectionItem } from '../types/collection.js';
+import { Platform } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CollectionRepository 实现类
  */
-export class CollectionRepository implements ICollectionRepository {
+export class CollectionRepository {
   /**
    * 创建收藏夹
    */
@@ -81,107 +82,23 @@ export class CollectionRepository implements ICollectionRepository {
   }
 
   /**
-   * 删除收藏夹
+   * 删除收藏夹及其所有收藏项
    */
   async deleteCollection(collectionId: string): Promise<void> {
-    await DBUtils.delete(STORE_NAMES.COLLECTIONS, collectionId);
-  }
-
-  /**
-   * 搜索收藏夹
-   */
-  async searchCollections(platform: Platform, keyword: string): Promise<Collection[]> {
-    const allCollections = await this.getAllCollections(platform);
-    const lowerKeyword = keyword.toLowerCase();
-
-    return allCollections.filter(collection =>
-      collection.name.toLowerCase().includes(lowerKeyword)
+    // 先删除收藏夹中的所有收藏项
+    const items = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
     );
-  }
-
-  /**
-   * 获取收藏夹统计信息
-   */
-  async getCollectionStats(collectionId: string): Promise<Collection | null> {
-    // TODO: 实现统计计算逻辑
-    return null;
-  }
-
-  /**
-   * 增加收藏夹的视频数量
-   */
-  async incrementVideoCount(collectionId: string, count: number = 1): Promise<void> {
-    try {
-      const collection = await this.getCollection(collectionId);
-      if (!collection) {
-        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
-        return;
-      }
-
-      await this.updateCollection(collectionId, {
-        videoCount: (collection.videoCount || 0) + count
-      });
-    } catch (error) {
-      console.error('[CollectionRepository] Error incrementing video count:', error);
+    
+    if (items.length > 0) {
+      const itemIds = items.map(item => item.itemId);
+      await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, itemIds);
     }
-  }
-
-  /**
-   * 减少收藏夹的视频数量
-   */
-  async decrementVideoCount(collectionId: string, count: number = 1): Promise<void> {
-    try {
-      const collection = await this.getCollection(collectionId);
-      if (!collection) {
-        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
-        return;
-      }
-
-      const newCount = Math.max(0, (collection.videoCount || 0) - count);
-      await this.updateCollection(collectionId, {
-        videoCount: newCount
-      });
-    } catch (error) {
-      console.error('[CollectionRepository] Error decrementing video count:', error);
-    }
-  }
-
-  /**
-   * 重置收藏夹的统计信息
-   */
-  async resetCollectionStats(collectionId: string): Promise<void> {
-    try {
-      await this.updateCollection(collectionId, {
-        videoCount: 0,
-        totalWatchTime: 0,
-        totalWatchCount: 0,
-        lastAddedAt: undefined
-      });
-    } catch (error) {
-      console.error('[CollectionRepository] Error resetting collection stats:', error);
-    }
-  }
-
-  /**
-   * 更新收藏夹的最后添加时间
-   */
-  async updateLastAddedAt(collectionId: string, addedAt: number): Promise<void> {
-    try {
-      const collection = await this.getCollection(collectionId);
-      if (!collection) {
-        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
-        return;
-      }
-
-      // 只有当新的添加时间比现有的时间更晚时才更新
-      if (!collection.lastAddedAt || addedAt > collection.lastAddedAt) {
-        await this.updateCollection(collectionId, {
-          lastAddedAt: addedAt
-        });
-      }
-    } catch (error) {
-      console.error('[CollectionRepository] Error updating last added time:', error);
-    }
+    
+    // 再删除收藏夹本身
+    await DBUtils.delete(STORE_NAMES.COLLECTIONS, collectionId);
   }
 
   /**
@@ -199,5 +116,281 @@ export class CollectionRepository implements ICollectionRepository {
       collection.collectionId !== excludeId &&
       collection.name.toLowerCase() === lowerName
     );
+  }
+
+  /**
+   * 添加收藏项到收藏夹
+   * 自动更新收藏夹的videoCount和lastAddedAt
+   */
+  async addItemToCollection(
+    collectionId: string,
+    item: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>
+  ): Promise<string> {
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 检查视频是否已在收藏夹中
+    const existingItems = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+    
+    const existingItem = existingItems.find(i => i.videoId === item.videoId);
+    if (existingItem) {
+      throw new Error(`Video already exists in collection: ${item.videoId}`);
+    }
+
+    // 创建收藏项
+    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const addedAt = Date.now();
+    
+    const newItem: CollectionItem = {
+      itemId,
+      collectionId,
+      videoId: item.videoId,
+      addedAt,
+      note: item.note,
+      order: item.order
+    };
+
+    await DBUtils.add(STORE_NAMES.COLLECTION_ITEMS, newItem);
+
+    // 更新收藏夹的计数器和最后添加时间
+    await this.updateCollection(collectionId, {
+      videoCount: (collection.videoCount || 0) + 1,
+      lastAddedAt: addedAt
+    });
+
+    return itemId;
+  }
+
+  /**
+   * 批量添加收藏项到收藏夹
+   * 自动更新收藏夹的videoCount和lastAddedAt
+   */
+  async addItemsToCollection(
+    collectionId: string,
+    items: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>[]
+  ): Promise<string[]> {
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 获取收藏夹中现有的收藏项
+    const existingItems = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+    
+    const existingVideoIds = new Set(existingItems.map(i => i.videoId));
+    const addedAt = Date.now();
+    const itemIds: string[] = [];
+
+    // 过滤掉已存在的视频
+    const newItems = items.filter(item => !existingVideoIds.has(item.videoId));
+
+    // 批量创建收藏项
+    const itemsToAdd: CollectionItem[] = newItems.map(item => {
+      const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      itemIds.push(itemId);
+      
+      return {
+        itemId,
+        collectionId,
+        videoId: item.videoId,
+        addedAt,
+        note: item.note,
+        order: item.order
+      };
+    });
+
+    if (itemsToAdd.length > 0) {
+      await DBUtils.addBatch(STORE_NAMES.COLLECTION_ITEMS, itemsToAdd);
+
+      // 更新收藏夹的计数器和最后添加时间
+      await this.updateCollection(collectionId, {
+        videoCount: (collection.videoCount || 0) + itemsToAdd.length,
+        lastAddedAt: addedAt
+      });
+    }
+
+    return itemIds;
+  }
+
+  /**
+   * 从收藏夹中移除收藏项
+   * 自动更新收藏夹的videoCount
+   */
+  async removeItemFromCollection(
+    collectionId: string,
+    itemId: string
+  ): Promise<void> {
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 检查收藏项是否存在
+    const item = await DBUtils.get<CollectionItem>(STORE_NAMES.COLLECTION_ITEMS, itemId);
+    if (!item) {
+      throw new Error(`CollectionItem not found: ${itemId}`);
+    }
+
+    if (item.collectionId !== collectionId) {
+      throw new Error(`Item does not belong to collection: ${collectionId}`);
+    }
+
+    // 删除收藏项
+    await DBUtils.delete(STORE_NAMES.COLLECTION_ITEMS, itemId);
+
+    // 更新收藏夹的计数器
+    const newCount = Math.max(0, (collection.videoCount || 0) - 1);
+    await this.updateCollection(collectionId, {
+      videoCount: newCount
+    });
+  }
+
+  /**
+   * 批量从收藏夹中移除收藏项
+   * 自动更新收藏夹的videoCount
+   */
+  async removeItemsFromCollection(
+    collectionId: string,
+    itemIds: string[]
+  ): Promise<void> {
+    if (!itemIds.length) return;
+
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 获取所有要删除的收藏项
+    const items = await Promise.all(
+      itemIds.map(id => DBUtils.get<CollectionItem>(STORE_NAMES.COLLECTION_ITEMS, id))
+    );
+
+    // 过滤掉不存在的项和不属于该收藏夹的项
+    const validItems = items.filter(
+      item => item && item.collectionId === collectionId
+    ) as CollectionItem[];
+
+    if (validItems.length === 0) {
+      return;
+    }
+
+    // 批量删除收藏项
+    const validItemIds = validItems.map(item => item.itemId);
+    await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, validItemIds);
+
+    // 更新收藏夹的计数器
+    const newCount = Math.max(0, (collection.videoCount || 0) - validItems.length);
+    await this.updateCollection(collectionId, {
+      videoCount: newCount
+    });
+  }
+
+  /**
+   * 从收藏夹中删除视频（通过videoId）
+   * 自动更新收藏夹的videoCount
+   */
+  async removeVideoFromCollection(
+    collectionId: string,
+    videoId: string
+  ): Promise<void> {
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 查找要删除的收藏项
+    const items = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+
+    const itemToDelete = items.find(item => item.videoId === videoId);
+    if (!itemToDelete) {
+      throw new Error(`Video not found in collection: ${videoId}`);
+    }
+
+    // 删除收藏项
+    await DBUtils.delete(STORE_NAMES.COLLECTION_ITEMS, itemToDelete.itemId);
+
+    // 更新收藏夹的计数器
+    const newCount = Math.max(0, (collection.videoCount || 0) - 1);
+    await this.updateCollection(collectionId, {
+      videoCount: newCount
+    });
+  }
+
+  /**
+   * 获取收藏夹中的所有收藏项
+   */
+  async getCollectionItems(collectionId: string): Promise<CollectionItem[]> {
+    return DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+  }
+
+  /**
+   * 检查视频是否已在收藏夹中
+   */
+  async hasVideoInCollection(
+    collectionId: string,
+    videoId: string
+  ): Promise<boolean> {
+    const items = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+    
+    return items.some(item => item.videoId === videoId);
+  }
+
+  /**
+   * 清空收藏夹（删除所有收藏项）
+   * 自动更新收藏夹的videoCount
+   */
+  async clearCollection(collectionId: string): Promise<void> {
+    // 检查收藏夹是否存在
+    const collection = await this.getCollection(collectionId);
+    if (!collection) {
+      throw new Error(`Collection not found: ${collectionId}`);
+    }
+
+    // 获取所有收藏项
+    const items = await DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+
+    if (items.length === 0) {
+      return;
+    }
+
+    // 批量删除收藏项
+    const itemIds = items.map(item => item.itemId);
+    await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, itemIds);
+
+    // 更新收藏夹的计数器
+    await this.updateCollection(collectionId, {
+      videoCount: 0
+    });
   }
 }

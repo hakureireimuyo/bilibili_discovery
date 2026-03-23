@@ -44,11 +44,6 @@ export interface Collection {
    */
   lastUpdate: Timestamp;
   /**
-   * 封面图片
-   * 可以使用第一个视频的封面
-   */
-  coverUrl?: string;
-  /**
    * 是否公开
    */
   isPublic?: boolean;
@@ -76,18 +71,6 @@ export interface Collection {
    * 需要在添加/删除收藏项时自动维护
    */
   videoCount?: number;
-  /**
-   * 总观看时长（秒）
-   * 缓存的收藏夹内所有视频的总观看时长
-   * 需要在添加/删除收藏项时自动维护
-   */
-  totalWatchTime?: number;
-  /**
-   * 总观看次数
-   * 缓存的收藏夹内所有视频的总观看次数
-   * 需要在添加/删除收藏项时自动维护
-   */
-  totalWatchCount?: number;
   /**
    * 最后添加时间
    * 缓存的收藏夹内最后添加视频的时间

@@ -358,4 +358,20 @@ export class DBUtils {
       request.onerror = () => reject(new Error(`Failed to cursor: ${request.error}`));
     });
   }
+static async query<T>(
+  storeName: string,
+  predicate: (value: T) => boolean,
+  limit?: number
+): Promise<T[]> {
+  const results: T[] = [];
+
+  await this.cursor<T>(storeName, (value) => {
+    if (predicate(value)) {
+      results.push(value);
+      if (limit && results.length >= limit) return false;
+    }
+  });
+
+  return results;
+}
 }

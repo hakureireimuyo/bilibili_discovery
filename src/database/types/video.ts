@@ -57,10 +57,7 @@ export interface Video {
    * 存储图片信息（base64格式），不存储URL
    */
   picture?: string;
-  /**
-   * 视频URL
-   */
-  videoUrl?: string;
+
   /**
    * 是否失效
    * 标识视频是否已失效（如被删除、下架等）
@@ -95,10 +92,6 @@ export interface VideoStats {
    * 观看进度超过90%的次数
    */
   completeWatchCount: number;
-  /**
-   * 互动次数
-   */
-  interactionCount: number;
   /**
    * 最后观看时间
    */

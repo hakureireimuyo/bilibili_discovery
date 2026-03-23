@@ -1,5 +1,5 @@
 import { getValue, loadUPList, type ClassifyStatus, type InterestProfile } from "../../database/implementations/index.js";
-import { getAllCollectionVideos } from "../../database/implementations/collection-data-access.impl.js";
+import { getAllCollectionVideos } from "../../database/implementations/collection-facade.impl.js";
 import { armProgressTimeout, bindProgressListener, hideProgress, showProgress, updateProgress } from "./popup-progress.js";
 import { armSyncProgressTimeout, bindSyncProgressListener, hideSyncProgress, showSyncProgress, updateSyncProgress } from "./popup-sync-progress.js";
 import { hasChromeRuntime, navigateCurrentTab, openExtensionPage, sendMessage } from "./popup-runtime.js";

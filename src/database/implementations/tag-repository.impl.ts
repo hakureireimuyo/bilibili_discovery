@@ -1,49 +1,237 @@
 /**
- * TagRepository 实现
- * 实现标签相关的数据库操作
+ * TagRepository 实现（最终重构版）
  */
 
-import { ITagRepository } from '../interfaces/semantic/tag-repository.interface.js';
+// 接口已移除，直接实现功能
 import { Tag, TagStats } from '../types/semantic.js';
 import { TagSource, PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
-/**
- * TagRepository 实现类
- */
-export class TagRepository implements ITagRepository {
+export class TagRepository {
+
   /**
-   * 创建标签
+   * 名称规范化
+   */
+  private normalize(name: string): string {
+    return name.trim().toLowerCase();
+  }
+
+  /**
+   * 创建标签（单个）
    */
   async createTag(tag: Omit<Tag, 'tagId'>): Promise<string> {
-    const tagId = `tag_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const name = this.normalize(tag.name);
+
+    const existing = await DBUtils.getOneByIndex<Tag>(
+      STORE_NAMES.TAGS,
+      'name',
+      name
+    );
+
+    if (existing) return existing.tagId;
+
     const newTag: Tag = {
-      tagId,
-      ...tag
+      tagId: crypto.randomUUID(),
+      ...tag,
+      name
     };
-    await DBUtils.add(STORE_NAMES.TAGS, newTag);
-    return tagId;
+
+    try {
+      await DBUtils.add(STORE_NAMES.TAGS, newTag);
+      return newTag.tagId;
+    } catch (err: any) {
+      if (err.name === 'ConstraintError') {
+        const existing = await DBUtils.getOneByIndex<Tag>(
+          STORE_NAMES.TAGS,
+          'name',
+          name
+        );
+        if (existing) return existing.tagId;
+      }
+      throw err;
+    }
   }
 
   /**
    * 使用指定ID创建标签
    */
   async createTagWithId(tag: Tag): Promise<void> {
-    await DBUtils.add(STORE_NAMES.TAGS, tag);
+    const name = this.normalize(tag.name);
+
+    const existing = await DBUtils.getOneByIndex<Tag>(
+      STORE_NAMES.TAGS,
+      'name',
+      name
+    );
+
+    if (existing) return;
+
+    await DBUtils.add(STORE_NAMES.TAGS, {
+      ...tag,
+      name
+    });
   }
 
   /**
-   * 批量创建标签
+   * 批量创建标签（自适应策略）
    */
   async createTags(tags: Omit<Tag, 'tagId'>[]): Promise<string[]> {
-    const tagIds: string[] = [];
-    const newTags: Tag[] = tags.map(tag => {
-      const tagId = `tag_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      tagIds.push(tagId);
-      return { tagId, ...tag };
-    });
-    await DBUtils.addBatch(STORE_NAMES.TAGS, newTags);
-    return tagIds;
+    if (tags.length < 100) {
+      return this.createTagsByIndex(tags);
+    } else {
+      return this.createTagsByCursor(tags);
+    }
+  }
+
+  /**
+   * 小批量：index 查询版本
+   */
+  private async createTagsByIndex(tags: Omit<Tag, 'tagId'>[]): Promise<string[]> {
+    const resultIds: string[] = [];
+
+    for (const tag of tags) {
+      const name = this.normalize(tag.name);
+
+      const existing = await DBUtils.getOneByIndex<Tag>(
+        STORE_NAMES.TAGS,
+        'name',
+        name
+      );
+
+      if (existing) {
+        resultIds.push(existing.tagId);
+      } else {
+        const tagId = crypto.randomUUID();
+
+        try {
+          await DBUtils.add(STORE_NAMES.TAGS, {
+            tagId,
+            ...tag,
+            name
+          });
+          resultIds.push(tagId);
+        } catch (err: any) {
+          if (err.name === 'ConstraintError') {
+            const existing = await DBUtils.getOneByIndex<Tag>(
+              STORE_NAMES.TAGS,
+              'name',
+              name
+            );
+            if (existing) resultIds.push(existing.tagId);
+          } else {
+            throw err;
+          }
+        }
+      }
+    }
+
+    return resultIds;
+  }
+
+  /**
+   * 大批量：cursor 优化版本
+   */
+  private async createTagsByCursor(tags: Omit<Tag, 'tagId'>[]): Promise<string[]> {
+    const resultIds: string[] = [];
+
+    // 1️⃣ 标准化 + 去重
+    const normalizedMap = new Map<string, Omit<Tag, 'tagId'>>();
+
+    for (const tag of tags) {
+      const name = this.normalize(tag.name);
+      if (!normalizedMap.has(name)) {
+        normalizedMap.set(name, { ...tag, name });
+      }
+    }
+
+    const targetNames = new Set(normalizedMap.keys());
+
+    // 2️⃣ cursor 扫描 index
+    const existingMap = new Map<string, Tag>();
+
+    await DBUtils.cursor<Tag>(
+      STORE_NAMES.TAGS,
+      (value) => {
+        const name = value.name;
+
+        if (targetNames.has(name)) {
+          existingMap.set(name, value);
+
+          if (existingMap.size === targetNames.size) {
+            return false;
+          }
+        }
+      },
+      'name'
+    );
+
+    // 3️⃣ 构建新增数据
+    const newTags: Tag[] = [];
+
+    for (const [name, tag] of normalizedMap.entries()) {
+      const existing = existingMap.get(name);
+
+      if (existing) {
+        resultIds.push(existing.tagId);
+      } else {
+        const tagId = crypto.randomUUID();
+
+        newTags.push({
+          tagId,
+          ...tag
+        });
+
+        resultIds.push(tagId);
+      }
+    }
+
+    // 4️⃣ 批量写入
+    if (newTags.length > 0) {
+      try {
+        await DBUtils.addBatch(STORE_NAMES.TAGS, newTags);
+      } catch (err: any) {
+        if (err.name === 'ConstraintError') {
+          for (const tag of newTags) {
+            try {
+              await DBUtils.add(STORE_NAMES.TAGS, tag);
+            } catch {
+              // ignore
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return resultIds;
+  }
+
+  /**
+   * 批量创建（带ID）
+   */
+  async createTagsWithIds(tags: Tag[]): Promise<string[]> {
+    const createdIds: string[] = [];
+
+    for (const tag of tags) {
+      const name = this.normalize(tag.name);
+
+      const existing = await DBUtils.getOneByIndex<Tag>(
+        STORE_NAMES.TAGS,
+        'name',
+        name
+      );
+
+      if (!existing) {
+        await DBUtils.add(STORE_NAMES.TAGS, {
+          ...tag,
+          name
+        });
+        createdIds.push(tag.tagId);
+      }
+    }
+
+    return createdIds;
   }
 
   /**
@@ -61,24 +249,46 @@ export class TagRepository implements ITagRepository {
   }
 
   /**
-   * 搜索标签
+   * 通过名称查找
    */
-  async searchTags(keyword: string, pagination: PaginationParams): Promise<PaginationResult<Tag>> {
-    const allTags = await DBUtils.getAll<Tag>(STORE_NAMES.TAGS);
-    const filtered = allTags.filter(tag => 
-      tag.name.toLowerCase().includes(keyword.toLowerCase())
+  async findTagByName(name: string): Promise<Tag | null> {
+    return DBUtils.getOneByIndex<Tag>(
+      STORE_NAMES.TAGS,
+      'name',
+      this.normalize(name)
+    );
+  }
+
+  /**
+   * 搜索标签（前缀匹配）
+   */
+  async searchTags(
+    keyword: string,
+    pagination: PaginationParams
+  ): Promise<PaginationResult<Tag>> {
+
+    const normalized = this.normalize(keyword);
+
+    const range = IDBKeyRange.bound(
+      normalized,
+      normalized + '\uffff'
+    );
+
+    const items = await DBUtils.getByIndexRange<Tag>(
+      STORE_NAMES.TAGS,
+      'name',
+      range
     );
 
     const start = pagination.page * pagination.pageSize;
     const end = start + pagination.pageSize;
-    const items = filtered.slice(start, end);
 
     return {
-      items,
-      total: filtered.length,
+      items: items.slice(start, end),
+      total: items.length,
       page: pagination.page,
       pageSize: pagination.pageSize,
-      totalPages: Math.ceil(filtered.length / pagination.pageSize)
+      totalPages: Math.ceil(items.length / pagination.pageSize)
     };
   }
 
@@ -86,35 +296,51 @@ export class TagRepository implements ITagRepository {
    * 获取所有标签
    */
   async getAllTags(source?: TagSource): Promise<Tag[]> {
-    const allTags = await DBUtils.getAll<Tag>(STORE_NAMES.TAGS);
     if (source !== undefined) {
-      return allTags.filter(tag => tag.source === source);
+      return DBUtils.getByIndex<Tag>(
+        STORE_NAMES.TAGS,
+        'source',
+        source
+      );
     }
-    return allTags;
-  }
-
-  /**
-   * 通过名称查找标签
-   */
-  async findTagByName(name: string): Promise<Tag | null> {
-    const normalized = name.trim().toLowerCase();
-    const allTags = await DBUtils.getAll<Tag>(STORE_NAMES.TAGS);
-    return allTags.find(tag => tag.name.trim().toLowerCase() === normalized) ?? null;
+    return DBUtils.getAll<Tag>(STORE_NAMES.TAGS);
   }
 
   /**
    * 更新标签
    */
-  async updateTag(tagId: string, updates: Partial<Omit<Tag, 'tagId' | 'createdAt'>>): Promise<void> {
+  async updateTag(
+    tagId: string,
+    updates: Partial<Omit<Tag, 'tagId' | 'createdAt'>>
+  ): Promise<void> {
+
     const existing = await this.getTag(tagId);
-    if (!existing) {
-      throw new Error(`Tag not found: ${tagId}`);
+    if (!existing) throw new Error(`Tag not found: ${tagId}`);
+
+    if (existing.source === 'system') {
+      throw new Error('System tag cannot be modified');
     }
-    const updated: Tag = {
+
+    if (updates.name) {
+      const name = this.normalize(updates.name);
+
+      const other = await DBUtils.getOneByIndex<Tag>(
+        STORE_NAMES.TAGS,
+        'name',
+        name
+      );
+
+      if (other && other.tagId !== tagId) {
+        throw new Error('Tag name already exists');
+      }
+
+      updates.name = name;
+    }
+
+    await DBUtils.put(STORE_NAMES.TAGS, {
       ...existing,
       ...updates
-    };
-    await DBUtils.put(STORE_NAMES.TAGS, updated);
+    });
   }
 
   /**
@@ -125,27 +351,24 @@ export class TagRepository implements ITagRepository {
   }
 
   /**
-   * 获取标签统计信息
+   * 标签统计（占位）
    */
   async getTagStats(tagId: string): Promise<TagStats | null> {
-    // TODO: 实现统计计算逻辑
     return null;
   }
 
   /**
-   * 批量获取标签统计信息
+   * 批量统计（占位）
    */
   async getTagsStats(tagIds: string[]): Promise<TagStats[]> {
-    // TODO: 实现批量统计计算逻辑
     return [];
   }
 
   /**
-   * 获取热门标签
+   * 热门标签（降级实现）
    */
   async getHotTags(limit: number = 100, source?: TagSource): Promise<Tag[]> {
-    const allTags = await this.getAllTags(source);
-    // TODO: 实现热门标签计算逻辑
-    return allTags.slice(0, limit);
+    const tags = await this.getAllTags(source);
+    return tags.slice(0, limit);
   }
 }

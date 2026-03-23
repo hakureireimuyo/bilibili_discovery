@@ -1,5 +1,5 @@
 import type { Collection } from "../../database/types/collection.js";
-import type { AggregatedCollectionVideo } from "../../database/implementations/collection-data-access.impl.js";
+import type { AggregatedCollectionVideo } from "../../database/implementations/collection-facade.impl.js";
 
 // Chrome消息响应类型
 export interface ChromeMessageResponse<T = any> {

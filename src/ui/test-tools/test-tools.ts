@@ -2,15 +2,21 @@ import { VideoRepository } from "../../database/implementations/video-repository
 import { CollectionRepository } from "../../database/implementations/collection-repository.impl.js";
 import { CollectionItemRepository } from "../../database/implementations/collection-item-repository.impl.js";
 import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
+import { ImageRepository } from "../../database/implementations/image-repository.impl.js";
+import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
 import { Platform } from "../../database/types/base.js";
 import { getVideoTagsDetail } from "../../api/bili-api.js";
 import { TagSource } from "../../database/types/base.js";
+import { ImagePurpose } from "../../database/types/image.js";
+import { dataUrlToBlob } from "../../utls/image-utils.js";
 
 // 状态管理
 let isCompressRunning = false;
 let shouldStopCompress = false;
 let isFetchTagsRunning = false;
 let shouldStopFetchTags = false;
+let isMigrateImagesRunning = false;
+let shouldStopMigrateImages = false;
 
 // DOM 元素
 const platformSelect = document.getElementById("platform") as HTMLSelectElement;
@@ -29,6 +35,13 @@ const tagsPercent = document.getElementById("tags-percent") as HTMLSpanElement;
 const tagsProcessedCount = document.getElementById("tags-processed-count") as HTMLSpanElement;
 const tagsTotalCount = document.getElementById("tags-total-count") as HTMLSpanElement;
 const tagsMessage = document.getElementById("tags-message") as HTMLSpanElement;
+const migrateImagesBtn = document.getElementById("migrate-images-btn") as HTMLButtonElement;
+const migrateType = document.getElementById("migrate-type") as HTMLSelectElement;
+const migrateStatus = document.getElementById("migrate-status") as HTMLSpanElement;
+const migratePercent = document.getElementById("migrate-percent") as HTMLSpanElement;
+const migrateProcessedCount = document.getElementById("migrate-processed-count") as HTMLSpanElement;
+const migrateTotalCount = document.getElementById("migrate-total-count") as HTMLSpanElement;
+const migrateMessage = document.getElementById("migrate-message") as HTMLSpanElement;
 
 /**
  * 设置消息
@@ -56,6 +69,24 @@ function updateCompressProgress(done: number, total: number): void {
 }
 
 /**
+ * 更新图像迁移进度
+ */
+function updateMigrateProgress(done: number, total: number): void {
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  migratePercent.textContent = `${percent}%`;
+  migrateProcessedCount.textContent = String(done);
+  migrateTotalCount.textContent = String(total);
+
+  if (done === total && total > 0) {
+    migrateStatus.textContent = "完成！";
+    setMessage(migrateMessage, "图像迁移任务已完成");
+  } else {
+    migrateStatus.textContent = `处理中... (${done}/${total})`;
+  }
+}
+
+/**
  * 更新标签获取进度
  */
 function updateTagsProgress(done: number, total: number): void {
@@ -77,8 +108,13 @@ function updateTagsProgress(done: number, total: number): void {
  * 开始压缩任务
  */
 async function startCompress(): Promise<void> {
-  if (isCompressRunning) return;
+  console.log("[TestTools] Start compress button clicked");
+  if (isCompressRunning) {
+    console.log("[TestTools] Compression already running, ignoring request");
+    return;
+  }
 
+  console.log("[TestTools] Starting compression task");
   isCompressRunning = true;
   shouldStopCompress = false;
 
@@ -95,10 +131,13 @@ async function startCompress(): Promise<void> {
 
   try {
     const platform = platformSelect.value as Platform;
+    console.log(`[TestTools] Selected platform: ${platform}`);
     const videoRepository = new VideoRepository();
 
     // 开始压缩任务
+    console.log("[TestTools] Calling compressAllVideoPictures");
     await videoRepository.compressAllVideoPictures(platform, (done, total) => {
+      console.log(`[TestTools] Progress update: ${done}/${total}`);
       if (shouldStopCompress) {
         compressStatus.textContent = "已停止";
         setMessage(compressMessage, "压缩任务已停止");
@@ -108,12 +147,14 @@ async function startCompress(): Promise<void> {
     });
 
     if (!shouldStopCompress) {
+      console.log("[TestTools] Compression completed successfully");
       setMessage(compressMessage, "压缩任务已完成");
     }
   } catch (error) {
-    console.error("[Compress] Error:", error);
+    console.error("[TestTools] Compression error:", error);
     setMessage(compressMessage, `错误: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
+    console.log("[TestTools] Cleaning up compression task");
     isCompressRunning = false;
     startCompressBtn.disabled = false;
     stopCompressBtn.disabled = true;
@@ -302,11 +343,209 @@ async function fetchMissingTags(): Promise<void> {
 /**
  * 初始化页面
  */
+/**
+ * 判断字符串是否为有效的base64图像数据
+ */
+function isBase64Image(str: string): boolean {
+  // 检查是否包含base64前缀
+  if (!str.includes("data:image/") || !str.includes("base64,")) {
+    return false;
+  }
+  
+  // 尝试解码base64
+  try {
+    const base64Data = str.split(",")[1];
+    if (!base64Data) return false;
+    
+    // 尝试解码一小部分数据
+    const sample = base64Data.substring(0, 100);
+    atob(sample);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 将图像数据从base64迁移到image表
+ */
+async function migrateImages(): Promise<void> {
+  if (isMigrateImagesRunning || isCompressRunning || isFetchTagsRunning) {
+    setMessage(migrateMessage, "请先停止当前任务");
+    return;
+  }
+
+  isMigrateImagesRunning = true;
+  shouldStopMigrateImages = false;
+
+  // 更新按钮状态
+  migrateImagesBtn.disabled = true;
+
+  // 重置进度显示
+  migratePercent.textContent = "0%";
+  migrateProcessedCount.textContent = "0";
+  migrateTotalCount.textContent = "0";
+  migrateStatus.textContent = "准备中...";
+  setMessage(migrateMessage, "正在扫描数据库...");
+
+  try {
+    const platform = platformSelect.value as Platform;
+    const videoRepository = new VideoRepository();
+    const creatorRepository = new CreatorRepository();
+    const imageRepository = new ImageRepository();
+    
+    // 获取所有视频
+    const allVideos = await videoRepository.getAllVideos();
+    const videosToProcess = allVideos.filter(v => v.platform === platform && !v.isInvalid);
+    
+    // 获取所有创作者
+    const allCreators = await creatorRepository.getAllCreators(platform);
+    
+    let processedCount = 0;
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+    
+    const migrateTypeValue = migrateType.value;
+    
+    // 根据选择的迁移类型确定要处理的内容
+    const processVideos = migrateTypeValue === "both" || migrateTypeValue === "video";
+    const processCreators = migrateTypeValue === "both" || migrateTypeValue === "creator";
+    
+    let totalItems = 0;
+    if (processVideos) totalItems += videosToProcess.length;
+    if (processCreators) totalItems += allCreators.length;
+    
+    setMessage(migrateMessage, `开始迁移图像数据...`);
+    migrateTotalCount.textContent = String(totalItems);
+    
+    // 处理每个视频的封面图片
+    if (processVideos) {
+      setMessage(migrateMessage, `找到 ${videosToProcess.length} 个视频，开始迁移封面图像...`);
+      
+      for (const video of videosToProcess) {
+        if (shouldStopMigrateImages) {
+          migrateStatus.textContent = "已停止";
+          setMessage(migrateMessage, "图像迁移任务已停止");
+          break;
+        }
+        
+        try {
+          // 检查视频是否有封面图片
+          if (video.picture && isBase64Image(video.picture)) {
+            // 将base64转换为blob
+            const blob = await dataUrlToBlob(video.picture);
+            
+            // 创建新的图像记录
+            const newImage = await imageRepository.createImage({
+              purpose: ImagePurpose.COVER,
+              data: blob
+            });
+            
+            // 更新视频，将picture字段替换为image ID
+            await videoRepository.upsertVideo({
+              ...video,
+              picture: newImage.id
+            });
+            
+            successCount++;
+            console.log(`[MigrateImages] Successfully migrated image for video ${video.videoId}`);
+          } else {
+            skipCount++;
+            console.log(`[MigrateImages] Skipping video ${video.videoId} - no valid base64 image found`);
+          }
+        } catch (error) {
+          console.error(`[MigrateImages] Error processing video ${video.videoId}:`, error);
+          errorCount++;
+        }
+        
+        processedCount++;
+        updateMigrateProgress(processedCount, totalItems);
+        
+        // 添加延迟，避免请求过于频繁
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    // 处理每个创作者的头像
+    if (processCreators) {
+      if (processVideos) {
+        setMessage(migrateMessage, `视频封面迁移完成，开始迁移创作者头像...`);
+      } else {
+        setMessage(migrateMessage, `找到 ${allCreators.length} 个创作者，开始迁移头像图像...`);
+      }
+      
+      for (const creator of allCreators) {
+        if (shouldStopMigrateImages) {
+          migrateStatus.textContent = "已停止";
+          setMessage(migrateMessage, "图像迁移任务已停止");
+          break;
+        }
+        
+        try {
+          // 检查创作者是否有头像
+          if (creator.avatar && isBase64Image(creator.avatar)) {
+            // 将base64转换为blob
+            const blob = await dataUrlToBlob(creator.avatar);
+            
+            // 创建新的图像记录
+            const newImage = await imageRepository.createImage({
+              purpose: ImagePurpose.AVATAR,
+              data: blob
+            });
+            
+            // 更新创作者，将avatar字段替换为image ID
+            await creatorRepository.upsertCreator({
+              ...creator,
+              avatar: newImage.id
+            });
+            
+            successCount++;
+            console.log(`[MigrateImages] Successfully migrated avatar for creator ${creator.creatorId}`);
+          } else {
+            skipCount++;
+            console.log(`[MigrateImages] Skipping creator ${creator.creatorId} - no valid base64 avatar found`);
+          }
+        } catch (error) {
+          console.error(`[MigrateImages] Error processing creator ${creator.creatorId}:`, error);
+          errorCount++;
+        }
+        
+        processedCount++;
+        updateMigrateProgress(processedCount, totalItems);
+        
+        // 添加延迟，避免请求过于频繁
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    if (!shouldStopMigrateImages) {
+      const typeText = {
+        "both": "视频封面和创作者头像",
+        "video": "视频封面",
+        "creator": "创作者头像"
+      }[migrateTypeValue];
+      
+      setMessage(migrateMessage, `${typeText}迁移完成！成功: ${successCount}, 跳过: ${skipCount}, 失败: ${errorCount}`);
+    }
+  } catch (error) {
+    console.error("[MigrateImages] Error:", error);
+    setMessage(migrateMessage, `错误: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    isMigrateImagesRunning = false;
+    migrateImagesBtn.disabled = false;
+  }
+}
+
+/**
+ * 初始化页面
+ */
 function initPage(): void {
   startCompressBtn.addEventListener("click", startCompress);
   stopCompressBtn.addEventListener("click", stopCompress);
   updateStatsBtn.addEventListener("click", updateCollectionStats);
   fetchMissingTagsBtn.addEventListener("click", fetchMissingTags);
+  migrateImagesBtn.addEventListener("click", migrateImages);
 }
 
 // 页面加载完成后初始化

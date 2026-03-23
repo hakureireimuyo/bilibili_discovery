@@ -1,275 +1,87 @@
 /**
  * CollectionItemRepository 实现
- * 实现收藏项相关的数据库操作
+ * 职责：仅管理收藏项自身数据，不涉及收藏夹的任何操作
+ * 能力边界：仅支持对自己和代表视频的信息获取
  */
 
-import { ICollectionItemRepository } from '../interfaces/collection/collection-item-repository.interface.js';
-import { Collection, CollectionItem } from '../types/collection.js';
-import { PaginationParams, PaginationResult } from '../types/base.js';
+// 接口已移除，直接实现功能
+import { CollectionItem } from '../types/collection.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CollectionItemRepository 实现类
  */
-export class CollectionItemRepository implements ICollectionItemRepository {
-  /**
-   * 向收藏夹添加视频
-   */
-  async addVideoToCollection(
+export class CollectionItemRepository {
+
+  async getItem(itemId: string): Promise<CollectionItem | null> {
+    return DBUtils.get<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      itemId
+    );
+  }
+
+  async getItemByCollectionAndVideo(
     collectionId: string,
-    videoId: string,
-    platform: string,
-    note?: string
-  ): Promise<string> {
-
-    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    const item: CollectionItem = {
-      itemId,
-      collectionId,
-      videoId,
-      addedAt: Date.now(),
-      note,
-      order: Date.now()
-    };
-
-
-    try {
-      await DBUtils.add(STORE_NAMES.COLLECTION_ITEMS, item);
-    } catch (error) {
-      console.error(`[CollectionItemRepository] Error adding item to database:`, error);
-      throw error;
-    }
-
-    return itemId;
-  }
-
-  /**
-   * 批量添加视频到收藏夹
-   */
-  async addVideosToCollection(
-    collectionId: string,
-    videoIds: string[],
-    platform: string
-  ): Promise<string[]> {
-    const itemIds: string[] = [];
-    const items: CollectionItem[] = videoIds.map(videoId => {
-      const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      itemIds.push(itemId);
-      return {
-        itemId,
-        collectionId,
-        videoId,
-        addedAt: Date.now(),
-        order: Date.now()
-      };
-    });
-
-    await DBUtils.addBatch(STORE_NAMES.COLLECTION_ITEMS, items);
-
-    return itemIds;
-  }
-
-  /**
-   * 从收藏夹移除视频
-   */
-  async removeVideoFromCollection(collectionId: string, videoId: string): Promise<void> {
+    videoId: string
+  ): Promise<CollectionItem | null> {
     const items = await DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
       'collectionId',
       collectionId
     );
-
-    const toDelete = items.find(item => item.videoId === videoId);
-    if (toDelete) {
-      await DBUtils.delete(STORE_NAMES.COLLECTION_ITEMS, toDelete.itemId);
-    }
+    return items.find(item => item.videoId === videoId) || null;
   }
 
-  /**
-   * 批量从收藏夹移除视频
-   */
-  async removeVideosFromCollection(collectionId: string, videoIds: string[]): Promise<void> {
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-
-    const toDelete = items
-      .filter(item => videoIds.includes(item.videoId))
-      .map(item => item.itemId);
-
-    if (toDelete.length > 0) {
-      await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, toDelete);
-    }
+  async getVideoId(itemId: string): Promise<string | null> {
+    const item = await this.getItem(itemId);
+    return item?.videoId || null;
   }
 
-  /**
-   * 获取收藏夹的视频列表
-   */
-  async getCollectionVideos(
-    collectionId: string,
-    pagination: PaginationParams
-  ): Promise<PaginationResult<CollectionItem>> {
-    const allItems = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-
-    const sorted = allItems.sort((a, b) => b.addedAt - a.addedAt);
-
-    const start = pagination.page * pagination.pageSize;
-    const end = start + pagination.pageSize;
-    const items = sorted.slice(start, end);
-
-    return {
-      items,
-      total: sorted.length,
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      totalPages: Math.ceil(sorted.length / pagination.pageSize)
-    };
+  async getCollectionId(itemId: string): Promise<string | null> {
+    const item = await this.getItem(itemId);
+    return item?.collectionId || null;
   }
 
-  /**
-   * 检查视频是否在收藏夹中
-   */
-  async isVideoInCollection(collectionId: string, videoId: string): Promise<boolean> {
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-    const isInCollection = items.some(item => item.videoId === videoId);
-    return isInCollection;
+  async getAddedAt(itemId: string): Promise<number | null> {
+    const item = await this.getItem(itemId);
+    return item?.addedAt || null;
   }
 
-  /**
-   * 获取视频所在的收藏夹列表
-   */
-  async getVideoCollections(videoId: string, platform: string): Promise<Collection[]> {
-    // TODO: 需要注入 CollectionRepository 来获取收藏夹信息
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'videoId',
-      videoId
-    );
-
-    // 返回收藏夹ID列表，需要在外部转换为Collection对象
-    const collectionIds = items.map(item => item.collectionId);
-    return [] as Collection[];
+  async getNote(itemId: string): Promise<string | null> {
+    const item = await this.getItem(itemId);
+    return item?.note || null;
   }
 
-  /**
-   * 更新收藏项
-   */
-  async updateCollectionItem(
-    itemId: string,
-    updates: Partial<Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>>
-  ): Promise<void> {
-    const existing = await DBUtils.get<CollectionItem>(STORE_NAMES.COLLECTION_ITEMS, itemId);
-    if (!existing) {
-      throw new Error(`Collection item not found: ${itemId}`);
+  async getOrder(itemId: string): Promise<number | null> {
+    const item = await this.getItem(itemId);
+    return item?.order || null;
+  }
+
+  async updateNote(itemId: string, note: string): Promise<void> {
+    const item = await this.getItem(itemId);
+    if (!item) {
+      throw new Error(`CollectionItem not found: ${itemId}`);
     }
 
     const updated: CollectionItem = {
-      ...existing,
-      ...updates
+      ...item,
+      note
     };
 
     await DBUtils.put(STORE_NAMES.COLLECTION_ITEMS, updated);
   }
 
-  /**
-   * 获取收藏项
-   */
-  async getCollectionItem(itemId: string): Promise<CollectionItem | null> {
-    return DBUtils.get<CollectionItem>(STORE_NAMES.COLLECTION_ITEMS, itemId);
-  }
-
-  /**
-   * 获取收藏项数量
-   */
-  async countCollectionItems(collectionId: string): Promise<number> {
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-    return items.length;
-  }
-
-  /**
-   * 清空收藏夹
-   */
-  async clearCollection(collectionId: string): Promise<void> {
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-
-    const itemIds = items.map(item => item.itemId);
-    if (itemIds.length > 0) {
-      await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, itemIds);
+  async updateOrder(itemId: string, order: number): Promise<void> {
+    const item = await this.getItem(itemId);
+    if (!item) {
+      throw new Error(`CollectionItem not found: ${itemId}`);
     }
-  }
 
-  /**
-   * 重新排序收藏项
-   */
-  async reorderCollectionItems(
-    collectionId: string,
-    itemOrders: Map<string, number>
-  ): Promise<void> {
-    const items = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-
-    const updatedItems = items.map(item => ({
+    const updated: CollectionItem = {
       ...item,
-      order: itemOrders.get(item.itemId) ?? item.order
-    }));
-
-    await DBUtils.putBatch(STORE_NAMES.COLLECTION_ITEMS, updatedItems);
-  }
-
-  /**
-   * 搜索收藏项
-   */
-  async searchCollectionItems(
-    collectionId: string,
-    keyword: string,
-    pagination: PaginationParams
-  ): Promise<PaginationResult<CollectionItem>> {
-    const allItems = await DBUtils.getByIndex<CollectionItem>(
-      STORE_NAMES.COLLECTION_ITEMS,
-      'collectionId',
-      collectionId
-    );
-
-    const lowerKeyword = keyword.toLowerCase();
-    const filtered = allItems.filter(item =>
-      item.note?.toLowerCase().includes(lowerKeyword)
-    );
-
-    const sorted = filtered.sort((a, b) => b.addedAt - a.addedAt);
-
-    const start = pagination.page * pagination.pageSize;
-    const end = start + pagination.pageSize;
-    const items = sorted.slice(start, end);
-
-    return {
-      items,
-      total: sorted.length,
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      totalPages: Math.ceil(sorted.length / pagination.pageSize)
+      order
     };
-  }
 
+    await DBUtils.put(STORE_NAMES.COLLECTION_ITEMS, updated);
+  }
 }

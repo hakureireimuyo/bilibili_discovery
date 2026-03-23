@@ -46,7 +46,7 @@ import { createInterestManager } from "./interest-manager.js";
 import { syncFavoriteVideos, searchFavoriteVideos } from "./favorite-sync/index.js";
 import { CollectionRepository } from "../../database/implementations/collection-repository.impl.js";
 import { Platform, TagSource } from "../../database/types/base.js";
-import { getCollectionVideos, getAllCollectionVideos, getCollectionVideosPaginated, getAllCollectionVideosPaginated, getCollectionTags, getAllCollectionTags } from "../../database/implementations/collection-data-access.impl.js";
+// import { getCollectionVideos, getAllCollectionVideos, getCollectionVideosPaginated, getAllCollectionVideosPaginated, getCollectionTags, getAllCollectionTags } from "../../database/implementations/collection-facade.impl.js";
 import { VideoRepository, CreatorRepository, TagRepository, CollectionItemRepository } from "../../database/implementations/index.js";
 
 declare const chrome: {
@@ -419,126 +419,126 @@ export async function handleMessage(
   }
 
   // 收藏相关消息处理
-  if (message.type === "favorite_action") {
-    const payload = message.payload as { bvid?: string; action?: "add" | "remove"; title?: string };
-    if (!payload?.bvid || !payload?.action) {
-      return { success: false, error: "Invalid favorite action payload" };
-    }
+  // if (message.type === "favorite_action") {
+  //   const payload = message.payload as { bvid?: string; action?: "add" | "remove"; title?: string };
+  //   if (!payload?.bvid || !payload?.action) {
+  //     return { success: false, error: "Invalid favorite action payload" };
+  //   }
     
-    try {
-      if (payload.action === "add") {
-        // 获取视频详细信息
-        const videoDetail = await getVideoDetail(payload.bvid, undefined, { fallbackRequest: proxyApiRequest });
-        if (!videoDetail) {
-          return { success: false, error: "Failed to get video detail" };
-        }
+  //   try {
+  //     if (payload.action === "add") {
+  //       // 获取视频详细信息
+  //       const videoDetail = await getVideoDetail(payload.bvid, undefined, { fallbackRequest: proxyApiRequest });
+  //       if (!videoDetail) {
+  //         return { success: false, error: "Failed to get video detail" };
+  //       }
         
-        // 获取视频标签
-        const videoTags = await getVideoTagsDetail(payload.bvid, { fallbackRequest: proxyApiRequest });
+  //       // 获取视频标签
+  //       const videoTags = await getVideoTagsDetail(payload.bvid, { fallbackRequest: proxyApiRequest });
         
-        // 保存视频信息到数据库
-        const videoRepo = new VideoRepository();
-        const creatorRepo = new CreatorRepository();
-        const tagRepo = new TagRepository();
+  //       // 保存视频信息到数据库
+  //       const videoRepo = new VideoRepository();
+  //       const creatorRepo = new CreatorRepository();
+  //       const tagRepo = new TagRepository();
         
-        // 确保UP主存在
-        const creatorId = videoDetail.owner.mid.toString();
-        let creator = await creatorRepo.getCreator(creatorId, Platform.BILIBILI);
-        if (!creator) {
-          await creatorRepo.upsertCreator({
-            creatorId,
-            platform: Platform.BILIBILI,
-            name: videoDetail.owner.name,
-            avatar: "",
-            avatarUrl: "",
-            description: "",
-            isFollowing: 0,
-            createdAt: Date.now(),
-            followTime: Date.now(),
-            isLogout:0,
-            tagWeights:[]
-          });
-        }
+  //       // 确保UP主存在
+  //       const creatorId = videoDetail.owner.mid.toString();
+  //       let creator = await creatorRepo.getCreator(creatorId, Platform.BILIBILI);
+  //       if (!creator) {
+  //         await creatorRepo.upsertCreator({
+  //           creatorId,
+  //           platform: Platform.BILIBILI,
+  //           name: videoDetail.owner.name,
+  //           avatar: "",
+  //           avatarUrl: "",
+  //           description: "",
+  //           isFollowing: 0,
+  //           createdAt: Date.now(),
+  //           followTime: Date.now(),
+  //           isLogout:0,
+  //           tagWeights:[]
+  //         });
+  //       }
         
-        // 确保标签存在
-        const tagIds: string[] = [];
-        for (const videoTag of videoTags) {
-          const tagId = videoTag.tag_id.toString();
-          let tag = await tagRepo.getTag(tagId);
-          if (!tag) {
-            await tagRepo.createTag({
-              name: videoTag.tag_name,
-              source: TagSource.USER,
-              createdAt: Date.now(),
-            });
-          }
-          tagIds.push(tagId);
-        }
+  //       // 确保标签存在
+  //       const tagIds: string[] = [];
+  //       for (const videoTag of videoTags) {
+  //         const tagId = videoTag.tag_id.toString();
+  //         let tag = await tagRepo.getTag(tagId);
+  //         if (!tag) {
+  //           await tagRepo.createTag({
+  //             name: videoTag.tag_name,
+  //             source: TagSource.USER,
+  //             createdAt: Date.now(),
+  //           });
+  //         }
+  //         tagIds.push(tagId);
+  //       }
         
-        // 保存视频信息
-        await videoRepo.upsertVideo({
-          videoId: payload.bvid,
-          platform: Platform.BILIBILI,
-          creatorId,
-          title: videoDetail.title,
-          description: videoDetail.desc,
-          duration: 0,
-          publishTime: videoDetail.pubdate * 1000,
-          tags: tagIds,
-          createdAt: Date.now(),
-          coverUrl: videoDetail.pic
-        });
+  //       // 保存视频信息
+  //       await videoRepo.upsertVideo({
+  //         videoId: payload.bvid,
+  //         platform: Platform.BILIBILI,
+  //         creatorId,
+  //         title: videoDetail.title,
+  //         description: videoDetail.desc,
+  //         duration: 0,
+  //         publishTime: videoDetail.pubdate * 1000,
+  //         tags: tagIds,
+  //         createdAt: Date.now(),
+  //         coverUrl: videoDetail.pic
+  //       });
         
-        // 添加到收藏夹
-        const collectionRepo = new CollectionRepository();
-        const collectionItemRepo = new CollectionItemRepository();
+  //       // 添加到收藏夹
+  //       const collectionRepo = new CollectionRepository();
+  //       const collectionItemRepo = new CollectionItemRepository();
         
-        let collection = await collectionRepo.getCollection("bilibili_favorites");
-        if (!collection) {
-          const collectionId = await collectionRepo.createCollection({
-            platform: Platform.BILIBILI,
-            name: "B站收藏夹",
-            description: "从B站同步的收藏视频",
-            createdAt: Date.now(),
-            lastUpdate: Date.now()
-          });
-          collection = await collectionRepo.getCollection(collectionId);
-        }
+  //       let collection = await collectionRepo.getCollection("bilibili_favorites");
+  //       if (!collection) {
+  //         const collectionId = await collectionRepo.createCollection({
+  //           platform: Platform.BILIBILI,
+  //           name: "B站收藏夹",
+  //           description: "从B站同步的收藏视频",
+  //           createdAt: Date.now(),
+  //           lastUpdate: Date.now()
+  //         });
+  //         collection = await collectionRepo.getCollection(collectionId);
+  //       }
         
-        if (collection) {
-          const isInCollection = await collectionItemRepo.isVideoInCollection(
-            collection.collectionId,
-            payload.bvid
-          );
+  //       if (collection) {
+  //         const isInCollection = await collectionItemRepo.isVideoInCollection(
+  //           collection.collectionId,
+  //           payload.bvid
+  //         );
           
-          if (!isInCollection) {
-            await collectionItemRepo.addVideoToCollection(
-              collection.collectionId,
-              payload.bvid,
-              Platform.BILIBILI
-            );
-          }
-        }
-      } else if (payload.action === "remove") {
-        // 从收藏夹移除视频
-        const collectionRepo = new CollectionRepository();
-        const collectionItemRepo = new CollectionItemRepository();
+  //         if (!isInCollection) {
+  //           await collectionItemRepo.addVideoToCollection(
+  //             collection.collectionId,
+  //             payload.bvid,
+  //             Platform.BILIBILI
+  //           );
+  //         }
+  //       }
+  //     } else if (payload.action === "remove") {
+  //       // 从收藏夹移除视频
+  //       const collectionRepo = new CollectionRepository();
+  //       const collectionItemRepo = new CollectionItemRepository();
         
-        const collection = await collectionRepo.getCollection("bilibili_favorites");
-        if (collection) {
-          await collectionItemRepo.removeVideoFromCollection(
-            collection.collectionId,
-            payload.bvid
-          );
-        }
-      }
+  //       const collection = await collectionRepo.getCollection("bilibili_favorites");
+  //       if (collection) {
+  //         await collectionItemRepo.removeVideoFromCollection(
+  //           collection.collectionId,
+  //           payload.bvid
+  //         );
+  //       }
+  //     }
       
-      return { success: true };
-    } catch (error) {
-      console.error("[Background] Error handling favorite action:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //     return { success: true };
+  //   } catch (error) {
+  //     console.error("[Background] Error handling favorite action:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
   if (message.type === "get_should_stop_sync") {
     return { success: true, shouldStop: shouldStopSync };
@@ -619,129 +619,129 @@ export async function handleMessage(
     }
   }
 
-  if (message.type === "get_collection_videos") {
-    const payload = message.payload as { collectionId: string };
-    console.log("[Background] Getting collection videos for:", payload.collectionId);
+  // if (message.type === "get_collection_videos") {
+  //   const payload = message.payload as { collectionId: string };
+  //   console.log("[Background] Getting collection videos for:", payload.collectionId);
 
-    try {
-      const videos = await getCollectionVideos(payload.collectionId, Platform.BILIBILI);
-      console.log("[Background] Collection videos result:", videos);
-      return { success: true, videos };
-    } catch (error) {
-      console.error("[Background] Error getting collection videos:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const videos = await getCollectionVideos(payload.collectionId, Platform.BILIBILI);
+  //     console.log("[Background] Collection videos result:", videos);
+  //     return { success: true, videos };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting collection videos:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
-  if (message.type === "get_collection_videos_paginated") {
-    const payload = message.payload as { 
-      collectionId: string; 
-      page: number; 
-      pageSize: number;
-      keyword?: string;
-      tagId?: string;
-      creatorId?: string;
-      includeTags?: string[];
-      excludeTags?: string[];
-    };
-    console.log("[Background] Getting paginated collection videos for:", payload.collectionId);
+  // if (message.type === "get_collection_videos_paginated") {
+  //   const payload = message.payload as { 
+  //     collectionId: string; 
+  //     page: number; 
+  //     pageSize: number;
+  //     keyword?: string;
+  //     tagId?: string;
+  //     creatorId?: string;
+  //     includeTags?: string[];
+  //     excludeTags?: string[];
+  //   };
+  //   console.log("[Background] Getting paginated collection videos for:", payload.collectionId);
 
-    try {
-      const result = await getCollectionVideosPaginated(
-        payload.collectionId,
-        { page: payload.page, pageSize: payload.pageSize },
-        {
-          keyword: payload.keyword,
-          tagId: payload.tagId,
-          creatorId: payload.creatorId,
-          includeTags: payload.includeTags,
-          excludeTags: payload.excludeTags
-        },
-        Platform.BILIBILI
-      );
-      console.log("[Background] Paginated collection videos result:", result);
-      return { success: true, videos: result.videos, total: result.total };
-    } catch (error) {
-      console.error("[Background] Error getting paginated collection videos:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const result = await getCollectionVideosPaginated(
+  //       payload.collectionId,
+  //       { page: payload.page, pageSize: payload.pageSize },
+  //       {
+  //         keyword: payload.keyword,
+  //         tagId: payload.tagId,
+  //         creatorId: payload.creatorId,
+  //         includeTags: payload.includeTags,
+  //         excludeTags: payload.excludeTags
+  //       },
+  //       Platform.BILIBILI
+  //     );
+  //     console.log("[Background] Paginated collection videos result:", result);
+  //     return { success: true, videos: result.videos, total: result.total };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting paginated collection videos:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
-  if (message.type === "get_all_collection_videos") {
-    console.log("[Background] Getting all collection videos");
-    const payload = message.payload as { collectionType?: 'user' | 'subscription' };
+  // if (message.type === "get_all_collection_videos") {
+  //   console.log("[Background] Getting all collection videos");
+  //   const payload = message.payload as { collectionType?: 'user' | 'subscription' };
 
-    try {
-      const videos = await getAllCollectionVideos(Platform.BILIBILI, payload.collectionType);
-      console.log("[Background] All collection videos result:", videos);
-      return { success: true, videos };
-    } catch (error) {
-      console.error("[Background] Error getting all collection videos:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const videos = await getAllCollectionVideos(Platform.BILIBILI, payload.collectionType);
+  //     console.log("[Background] All collection videos result:", videos);
+  //     return { success: true, videos };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting all collection videos:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
-  if (message.type === "get_all_collection_videos_paginated") {
-    console.log("[Background] Getting all paginated collection videos");
-    const payload = message.payload as { 
-      page: number; 
-      pageSize: number;
-      collectionType?: 'user' | 'subscription';
-      keyword?: string;
-      tagId?: string;
-      creatorId?: string;
-      includeTags?: string[];
-      excludeTags?: string[];
-    };
+  // if (message.type === "get_all_collection_videos_paginated") {
+  //   console.log("[Background] Getting all paginated collection videos");
+  //   const payload = message.payload as { 
+  //     page: number; 
+  //     pageSize: number;
+  //     collectionType?: 'user' | 'subscription';
+  //     keyword?: string;
+  //     tagId?: string;
+  //     creatorId?: string;
+  //     includeTags?: string[];
+  //     excludeTags?: string[];
+  //   };
 
-    try {
-      const result = await getAllCollectionVideosPaginated(
-        { page: payload.page, pageSize: payload.pageSize },
-        {
-          keyword: payload.keyword,
-          tagId: payload.tagId,
-          creatorId: payload.creatorId,
-          includeTags: payload.includeTags,
-          excludeTags: payload.excludeTags
-        },
-        Platform.BILIBILI,
-        payload.collectionType
-      );
-      console.log("[Background] All paginated collection videos result:", result);
-      return { success: true, videos: result.videos, total: result.total };
-    } catch (error) {
-      console.error("[Background] Error getting all paginated collection videos:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const result = await getAllCollectionVideosPaginated(
+  //       { page: payload.page, pageSize: payload.pageSize },
+  //       {
+  //         keyword: payload.keyword,
+  //         tagId: payload.tagId,
+  //         creatorId: payload.creatorId,
+  //         includeTags: payload.includeTags,
+  //         excludeTags: payload.excludeTags
+  //       },
+  //       Platform.BILIBILI,
+  //       payload.collectionType
+  //     );
+  //     console.log("[Background] All paginated collection videos result:", result);
+  //     return { success: true, videos: result.videos, total: result.total };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting all paginated collection videos:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
-  if (message.type === "get_collection_tags") {
-    const payload = message.payload as { collectionId: string };
-    console.log("[Background] Getting collection tags for:", payload.collectionId);
+  // if (message.type === "get_collection_tags") {
+  //   const payload = message.payload as { collectionId: string };
+  //   console.log("[Background] Getting collection tags for:", payload.collectionId);
 
-    try {
-      const tags = await getCollectionTags(payload.collectionId, Platform.BILIBILI);
-      console.log("[Background] Collection tags result:", tags);
-      return { success: true, tags: Array.from(tags) };
-    } catch (error) {
-      console.error("[Background] Error getting collection tags:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const tags = await getCollectionTags(payload.collectionId, Platform.BILIBILI);
+  //     console.log("[Background] Collection tags result:", tags);
+  //     return { success: true, tags: Array.from(tags) };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting collection tags:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
-  if (message.type === "get_all_collection_tags") {
-    console.log("[Background] Getting all collection tags");
-    const payload = message.payload as { collectionType?: 'user' | 'subscription' };
+  // if (message.type === "get_all_collection_tags") {
+  //   console.log("[Background] Getting all collection tags");
+  //   const payload = message.payload as { collectionType?: 'user' | 'subscription' };
 
-    try {
-      const tags = await getAllCollectionTags(Platform.BILIBILI, payload.collectionType);
-      console.log("[Background] All collection tags result:", tags);
-      return { success: true, tags: Array.from(tags) };
-    } catch (error) {
-      console.error("[Background] Error getting all collection tags:", error);
-      return { success: false, error: String(error) };
-    }
-  }
+  //   try {
+  //     const tags = await getAllCollectionTags(Platform.BILIBILI, payload.collectionType);
+  //     console.log("[Background] All collection tags result:", tags);
+  //     return { success: true, tags: Array.from(tags) };
+  //   } catch (error) {
+  //     console.error("[Background] Error getting all collection tags:", error);
+  //     return { success: false, error: String(error) };
+  //   }
+  // }
 
   if (message.type === "search_favorite_videos") {
     const payload = message.payload as { collectionId?: string; keyword?: string; tagId?: string; creatorId?: string };

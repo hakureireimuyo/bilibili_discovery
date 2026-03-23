@@ -16,6 +16,7 @@ import type {
 
 class RequestThrottler {
   private lastRequestTime = 0;
+  private pendingPromise: Promise<void> | null = null;
 
   constructor(private readonly requestInterval: number) {}
 
@@ -24,9 +25,21 @@ class RequestThrottler {
       return;
     }
 
+    // 如果已经有等待中的请求，直接复用
+    if (this.pendingPromise) {
+      return this.pendingPromise;
+    }
+
     const elapsed = Date.now() - this.lastRequestTime;
     if (elapsed < this.requestInterval) {
-      await new Promise(resolve => setTimeout(resolve, this.requestInterval - elapsed));
+      this.pendingPromise = new Promise(resolve => {
+        setTimeout(() => {
+          this.lastRequestTime = Date.now();
+          this.pendingPromise = null;
+          resolve();
+        }, this.requestInterval - elapsed);
+      });
+      return this.pendingPromise;
     }
 
     this.lastRequestTime = Date.now();
@@ -48,13 +61,23 @@ export class BiliApiVideoDataSource implements IVideoDataSource {
   }
 
   async getVideoDetail(bvid: string): Promise<FavoriteVideoApiDetail | null> {
-    await this.throttler.wait();
-    return this.getVideoDetailFn(bvid);
+    try {
+      await this.throttler.wait();
+      return await this.getVideoDetailFn(bvid);
+    } catch (error) {
+      console.error(`[BiliApiVideoDataSource] Failed to get video detail for ${bvid}:`, error);
+      return null;
+    }
   }
 
   async getVideoTags(bvid: string): Promise<FavoriteTag[]> {
-    await this.throttler.wait();
-    return this.getVideoTagsFn(bvid);
+    try {
+      await this.throttler.wait();
+      return await this.getVideoTagsFn(bvid);
+    } catch (error) {
+      console.error(`[BiliApiVideoDataSource] Failed to get video tags for ${bvid}:`, error);
+      return [];
+    }
   }
 }
 
@@ -132,8 +155,13 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
       throw new Error("getFavoriteFoldersFn not provided");
     }
 
-    await this.throttler.wait();
-    return this.getFavoriteFoldersFn(upMid);
+    try {
+      await this.throttler.wait();
+      return await this.getFavoriteFoldersFn(upMid);
+    } catch (error) {
+      console.error(`[BiliApiFavoriteDataSource] Failed to get favorite folders for user ${upMid}:`, error);
+      return [];
+    }
   }
 
   async getFavoriteVideos(mediaId: number, page: number, pageSize: number): Promise<FavoriteVideoEntry[]> {
@@ -141,8 +169,13 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
       throw new Error("getFavoriteVideosFn not provided");
     }
 
-    await this.throttler.wait();
-    return this.getFavoriteVideosFn(mediaId, page, pageSize);
+    try {
+      await this.throttler.wait();
+      return await this.getFavoriteVideosFn(mediaId, page, pageSize);
+    } catch (error) {
+      console.error(`[BiliApiFavoriteDataSource] Failed to get videos for folder ${mediaId} page ${page}:`, error);
+      return [];
+    }
   }
 
   async getCollectedFolders(upMid: number): Promise<CollectedFavoriteFolder[]> {
@@ -150,18 +183,23 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
       throw new Error("getCollectedFoldersFn not provided");
     }
 
-    await this.throttler.wait();
-    const collectedFolders = await this.getCollectedFoldersFn(upMid);
+    try {
+      await this.throttler.wait();
+      const collectedFolders = await this.getCollectedFoldersFn(upMid);
 
-    return collectedFolders.map(folder => ({
-      id: folder.id,
-      title: folder.title,
-      media_count: folder.media_count,
-      upper: {
-        mid: folder.upper.mid,
-        name: folder.upper.name
-      }
-    }));
+      return collectedFolders.map(folder => ({
+        id: folder.id,
+        title: folder.title,
+        media_count: folder.media_count,
+        upper: {
+          mid: folder.upper.mid,
+          name: folder.upper.name
+        }
+      }));
+    } catch (error) {
+      console.error(`[BiliApiFavoriteDataSource] Failed to get collected folders for user ${upMid}:`, error);
+      return [];
+    }
   }
 
   async getCollectedVideos(mediaId: number, page: number, pageSize: number): Promise<FavoriteVideoEntry[]> {
@@ -169,8 +207,13 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
       throw new Error("getCollectedVideosFn not provided");
     }
 
-    await this.throttler.wait();
-    return this.getCollectedVideosFn(mediaId, page, pageSize);
+    try {
+      await this.throttler.wait();
+      return await this.getCollectedVideosFn(mediaId, page, pageSize);
+    } catch (error) {
+      console.error(`[BiliApiFavoriteDataSource] Failed to get collected videos for folder ${mediaId} page ${page}:`, error);
+      return [];
+    }
   }
 
   async getSeasonVideos(seasonId: number, page: number, pageSize: number): Promise<FavoriteVideoEntry[]> {
@@ -178,7 +221,12 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
       throw new Error("getSeasonVideosFn not provided");
     }
 
-    await this.throttler.wait();
-    return this.getSeasonVideosFn(seasonId, page, pageSize);
+    try {
+      await this.throttler.wait();
+      return await this.getSeasonVideosFn(seasonId, page, pageSize);
+    } catch (error) {
+      console.error(`[BiliApiFavoriteDataSource] Failed to get season videos for season ${seasonId} page ${page}:`, error);
+      return [];
+    }
   }
 }

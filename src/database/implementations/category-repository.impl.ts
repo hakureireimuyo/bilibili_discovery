@@ -3,14 +3,14 @@
  * 实现标签分区相关的数据库操作
  */
 
-import { ICategoryRepository } from '../interfaces/semantic/category-repository.interface.js';
+// 接口已移除，直接实现功能
 import { Category } from '../types/semantic.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CategoryRepository 实现类
  */
-export class CategoryRepository implements ICategoryRepository {
+export class CategoryRepository {
   /**
    * 创建分区
    */

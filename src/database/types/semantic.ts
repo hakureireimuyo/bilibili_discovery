@@ -30,92 +30,6 @@ export interface Tag {
    * 创建时间
    */
   createdAt: Timestamp;
-  /**
-   * 标签颜色
-   * 用于UI展示
-   */
-  color?: string;
-  /**
-   * 标签图标
-   * 用于UI展示
-   */
-  icon?: string;
-}
-
-/**
- * 标签别名映射（TagAlias）
- * 用于标签合并，解决语义相同但名称不同的问题
- * 例如：AI、人工智能、machine learning
- */
-export interface TagAlias {
-  /**
-   * 别名ID
-   */
-  aliasId: ID;
-  /**
-   * 别名文本
-   * 可以是同义词、缩写等
-   */
-  alias: string;
-  /**
-   * 目标标签ID
-   * 映射到的标准标签
-   */
-  targetTagId: ID;
-  /**
-   * 映射类型
-   * rule: 规则映射，用户手动设置
-   * embedding: 向量相似度映射
-   * auto: 自动映射
-   */
-  mappingType: 'rule' | 'embedding' | 'auto';
-  /**
-   * 相似度分数
-   * 用于embedding类型的映射
-   * 0-1之间的数值
-   */
-  similarity?: number;
-  /**
-   * 创建时间
-   */
-  createdAt: Timestamp;
-  /**
-   * 最后更新时间
-   */
-  lastUpdate: Timestamp;
-}
-
-/**
- * 标签向量（TagEmbedding）
- * 用于语义计算和标签相似度计算
- */
-export interface TagEmbedding {
-  /**
-   * 标签ID
-   */
-  tagId: ID;
-  /**
-   * 向量数据
-   * 浮点数数组
-   */
-  vector: number[];
-  /**
-   * 向量维度
-   */
-  dimension: number;
-  /**
-   * 模型名称
-   * 生成向量的模型
-   */
-  modelName: string;
-  /**
-   * 创建时间
-   */
-  createdAt: Timestamp;
-  /**
-   * 最后更新时间
-   */
-  lastUpdate: Timestamp;
 }
 
 /**
@@ -140,25 +54,6 @@ export interface Category {
    * 分区描述
    */
   description?: string;
-  /**
-   * 创建时间
-   */
-  createdAt: Timestamp;
-  /**
-   * 父分区ID
-   * 支持分区层级结构
-   */
-  parentId?: ID;
-  /**
-   * 分区颜色
-   * 用于UI展示
-   */
-  color?: string;
-  /**
-   * 排序权重
-   * 用于分区显示排序
-   */
-  order?: number;
 }
 
 /**

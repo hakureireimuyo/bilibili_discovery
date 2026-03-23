@@ -132,10 +132,28 @@ export interface IFavoriteDataSource {
   getSeasonVideos(season_id: number, pn: number, ps: number): Promise<FavoriteVideoEntry[]>;
 }
 
-export interface ICollectionRepositoryLike extends Pick<ICollectionRepository, "getCollection" | "createCollectionWithId"> {}
+export interface ICollectionRepositoryLike extends Pick<ICollectionRepository, "getCollection" | "createCollectionWithId" | "getAllCollections"> {}
 
-export interface ICollectionItemRepositoryLike extends Pick<ICollectionItemRepository, "getCollectionVideos" | "countCollectionItems" | "isVideoInCollection" | "addVideoToCollection"> {
+export interface ICollectionItemRepositoryLike extends Pick<ICollectionItemRepository, "getItemByCollectionAndVideo" | "getNote" | "getOrder"> {
+  /**
+   * 获取收藏夹中的视频
+   */
   getCollectionVideos(collectionId: string, pagination: PaginationParams): Promise<PaginationResult<CollectionItem>>;
+  
+  /**
+   * 统计收藏夹中的视频数量
+   */
+  countCollectionItems(collectionId: string): Promise<number>;
+  
+  /**
+   * 检查视频是否在收藏夹中
+   */
+  isVideoInCollection(collectionId: string, videoId: string): Promise<boolean>;
+  
+  /**
+   * 添加视频到收藏夹
+   */
+  addVideoToCollection(collectionId: string, videoId: string, platform: Platform): Promise<void>;
 }
 
 export interface IVideoRepositoryLike extends Pick<IVideoRepository, "getVideos" | "upsertVideo"> {}
@@ -144,6 +162,51 @@ export interface ICreatorRepositoryLike extends Pick<ICreatorRepository, "getCre
 
 export interface ITagRepositoryLike extends Pick<ITagRepository, "getTag" | "createTag"> {
   createTag(tag: Omit<DBTag, "tagId">): Promise<string>;
+}
+
+/**
+ * 同步进度信息
+ */
+export interface SyncProgress {
+  /** 当前处理的收藏夹名称 */
+  currentFolder?: string;
+  /** 当前收藏夹已同步数量 */
+  currentFolderSynced: number;
+  /** 当前收藏夹总数量 */
+  currentFolderTotal: number;
+  /** 总已同步数量 */
+  totalSynced: number;
+  /** 总待同步数量 */
+  totalToSync: number;
+  /** 当前处理的视频 */
+  currentVideo?: string;
+}
+
+/**
+ * 同步进度回调函数
+ */
+export type SyncProgressCallback = (progress: SyncProgress) => void;
+
+/**
+ * 取消令牌
+ */
+export class CancellationToken {
+  private _isCancelled = false;
+
+  cancel(): void {
+    this._isCancelled = true;
+  }
+
+  get isCancelled(): boolean {
+    return this._isCancelled;
+  }
+
+  /**
+   * 创建停止检查器函数
+   */
+  createStopChecker(): () => Promise<boolean> {
+    return async () => this.isCancelled;
+  }
 }
 
 /**

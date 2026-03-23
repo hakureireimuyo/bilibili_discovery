@@ -88,35 +88,3 @@ export interface Creator {
    */
   tagWeights: CreatorTagWeight[];
 }
-
-/**
- * 创作者统计信息
- * 用于分析创作者相关的用户行为数据
- */
-export interface CreatorStats {
-  /**
-   * 创作者ID
-   */
-  creatorId: ID;
-  /**
-   * 总观看时长（秒）
-   */
-  totalWatchTime: number;
-  /**
-   * 近期观看时长（秒）
-   * 默认统计最近30天
-   */
-  recentWatchTime: number;
-  /**
-   * 观看视频数
-   */
-  videoCount: number;
-  /**
-   * 互动次数
-   */
-  interactionCount: number;
-  /**
-   * 最后更新时间
-   */
-  lastUpdate: Timestamp;
-}

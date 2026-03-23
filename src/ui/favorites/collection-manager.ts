@@ -1,7 +1,7 @@
 import type { Collection } from "../../database/types/collection.js";
 import type { FavoritesState, ChromeMessageResponse } from "./types.js";
 import { updateFilterOptions } from "./filter-manager.js";
-import { getCollectionVideosPaginated, getAllCollectionVideosPaginated } from "../../database/implementations/collection-data-access.impl.js";
+import { getCollectionVideosPaginated, getAllCollectionVideosPaginated } from "../../database/implementations/collection-facade.impl.js";
 import { Platform } from "../../database/types/base.js";
 
 type RefreshFn = () => void;

@@ -3,7 +3,7 @@
  * 实现视频相关的数据库操作
  */
 
-import { IVideoRepository } from '../interfaces/video/video-repository.interface.js';
+// 接口已移除，直接实现功能
 import { Video } from '../types/video.js';
 import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
@@ -12,7 +12,7 @@ import { compressToTarget, shouldCompress} from '../../utls/image-compression.js
 /**
  * VideoRepository 实现类
  */
-export class VideoRepository implements IVideoRepository {
+export class VideoRepository {
   /**
    * 创建或更新视频信息
    */
@@ -257,28 +257,42 @@ export class VideoRepository implements IVideoRepository {
     platform: Platform,
     onProgress?: (done: number, total: number) => void
   ): Promise<void> {
+    console.log(`[VideoRepository] Starting compression for platform: ${platform}`);
     const allVideos = await DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
+    console.log(`[VideoRepository] Found ${allVideos.length} videos in database`);
 
     let processed = 0;
     const total = allVideos.length;
+    let compressedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
 
     for (const video of allVideos) {
       if (video.platform !== platform || video.isInvalid || !video.picture) {
         processed++;
+        skippedCount++;
         continue;
       }
 
       try {
+        console.log(`[VideoRepository] Processing video ${video.videoId} (${processed + 1}/${total})`);
         if (await shouldCompress(video.picture)) {
+          console.log(`[VideoRepository] Compressing picture for video ${video.videoId}`);
           const compressed = await compressToTarget(video.picture);
 
           await DBUtils.put(STORE_NAMES.VIDEOS, {
             ...video,
             picture: compressed
           });
+          compressedCount++;
+          console.log(`[VideoRepository] Successfully compressed picture for video ${video.videoId}`);
+        } else {
+          console.log(`[VideoRepository] Skipping video ${video.videoId} - picture does not need compression`);
+          skippedCount++;
         }
       } catch (e) {
-        console.warn("[VideoRepository] batch compress failed:", video.videoId, e);
+        console.error(`[VideoRepository] Failed to compress picture for video ${video.videoId}:`, e);
+        errorCount++;
       }
 
       processed++;
@@ -286,6 +300,8 @@ export class VideoRepository implements IVideoRepository {
       // 进度回调（可用于 UI）
       onProgress?.(processed, total);
     }
+
+    console.log(`[VideoRepository] Compression completed. Total: ${total}, Compressed: ${compressedCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`);
   }
 
 }

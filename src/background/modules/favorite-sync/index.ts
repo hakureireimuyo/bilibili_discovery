@@ -13,7 +13,7 @@ import { TagRepository } from "../../../database/implementations/tag-repository.
 import { FavoriteSyncService } from "./favorite-sync-service.js";
 import { BiliApiVideoDataSource, BiliApiFavoriteDataSource } from "./data-adapters.js";
 import {DEFAULT_FAVORITE_SYNC_CONFIG } from './config.js'
-import type { FavoriteVideoDetail } from "./types.js";
+import type { FavoriteVideoDetail, CancellationToken, SyncProgressCallback } from "./types.js";
 
 // 创建单例服务实例
 let syncServiceInstance: FavoriteSyncService | null = null;
@@ -55,15 +55,39 @@ function getSyncService(): FavoriteSyncService {
 }
 
 /**
- * 同步收藏夹数据
+ * 重置服务实例
+ * 用于测试或需要重新初始化服务的场景
+ */
+export function resetSyncService(): void {
+  syncServiceInstance = null;
+}
+
+/**
+ * 同步收藏夹数据（简化版）
  * @param up_mid 用户ID
- * @param shouldStop 停止同步的回调函数
  * @returns 同步的视频数量
  */
-export async function syncFavoriteVideos(up_mid: number, shouldStop?: () => Promise<boolean>): Promise<number> {
+export async function syncFavoriteVideos(up_mid: number): Promise<number> {
   const service = getSyncService();
-  const result = await service.syncFavoriteVideos(up_mid, shouldStop);
+  const result = await service.syncFavoriteVideos(up_mid);
   return result.syncedCount;
+}
+
+/**
+ * 同步收藏夹数据（完整版，支持取消和进度回调）
+ * @param up_mid 用户ID
+ * @param cancellationToken 取消令牌
+ * @param progressCallback 进度回调
+ * @returns 同步结果
+ */
+export async function syncFavoriteVideosWithProgress(
+  up_mid: number,
+  cancellationToken?: CancellationToken,
+  progressCallback?: SyncProgressCallback
+): Promise<import("./types.js").FavoriteSyncResult> {
+  const service = getSyncService();
+  const shouldStop = cancellationToken?.createStopChecker();
+  return await service.syncFavoriteVideos(up_mid, shouldStop, progressCallback);
 }
 
 /**
@@ -86,8 +110,9 @@ export async function searchFavoriteVideos(
 
 // 导出服务类和类型，供需要高级功能的模块使用
 export { BiliApiVideoDataSource, BiliApiFavoriteDataSource } from "./data-adapters.js";
-export { toDBVideo, toDBCreator, toDBTag } from "./data-converters.js";
+export { toDBVideo, toDBCreator, toDBTag, toDBTags } from "./data-converters.js";
 export { DEFAULT_FAVORITE_SYNC_CONFIG } from "./config.js";
+export { FavoriteSyncService } from "./favorite-sync-service.js";
 export type {
   FavoriteSyncConfig,
   FavoriteSyncResult,
@@ -95,5 +120,11 @@ export type {
   FavoriteVideoDetail,
   IVideoDataSource,
   IFavoriteDataSource,
-  IFavoriteSyncDependencies
+  IFavoriteSyncDependencies,
+  SyncProgress,
+  SyncProgressCallback,
+  CancellationToken
 } from "./types.js";
+
+// 导出取消令牌类
+export { CancellationToken } from "./types.js";

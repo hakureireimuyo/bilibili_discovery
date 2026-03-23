@@ -14,10 +14,12 @@ import type {
   FavoriteTag,
   FavoriteVideoDetail,
   FavoriteVideoEntry,
-  IFavoriteSyncDependencies
+  IFavoriteSyncDependencies,
+  SyncProgress,
+  SyncProgressCallback
 } from "./types.js";
 import { DEFAULT_FAVORITE_SYNC_CONFIG } from "./config.js";
-import { toDBCreator, toDBTag, toDBVideo, toInvalidVideo } from "./data-converters.js";
+import { toDBCreator, toDBTag, toDBVideo, toInvalidVideo, toDBTags } from "./data-converters.js";
 
 const BILIBILI = Platform.BILIBILI;
 const SEARCH_PAGE_SIZE = 1000;
@@ -25,6 +27,7 @@ const LOCAL_ITEMS_PAGE_SIZE = 10000;
 const REMOTE_PAGE_SIZE = 20;
 const MAX_FETCH_LIMIT = 1000;
 const MAX_CONSECUTIVE_EXISTING_PAGES = 5;
+const TAG_BATCH_SIZE = 50; // 批量处理标签的数量
 
 type StopChecker = (() => Promise<boolean>) | undefined;
 
@@ -52,11 +55,20 @@ interface FetchPlan {
   videosToSync: FavoriteVideoEntry[];
 }
 
+interface SyncContext {
+  totalFolders: number;
+  processedFolders: number;
+  totalSynced: number;
+  totalToSync: number;
+  progressCallback?: SyncProgressCallback;
+}
+
 /**
  * 收藏同步服务类
  */
 export class FavoriteSyncService {
   private readonly config: FavoriteSyncConfig;
+  private syncContext: SyncContext | null = null;
 
   constructor(
     private readonly dependencies: IFavoriteSyncDependencies,
@@ -65,15 +77,39 @@ export class FavoriteSyncService {
     this.config = { ...DEFAULT_FAVORITE_SYNC_CONFIG, ...config };
   }
 
-  async syncFavoriteVideos(up_mid: number, shouldStop?: StopChecker): Promise<FavoriteSyncResult> {
+  /**
+   * 同步收藏视频
+   * @param up_mid 用户ID
+   * @param shouldStop 停止检查器
+   * @param progressCallback 进度回调
+   * @returns 同步结果
+   */
+  async syncFavoriteVideos(
+    up_mid: number,
+    shouldStop?: StopChecker,
+    progressCallback?: SyncProgressCallback
+  ): Promise<FavoriteSyncResult> {
     const result: FavoriteSyncResult = {
       syncedCount: 0,
       failedVideos: []
     };
 
     try {
+      // 初始化同步上下文
+      const folders = await this.dependencies.favoriteDataSource.getFavoriteFolders(up_mid);
+      const collectedFolders = await this.dependencies.favoriteDataSource.getCollectedFolders(up_mid);
+      const allFolders = [...folders, ...collectedFolders];
+      
+      this.syncContext = {
+        totalFolders: allFolders.length,
+        processedFolders: 0,
+        totalSynced: 0,
+        totalToSync: allFolders.reduce((sum, f) => sum + f.media_count, 0),
+        progressCallback
+      };
+
       if (this.config.createMultipleCollections) {
-        await this.syncIntoSeparateCollections(up_mid, result, shouldStop);
+        await this.syncIntoSeparateCollections(allFolders, result, shouldStop);
       } else {
         await this.syncIntoDefaultCollection(up_mid, result, shouldStop);
       }
@@ -82,6 +118,8 @@ export class FavoriteSyncService {
     } catch (error) {
       console.error("[FavoriteSync] Error syncing favorite videos:", error);
       throw error;
+    } finally {
+      this.syncContext = null;
     }
   }
 
@@ -111,19 +149,21 @@ export class FavoriteSyncService {
   }
 
   private async syncIntoSeparateCollections(
-    upMid: number,
+    folders: FavoriteFolderLike[],
     result: FavoriteSyncResult,
     shouldStop?: StopChecker
   ): Promise<void> {
-    const favoriteFolders = await this.dependencies.favoriteDataSource.getFavoriteFolders(upMid);
-    const collectedFolders = await this.dependencies.favoriteDataSource.getCollectedFolders(upMid);
-
-    for (const folder of [...favoriteFolders, ...collectedFolders]) {
+    for (const folder of folders) {
       if (await this.shouldStopSync(shouldStop, "before processing folder")) {
         break;
       }
 
       await this.syncFolder(folder, result, shouldStop);
+      
+      if (this.syncContext) {
+        this.syncContext.processedFolders++;
+        this.updateProgress(folder.title, 0, folder.media_count);
+      }
     }
   }
 
@@ -161,8 +201,11 @@ export class FavoriteSyncService {
 
     const state = await this.buildFolderState(context);
     if (state.expectedNewCount <= 0) {
+      console.log(`[FavoriteSync] Folder ${context.title} is already up to date`);
       return;
     }
+
+    console.log(`[FavoriteSync] Syncing ${context.title}: ${state.expectedNewCount} new videos expected`);
 
     const fetchedVideos = await this.collectNewVideos(context, state, shouldStop);
     if (fetchedVideos.length === 0) {
@@ -172,7 +215,7 @@ export class FavoriteSyncService {
       return;
     }
 
-    await this.processBatches(fetchedVideos, context.collectionId, result, shouldStop);
+    await this.processBatches(fetchedVideos, context.collectionId, result, shouldStop, context.title);
   }
 
   private createFolderContext(folder: FavoriteFolderLike): FolderContext {
@@ -193,14 +236,28 @@ export class FavoriteSyncService {
 
   private async buildFolderState(context: FolderContext): Promise<FolderState> {
     const localVideoCount = await this.dependencies.collectionItemRepository.countCollectionItems(context.collectionId);
-    const { items } = await this.dependencies.collectionItemRepository.getCollectionVideos(context.collectionId, {
-      page: 0,
-      pageSize: LOCAL_ITEMS_PAGE_SIZE
-    });
+    
+    // 获取本地视频ID集合
+    const localVideoIds = new Set<string>();
+    let page = 0;
+    
+    while (true) {
+      const { items, total } = await this.dependencies.collectionItemRepository.getCollectionVideos(context.collectionId, {
+        page,
+        pageSize: LOCAL_ITEMS_PAGE_SIZE
+      });
+      
+      if (items.length === 0 || items.length >= total) {
+        break;
+      }
+      
+      items.forEach(item => localVideoIds.add(item.videoId));
+      page++;
+    }
 
     return {
       localVideoCount,
-      localVideoIds: new Set(items.map(item => item.videoId)),
+      localVideoIds,
       expectedNewCount: Math.max(0, context.mediaCount - localVideoCount)
     };
   }
@@ -296,15 +353,31 @@ export class FavoriteSyncService {
     videos: FavoriteVideoEntry[],
     collectionId: string,
     result: FavoriteSyncResult,
-    shouldStop?: StopChecker
+    shouldStop?: StopChecker,
+    folderTitle?: string
   ): Promise<void> {
+    let syncedInFolder = 0;
+    
     for (let index = 0; index < videos.length; index += this.config.batchSize) {
       if (await this.shouldStopSync(shouldStop, "before processing batch")) {
         return;
       }
 
       const batch = videos.slice(index, index + this.config.batchSize);
-      const shouldStopBatch = await this.processBatch(batch, collectionId, result, shouldStop);
+      const shouldStopBatch = await this.processBatch(
+        batch,
+        collectionId,
+        result,
+        shouldStop,
+        folderTitle
+      );
+      
+      syncedInFolder += batch.length;
+      
+      if (folderTitle) {
+        this.updateProgress(folderTitle, syncedInFolder, videos.length);
+      }
+      
       if (shouldStopBatch) {
         return;
       }
@@ -315,7 +388,8 @@ export class FavoriteSyncService {
     batch: FavoriteVideoEntry[],
     collectionId: string,
     result: FavoriteSyncResult,
-    shouldStop?: StopChecker
+    shouldStop?: StopChecker,
+    folderTitle?: string
   ): Promise<boolean> {
     for (const favoriteVideo of batch) {
       if (await this.shouldStopSync(shouldStop, "during batch processing")) {
@@ -323,7 +397,7 @@ export class FavoriteSyncService {
       }
 
       try {
-        await this.syncSingleVideo(collectionId, favoriteVideo, result);
+        await this.syncSingleVideo(collectionId, favoriteVideo, result, folderTitle);
       } catch (error) {
         console.error(`[FavoriteSync] Error processing video ${favoriteVideo.bvid}:`, error);
         this.recordFailure(result, favoriteVideo.bvid, error);
@@ -336,8 +410,14 @@ export class FavoriteSyncService {
   private async syncSingleVideo(
     collectionId: string,
     favoriteVideo: FavoriteVideoEntry,
-    result: FavoriteSyncResult
+    result: FavoriteSyncResult,
+    folderTitle?: string
   ): Promise<void> {
+    // 更新当前处理的视频
+    if (folderTitle) {
+      this.updateProgress(folderTitle, 0, 0, favoriteVideo.bvid);
+    }
+    
     const alreadyInCollection = await this.dependencies.collectionItemRepository.isVideoInCollection(
       collectionId,
       favoriteVideo.bvid
@@ -348,7 +428,7 @@ export class FavoriteSyncService {
 
     const videoDetail = await this.dependencies.videoDataSource.getVideoDetail(favoriteVideo.bvid);
     if (!videoDetail) {
-      await this.persistInvalidVideo(collectionId, favoriteVideo.bvid, result);
+      await this.persistInvalidVideo(collectionId, favoriteVideo.bvid, result, "无法获取视频详情");
       return;
     }
 
@@ -357,15 +437,23 @@ export class FavoriteSyncService {
     const tagIds = await this.ensureTagsExist(videoTags);
 
     await this.dependencies.videoRepository.upsertVideo(toDBVideo(videoDetail, tagIds));
-    await this.addVideoToCollection(collectionId, favoriteVideo.bvid, result);
+    
+    // 添加到收藏夹
+    try {
+      await this.dependencies.collectionItemRepository.addVideoToCollection(collectionId, favoriteVideo.bvid, BILIBILI);
+      result.syncedCount += 1;
+    } catch (error) {
+      this.recordFailure(result, favoriteVideo.bvid, error);
+    }
   }
 
   private async persistInvalidVideo(
     collectionId: string,
     bvid: string,
-    result: FavoriteSyncResult
+    result: FavoriteSyncResult,
+    reason?: string
   ): Promise<void> {
-    await this.dependencies.videoRepository.upsertVideo(toInvalidVideo(bvid));
+    await this.dependencies.videoRepository.upsertVideo(toInvalidVideo(bvid, undefined, reason));
     await this.addVideoToCollection(collectionId, bvid, result);
   }
 
@@ -391,18 +479,46 @@ export class FavoriteSyncService {
     }
   }
 
+  /**
+   * 批量确保标签存在
+   * 优化：一次性查询所有标签，然后批量创建不存在的标签
+   */
   private async ensureTagsExist(tags: FavoriteTag[]): Promise<string[]> {
-    const tagIds: string[] = [];
+    if (tags.length === 0) {
+      return [];
+    }
 
+    const tagIds = tags.map(tag => String(tag.tag_id));
+    
+    // 批量查询已存在的标签
+    const existingTags = new Map<string, boolean>();
+    for (let i = 0; i < tagIds.length; i += TAG_BATCH_SIZE) {
+      const batchIds = tagIds.slice(i, i + TAG_BATCH_SIZE);
+      for (const id of batchIds) {
+        const existing = await this.dependencies.tagRepository.getTag(id);
+        existingTags.set(id, !!existing);
+      }
+    }
+
+    // 批量创建不存在的标签
+    const tagsToCreate: Array<Omit<typeof tags[0], "tag_id">> = [];
     for (const tag of tags) {
       const tagId = String(tag.tag_id);
-      const existing = await this.dependencies.tagRepository.getTag(tagId);
-      if (!existing) {
-        const { tagId: _tagId, ...tagToCreate } = toDBTag(tag);
-        await this.dependencies.tagRepository.createTag(tagToCreate);
+      if (!existingTags.get(tagId)) {
+        const { tag_id: _, ...tagWithoutId } = tag;
+        tagsToCreate.push(tagWithoutId);
       }
+    }
 
-      tagIds.push(tagId);
+    if (tagsToCreate.length > 0) {
+      const dbTags = toDBTags(tagsToCreate.map(t => ({ ...t, tag_id: parseInt(tagIds[tagsToCreate.indexOf(t)]) })));
+      for (const dbTag of dbTags) {
+        try {
+          await this.dependencies.tagRepository.createTag(dbTag);
+        } catch (error) {
+          console.error(`[FavoriteSync] Failed to create tag ${dbTag.name}:`, error);
+        }
+      }
     }
 
     return tagIds;
@@ -489,5 +605,30 @@ export class FavoriteSyncService {
       bvid,
       error: error instanceof Error ? error.message : String(error)
     });
+  }
+
+  /**
+   * 更新同步进度
+   */
+  private updateProgress(
+    currentFolder: string,
+    currentFolderSynced: number,
+    currentFolderTotal: number,
+    currentVideo?: string
+  ): void {
+    if (!this.syncContext || !this.syncContext.progressCallback) {
+      return;
+    }
+
+    const progress: SyncProgress = {
+      currentFolder,
+      currentFolderSynced,
+      currentFolderTotal,
+      totalSynced: this.syncContext.totalSynced,
+      totalToSync: this.syncContext.totalToSync,
+      currentVideo
+    };
+
+    this.syncContext.progressCallback(progress);
   }
 }

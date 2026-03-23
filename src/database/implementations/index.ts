@@ -34,6 +34,9 @@ export * from './creator-data-access.impl.js';
 // Video 实现
 export { VideoRepository } from './video-repository.impl.js';
 
+// Image 实现
+export { ImageRepository } from './image-repository.impl.js';
+
 // Behavior 实现
 export { WatchEventRepository } from './watch-event-repository.impl.js';
 export { InteractionEventRepository } from './interaction-event-repository.impl.js';
@@ -42,7 +45,7 @@ export { SearchEventRepository } from './search-event-repository.impl.js';
 // Collection 实现
 export { CollectionRepository } from './collection-repository.impl.js';
 export { CollectionItemRepository } from './collection-item-repository.impl.js';
-export * from './collection-data-access.impl.js';
+export * from './collection-facade.impl.js';
 
 // Analytics 实现
 export { InterestScoreRepository } from './interest-score-repository.impl.js';

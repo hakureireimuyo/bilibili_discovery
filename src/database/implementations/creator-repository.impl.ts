@@ -3,7 +3,7 @@
  * 实现创作者相关的数据库操作
  */
 
-import { ICreatorRepository } from '../interfaces/creator/creator-repository.interface.js';
+// 接口已移除，直接实现功能
 import { Creator, CreatorStats } from '../types/creator.js';
 import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
@@ -11,7 +11,7 @@ import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 /**
  * CreatorRepository 实现类
  */
-export class CreatorRepository implements ICreatorRepository {
+export class CreatorRepository {
   /**
    * 创建或更新创作者信息
    */
