@@ -4,7 +4,7 @@ import { renderHeatmap } from "./heatmap.js";
 import { renderLineChart } from "./line-chart.js";
 import { renderTagList, renderUPList, renderVideoList } from "./list-renderer.js";
 import { initVideoSearch, initTagSearch } from "./search.js";
-import type { WatchStats } from "../../background/modules/common-types";
+import type { WatchStats } from "../../background/modules/types.js";
 import type { UP } from "../../database/implementations/index.js";
 
 async function refreshStats(): Promise<WatchStats | null> {

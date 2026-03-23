@@ -44,11 +44,6 @@ export interface WatchEvent {
    */
   progress: number;
   /**
-   * 视频来源
-   * 记录用户从哪个入口进入观看
-   */
-  source: VideoSource;
-  /**
    * 是否完整观看
    * 观看进度超过90%视为完整观看
    */

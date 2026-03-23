@@ -1,5 +1,5 @@
 import { formatSeconds } from "./utils.js";
-import type { WatchStats } from "../../background/modules/common-types.js";
+import type { WatchStats } from "../../background/modules/types.js";
 import type { UP } from "../../database/implementations/index.js";
 import { getTagLibrary } from "../../database/implementations/index.js";
 import { createTagPill } from "./tag-utils.js";

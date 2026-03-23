@@ -1,8 +1,3 @@
-import { getFollowedUPs, getUPInfo, getUPVideos, getVideoTags } from "../../api/bili-api.js";
-import { classifyUP } from "../../engine/classifier.js";
-import { randomUP, randomVideo, recommendUP, recommendVideo, updateInterestFromWatch } from "../../engine/recommender.js";
-import { saveUPList } from "../../database/implementations/index.js";
-
 export const ALARM_UPDATE_UP_LIST = "update_up_list";
 export const ALARM_CLASSIFY_UPS = "classify_ups";
 export const ALARM_COLLECT_UP_PAGES = "collect_up_pages";
@@ -31,6 +26,25 @@ export interface TabsManager {
   create?: (createProperties: { url: string; active?: boolean }) => Promise<{ id?: number } | undefined>;
   remove?: (tabId: number | number[]) => Promise<void>;
   onRemoved?: { addListener: (handler: (tabId: number) => void) => void };
+}
+
+/**
+ * 浏览器标签页操作选项
+ * 专门用于标签页创建、更新、关闭等操作
+ */
+export interface TabOptions {
+  /**
+   * 标签页管理器实例
+   */
+  tabs?: TabsManager;
+  /**
+   * 是否激活新创建的标签页
+   */
+  active?: boolean;
+  /**
+   * 标签页URL
+   */
+  url?: string;
 }
 
 export interface RuntimeManager {

@@ -14,56 +14,67 @@ export class TagRepository {
 
   /**
    * 创建单个标签（只提供name）
-   * 先通过索引查询判断是否存在，避免异常处理开销
+   * 直接使用 put 插入数据,如果 name 冲突则返回已存在标签的 ID
    */
   async createTag(name: string, source: TagSource): Promise<string> {
-    // 先通过索引查询判断标签是否已存在
-    const existing = await DBUtils.getOneByIndex<Tag>(
-      STORE_NAMES.TAGS,
-      'name',
-      name
-    );
-
-    if (existing) {
-      return existing.tagId;
-    }
-
-    // 标签不存在，创建新标签
+    const tagId = crypto.randomUUID();
     const newTag: Tag = {
-      tagId: crypto.randomUUID(),
-      name: name,
-      source: source,
+      tagId,
+      name,
+      source,
     };
 
-    await DBUtils.add(STORE_NAMES.TAGS, newTag);
-    return newTag.tagId;
+    try {
+      await DBUtils.put(STORE_NAMES.TAGS, newTag);
+    } catch (error) {
+      // 如果是 name 冲突,尝试获取已存在的标签
+      if (error instanceof Error && error.name === 'ConstraintError') {
+        const existing = await DBUtils.getOneByIndex<Tag>(
+          STORE_NAMES.TAGS,
+          'name',
+          name
+        );
+        if (existing) {
+          return existing.tagId;
+        }
+        throw error;
+      }
+      throw error;
+    }
+
+    return tagId;
   }
 
   /**
    * 创建单个标签（提供id和name）
-   * 先通过索引查询判断是否存在，避免异常处理开销
+   * 直接使用 put 插入数据,如果 name 冲突则返回已存在标签的 ID
    */
   async createTagWithId(id: string, name: string, source: TagSource): Promise<string> {
-    // 先通过索引查询判断标签是否已存在
-    const existing = await DBUtils.getOneByIndex<Tag>(
-      STORE_NAMES.TAGS,
-      'name',
-      name
-    );
-
-    if (existing) {
-      return existing.tagId;
-    }
-
-    // 标签不存在，创建新标签
     const newTag: Tag = {
       tagId: id,
-      name: name,
-      source: source
+      name,
+      source,
     };
 
-    await DBUtils.add(STORE_NAMES.TAGS, newTag);
-    return newTag.tagId;
+    try {
+      await DBUtils.put(STORE_NAMES.TAGS, newTag);
+    } catch (error) {
+      // 如果是 name 冲突,尝试获取已存在的标签
+      if (error instanceof Error && error.name === 'ConstraintError') {
+        const existing = await DBUtils.getOneByIndex<Tag>(
+          STORE_NAMES.TAGS,
+          'name',
+          name
+        );
+        if (existing) {
+          return existing.tagId;
+        }
+        throw error;
+      }
+      throw error;
+    }
+
+    return id;
   }
 
   /**
@@ -72,8 +83,29 @@ export class TagRepository {
   async createTags(names: string[], source: TagSource): Promise<string[]> {
     if (names.length === 0) return [];
     
-    // 使用cursor优化的大批量创建
-    return this.createTagsByCursor(names, source);
+    // 输入去重
+    const nameSet = new Set<string>(names);
+    const uniqueNames = Array.from(nameSet);
+
+    const resultIds: string[] = [];
+    const tags: Tag[] = [];
+
+    // 准备所有标签
+    for (const name of uniqueNames) {
+      const tagId = crypto.randomUUID();
+      tags.push({ tagId, name, source });
+      resultIds.push(tagId);
+    }
+
+    try {
+      // 批量 put
+      await DBUtils.putBatch(STORE_NAMES.TAGS, tags);
+    } catch (error) {
+      // 如果有冲突,回退到原来的实现
+      return this.createTagsByCursor(names, source);
+    }
+
+    return resultIds;
   }
 
   /**

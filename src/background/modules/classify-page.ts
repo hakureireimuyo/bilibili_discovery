@@ -6,7 +6,7 @@ import {
   TagRepository
 } from "../../database/implementations/index.js";
 import { Platform, TagSource } from "../../database/types/base.js";
-import type {MessageLike } from "./common-types.js";
+import type {MessageLike, TabOptions } from "./types.js";
 
 declare const chrome: {
   runtime?: {
@@ -418,10 +418,7 @@ async function processNextClassification(): Promise<void> {
     // 创建标签并获取标签ID
     const tagIds: string[] = [];
     for (const tagName of normalizedTagNames) {
-      const tagId = await tagRepository.createTag({
-        name: tagName,
-        source: TagSource.USER
-      });
+      const tagId = await tagRepository.createTag(tagName,TagSource.USER);
       tagIds.push(tagId);
     }
 
@@ -549,10 +546,16 @@ export async function startAutoClassification(): Promise<boolean> {
   console.log("[Background] ✓ Classification queue created with", classificationQueue.length, "UPs");
 
   if (classificationQueue.length > 0) {
-    const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
+    // 使用TabOptions类型的配置来处理标签页操作
+    const tabOptions: TabOptions = {
+      tabs: typeof chrome !== "undefined" ? chrome.tabs : undefined,
+      active: false
+    };
+    
+    const tabs = tabOptions.tabs;
     if (!tabs || !tabs.create) {
       console.log("[Background] ✗ Tabs API not available for creating new tabs");
-      await finishPageClassification(options, "浏览器标签页能力不可用");
+      await finishPageClassification("浏览器标签页能力不可用");
       return false;
     }
 

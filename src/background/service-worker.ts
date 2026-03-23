@@ -9,7 +9,7 @@ import {
   type AlarmManager,
   type RuntimeManager,
   type TabsManager
-} from "./modules/common-types.js";
+} from "./modules/types.js";
 import { scheduleAlarms, handleAlarm } from "./modules/alarms.js";
 import { classifyUpTask } from "./modules/classify-api.js";
 import {
