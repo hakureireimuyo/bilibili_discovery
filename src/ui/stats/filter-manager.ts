@@ -1,3 +1,4 @@
+
 import { getDragContext } from "./drag.js";
 import { colorFromTag, findCategory, removeFromList, resetFilters } from "./helpers.js";
 import type { StatsState } from "./types.js";
@@ -18,14 +19,14 @@ function createFilterTag(tagId: string, type: "include" | "exclude", state: Stat
   removeBtn.addEventListener("click", () => {
     // 立即移除 DOM 元素
     tagEl.remove();
-    
+
     // 更新状态
     if (type === "include") {
       state.filters.includeTags = removeFromList(state.filters.includeTags, tagId);
     } else {
       state.filters.excludeTags = removeFromList(state.filters.excludeTags, tagId);
     }
-    
+
     // 只刷新 UP 列表，不重新渲染筛选标签
     refresh();
   });
@@ -53,14 +54,14 @@ function createFilterCategory(
   removeBtn.addEventListener("click", () => {
     // 立即移除 DOM 元素
     categoryEl.remove();
-    
+
     // 更新状态
     if (type === "include") {
       state.filters.includeCategories = removeFromList(state.filters.includeCategories, categoryId);
     } else {
       state.filters.excludeCategories = removeFromList(state.filters.excludeCategories, categoryId);
     }
-    
+
     // 只刷新 UP 列表，不重新渲染筛选标签
     refresh();
   });

@@ -1,3 +1,4 @@
+
 declare const chrome: {
   runtime: {
     sendMessage: (message: unknown, callback?: (response: unknown) => void) => void;

@@ -17,7 +17,8 @@ import { createInitialState, setLoading, showError, updatePagination } from "./h
 
 import { renderVideos, changePage } from "./video-list.js";
 import type { FavoritesState } from "./types.js";
-import "./debug.js";
+import { clearAllCaches } from "../cache/index.js";
+import { debugCollectionData, debugAllCollections, debugAllVideos, runFullDiagnostics } from "../../query/video/debug.js";
 
 // DOM元素
 const elements = {
@@ -88,10 +89,10 @@ async function loadState(): Promise<void> {
 
     // 根据当前类型过滤收藏夹
     const filteredCollections = state.collections.filter(
-      collection => collection.type === state.currentCollectionType || 
+      collection => collection.type === state.currentCollectionType ||
                     (collection.type === undefined && state.currentCollectionType === 'user')
     );
-    
+
     if (!state.currentCollectionId || !filteredCollections.find(c => c.collectionId === state.currentCollectionId)) {
       state.currentCollectionId = filteredCollections.length > 0 ? filteredCollections[0].collectionId : 'all';
       console.log('[Favorites] Set current collection ID:', state.currentCollectionId);
@@ -165,6 +166,14 @@ async function handleSearch(): Promise<void> {
 }
 
 /**
+ * 清空缓存
+ */
+function clearCaches(): void {
+  clearAllCaches();
+  console.log('[Favorites] All caches cleared');
+}
+
+/**
  * 初始化
  */
 export async function initFavorites(): Promise<void> {
@@ -201,6 +210,18 @@ export async function initFavorites(): Promise<void> {
 
   console.log('[Favorites] Initial render...');
   await rerenderPage();
+
+  // 暴露调试工具到全局
+  if (typeof window !== 'undefined') {
+    (window as any).debugFavorites = {
+      debugCollectionData,
+      debugAllCollections,
+      debugAllVideos,
+      runFullDiagnostics,
+      clearCaches
+    };
+    console.log('[Favorites] Debug tools available at window.debugFavorites');
+  }
 }
 
 // 页面加载完成后初始化
@@ -209,3 +230,8 @@ if (document.readyState === 'loading') {
 } else {
   void initFavorites();
 }
+
+// 页面关闭时清空缓存
+window.addEventListener('beforeunload', () => {
+  clearCaches();
+});

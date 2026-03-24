@@ -424,18 +424,19 @@ export class TagRepository {
   /**
    * 删除标签
    */
-  async deleteTag(tagId: string): Promise<void> {
+  async deleteTag(tagId: string): Promise<boolean> {
     // 检查标签是否存在
     const existing = await this.getTag(tagId);
-    if (!existing) throw new Error(`Tag not found: ${tagId}`);
+    if (!existing) return false;
     
     // 系统标签不可删除
     if (existing.source === 'system') {
-      throw new Error('System tag cannot be deleted');
+      return false;
     }
     
     // 使用主键删除，这是最高效的删除方式
     await DBUtils.delete(STORE_NAMES.TAGS, tagId);
+    return true;
   }
 
   /**

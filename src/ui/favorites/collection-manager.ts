@@ -1,24 +1,18 @@
 import type { Collection } from "../../database/types/collection.js";
-import type { FavoritesState, ChromeMessageResponse } from "./types.js";
+import type { FavoritesState } from "./types.js";
 import { updateFilterOptions } from "./filter-manager.js";
-import { getCollectionVideosPaginated, getAllCollectionVideosPaginated } from "../../database/implementations/collection-facade.impl.js";
-import { Platform } from "../../database/types/base.js";
+import { buildVideoIndex, executeQuery, getVideos } from "../../query/video/index.js";
+import { getAllCollections } from "../../query/collection/index.js";
+import { getTagsByIds } from "../../query/tag/index.js";
 
 type RefreshFn = () => void;
 
 export async function loadCollections(state: FavoritesState): Promise<void> {
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: 'get_collections',
-      payload: {}
-    }) as unknown as { success: boolean; collections?: Collection[]; error?: string };
-
-    if (response?.success) {
-      state.collections = response.collections || [];
-    } else {
-      console.warn('[Favorites] Failed to load collections:', response?.error);
-      state.collections = [];
-    }
+    // 通过查询层获取收藏夹数据
+    const result = await getAllCollections();
+    state.collections = result.data || [];
+    console.log('[Favorites] Loaded collections:', state.collections.length);
   } catch (error) {
     console.error('[Favorites] Error loading collections:', error);
     state.collections = [];
@@ -165,48 +159,47 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
   console.log('[Favorites] Loading collection data for:', state.currentCollectionId);
 
   try {
-    // 如果选择的是"全部"，加载所有收藏夹的视频
-    if (state.currentCollectionId === 'all') {
-      const result = await getAllCollectionVideosPaginated(
-        { page: state.currentPage, pageSize: state.pageSize },
-        {
-          keyword: state.filters.keyword,
-          tagId: state.filters.tagId,
-          creatorId: state.filters.creatorId,
-          includeTags: state.filters.includeTags,
-          excludeTags: state.filters.excludeTags
-        },
-        Platform.BILIBILI,
-        state.currentCollectionType
-      );
+    // 构建视频索引
+    await buildVideoIndex(state.currentCollectionId, state.currentCollectionType);
 
-      console.log('[Favorites] All videos result:', result);
+    // 执行查询
+    const result = await executeQuery({
+      page: state.currentPage,
+      pageSize: state.pageSize,
+      keyword: state.filters.keyword,
+      includeTags: state.filters.includeTags,
+      excludeTags: state.filters.excludeTags,
+      collectionId: state.currentCollectionId,
+      collectionType: state.currentCollectionType
+    });
 
-      state.aggregatedVideos = result.videos || [];
-      state.filteredVideos = state.aggregatedVideos;
-      state.total = result.total || 0;
+    console.log('[Favorites] Query result:', result);
 
-      console.log('[Favorites] Loaded all videos:', state.aggregatedVideos.length, 'total:', state.total);
-      console.log('[Favorites] Aggregated videos:', state.aggregatedVideos);
-      return;
-    }
+    // 获取视频数据
+    // executeQuery 返回的是 QueryResult<Video>，data 字段包含视频数据
+    const videos = result.data;
 
-    const result = await getCollectionVideosPaginated(
-      state.currentCollectionId,
-      { page: state.currentPage, pageSize: state.pageSize },
-      {
-        keyword: state.filters.keyword,
-        tagId: state.filters.tagId,
-        creatorId: state.filters.creatorId,
-        includeTags: state.filters.includeTags,
-        excludeTags: state.filters.excludeTags
-      },
-      Platform.BILIBILI
-    );
+    // 批量获取标签名称
+    const allTagIds = Array.from(new Set(videos.flatMap(v => v.tags)));
+    const tags = await getTagsByIds(allTagIds);
 
-    console.log('[Favorites] Videos result:', result);
+    // 转换为 AggregatedCollectionVideo 格式
+    state.aggregatedVideos = videos.map(video => {
+      const creatorName = video.creatorId; // 创作者名称可后续通过查询层获取
+      return {
+        videoId: video.videoId,
+        title: video.title,
+        description: video.description,
+        duration: video.duration,
+        creatorId: video.creatorId,
+        creatorName,
+        tags: video.tags,
+        addedAt: 0,
+        picture: video.picture,
+        coverUrl: video.coverUrl
+      };
+    });
 
-    state.aggregatedVideos = result.videos || [];
     state.filteredVideos = state.aggregatedVideos;
     state.total = result.total || 0;
 

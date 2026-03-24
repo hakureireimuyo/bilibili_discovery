@@ -18,7 +18,7 @@ export async function handleSync(state: FavoritesState, refresh: RefreshFn): Pro
     // 同步收藏视频
     const syncResponse = await chrome.runtime.sendMessage({
       type: 'sync_favorite_videos',
-      payload: { 
+      payload: {
         uid: settings.userId
       }
     }) as unknown as ChromeMessageResponse<{ count: number }>;

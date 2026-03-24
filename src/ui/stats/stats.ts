@@ -1,19 +1,14 @@
-import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
-import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
-import { CategoryRepository } from "../../database/implementations/category-repository.impl.js";
-import { Platform } from "../../database/types/base.js";
+
 import { bindPageActions } from "./page-actions.js";
 import { addCategory, renderCategories } from "./category-manager.js";
 import { clearFilters, renderFilterTags, setupDragAndDrop } from "./filter-manager.js";
-import { countUpTags, createInitialState, getInputValue, setText, updateToggleLabel, creatorToCacheData } from "./helpers.js";
+import { createInitialState, getInputValue, setText, updateToggleLabel, creatorToCacheData } from "./helpers.js";
 import { addCustomTag, renderTagList } from "./tag-manager.js";
 import type { Category, StatsState, TagCacheData } from "./types.js";
 import { refreshUpList } from "./up-list.js";
-
-// 初始化 repository 实例
-const creatorRepo = new CreatorRepository();
-const tagRepo = new TagRepository();
-const categoryRepo = new CategoryRepository();
+import { loadTags } from "../../../query/tag/index.js";
+import { loadCategories } from "../../../query/collection/index.js";
+import { loadStats } from "../../../query/index.js";
 
 async function rerenderPage(state: StatsState): Promise<void> {
   const refreshOnly = () => refreshUpList(state, () => rerenderPage(state));
@@ -67,9 +62,9 @@ async function loadState(state: StatsState): Promise<void> {
 
   // 获取所有标签
   console.log('[loadState] 获取所有标签');
-  const allTags = await tagRepo.getAllTags();
+  const allTags = await loadTags();
   console.log('[loadState] 获取到标签数量:', allTags.length);
-  
+
   // 构建标签库和ID到名称的映射
   state.tagLibrary = {};
   state.tagIdToName = {};
@@ -86,7 +81,7 @@ async function loadState(state: StatsState): Promise<void> {
   }
 
   // 初始化标签计数
-  const tagUsageMap = await creatorRepo.getTagUsageCounts(state.platform);
+  const tagUsageMap = await loadStats(state.platform);
   const allTagCountsObj: Record<string, number> = {};
   tagUsageMap.forEach((count, tagId) => {
     allTagCountsObj[tagId] = count;
@@ -97,8 +92,8 @@ async function loadState(state: StatsState): Promise<void> {
   state.stats.totalTags = allTags.length;
 
   // 获取所有分类
-  const dbCategories = await categoryRepo.getAllCategories();
-  
+  const dbCategories = await loadCategories();
+
   // 构建分类列表和缓存
   state.categories = [];
   state.categoryCache = {};
@@ -117,16 +112,15 @@ async function loadState(state: StatsState): Promise<void> {
   state.currentUpList = [];
   state.currentUpTags = {};
 
-  // 从数据库获取统计数据
+  // 从查询层获取统计数据
   console.log('[loadState] 获取统计数据');
-  const followedCount = await creatorRepo.getFollowedCount(state.platform);
-  const unfollowedCount = await creatorRepo.getUnfollowedCount(state.platform);
-  console.log('[loadState] 统计数据:', { followedCount, unfollowedCount });
+  const stats = await loadStats(state.platform);
+  console.log('[loadState] 统计数据:', stats);
 
   // 更新统计数据
-  state.stats.followedCount = followedCount;
-  state.stats.unfollowedCount = unfollowedCount;
-  state.stats.totalCreators = followedCount + unfollowedCount;
+  state.stats.followedCount = stats.followedCount;
+  state.stats.unfollowedCount = stats.unfollowedCount;
+  state.stats.totalCreators = stats.followedCount + stats.unfollowedCount;
 
   // 更新UI显示
   setText("stat-up-count", String(state.stats.totalCreators));
@@ -144,12 +138,12 @@ export async function initStats(): Promise<void> {
   }
 
   console.log('[initStats] 创建初始状态');
-  const state = createInitialState(Platform.BILIBILI);
+  const state = createInitialState("bilibili");
 
   console.log('[initStats] 绑定页面动作');
   bindPageActions();
 
-  console.log('[initStats] 开始加载状态');
+  console.log('[initState] 开始加载状态');
   await loadState(state);
 
   console.log('[initStats] 状态加载完成', {
@@ -184,5 +178,3 @@ if (typeof document !== 'undefined') {
     void initStats();
   }
 }
-
-

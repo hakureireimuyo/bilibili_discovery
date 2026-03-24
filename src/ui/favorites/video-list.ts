@@ -1,45 +1,50 @@
-import type { FavoritesState, AggregatedVideo } from "./types.js";
+import type { FavoritesState, AggregatedCollectionVideo } from "./types.js";
 import { formatDuration, colorFromTag } from "./helpers.js";
-import { DBUtils, STORE_NAMES } from "../../database/indexeddb/index.js";
-import type { Tag } from "../../database/types/semantic.js";
-import { bindCoverImageWithLazyLoad } from "./cover-cache.js";
-
-import { LRUCache } from "./cache.js";
 import { createLink } from "./dom.js";
-import { BiliURL } from "./bili-url.js";
+import { buildUserSpaceUrl, buildSearchUrl, buildVideoUrl } from "../../utls/url-builder.js";
+import { getTagsByIds } from "../../query/tag/index.js";
 
 type RefreshFn = () => void;
 
-const tagCache = new LRUCache<string, string>(100);
+// 标签名称缓存
+const tagNameCache = new Map<string, string>();
 
+/**
+ * 获取标签名称
+ * 通过查询层获取标签数据
+ */
 async function getTagName(tagId: string): Promise<string> {
-  const cached = tagCache.get(tagId);
-  if (cached) return cached;
+  const cached = tagNameCache.get(tagId);
+  if (cached) {
+    return cached;
+  }
 
   try {
-    const tag = await DBUtils.get<Tag>(STORE_NAMES.TAGS, tagId);
-    const name = tag?.name || tagId;
-    tagCache.set(tagId, name);
-    return name;
-  } catch {
+    const tag = await getTagsByIds([tagId]);
+    const tagName = tag.get(tagId)?.name || tagId;
+    tagNameCache.set(tagId, tagName);
+    return tagName;
+  } catch (error) {
+    console.warn('[VideoList] Error getting tag name:', error);
     return tagId;
   }
 }
 
 export async function createVideoCard(
-  video: AggregatedVideo
+  video: AggregatedCollectionVideo
 ): Promise<HTMLElement> {
   const card = document.createElement("div");
   card.className = "video-card";
 
   // 封面
-  const coverLink = createLink(BiliURL.video(video.videoId));
+  const coverLink = createLink(buildVideoUrl(video.videoId));
   const cover = document.createElement("div");
   cover.className = "video-cover";
 
   const img = document.createElement("img");
   img.alt = video.title;
-  bindCoverImageWithLazyLoad(img, video);
+  // TODO: 添加封面图片懒加载逻辑
+  // bindCoverImageWithLazyLoad(img, video);
 
   cover.appendChild(img);
   coverLink.appendChild(cover);
@@ -51,7 +56,7 @@ export async function createVideoCard(
 
   // 标题
   const titleLink = createLink(
-    BiliURL.video(video.videoId),
+    buildVideoUrl(video.videoId),
     video.title,
     "video-title"
   );
@@ -72,7 +77,7 @@ export async function createVideoCard(
   meta.appendChild(document.createTextNode("创作者: "));
   meta.appendChild(
     createLink(
-      BiliURL.user(video.creatorId),
+     buildUserSpaceUrl(video.creatorId),
       video.creatorName || video.creatorId
     )
   );
@@ -95,7 +100,7 @@ export async function createVideoCard(
         const tagName = await getTagName(tagId);
 
         const tagLink = createLink(
-          BiliURL.search(tagName),
+          buildSearchUrl(tagName),
           tagName,
           "video-tag tag-pill"
         );

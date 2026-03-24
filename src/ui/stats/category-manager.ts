@@ -1,76 +1,21 @@
-import { CategoryRepository } from "../../database/implementations/category-repository.impl.js";
-import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
+
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue } from "./helpers.js";
 import type { Category, StatsState } from "./types.js";
-
-// 初始化 repository 实例
-const categoryRepo = new CategoryRepository();
-const tagRepo = new TagRepository();
+import { addCategory as queryAddCategory, removeCategory as queryRemoveCategory, addTagToCategory as queryAddTagToCategory, removeTagFromCategory as queryRemoveTagFromCategory } from "../query/index.js";
 
 type RenderFn = () => void;
 
 export function addCategory(state: StatsState, name: string, onChanged: RenderFn): void {
-  void (async () => {
-    const categoryId = await categoryRepo.createCategory({
-      name,
-      tagIds: [],
-      createdAt: Date.now()
-    });
-    const category: Category = {
-      id: categoryId,
-      name,
-      tags: []
-    };
-    state.categories.push(category);
-    state.categoryCache[categoryId] = category;
-    onChanged();
-  })();
+  void queryAddCategory(state, name, onChanged);
 }
 
 export function removeCategory(state: StatsState, categoryId: string, onChanged: RenderFn): void {
-  state.categories = state.categories.filter((category) => category.id !== categoryId);
-  delete state.categoryCache[categoryId];
-  void categoryRepo.deleteCategory(categoryId);
-  onChanged();
+  void queryRemoveCategory(state, categoryId, onChanged);
 }
 
 export function addTagToCategory(state: StatsState, categoryId: string, tag: string, onChanged: RenderFn): void {
-  const category = findCategory(state.categories, categoryId);
-  if (!category || category.tags.includes(tag)) {
-    return;
-  }
-  category.tags.push(tag);
-  
-  // 立即更新 UI，不等待数据库操作
-  const tagsContainer = document.querySelector(`[data-category-id="${categoryId}"]`);
-  if (tagsContainer) {
-    tagsContainer.appendChild(renderCategoryTagPill(state, tag, categoryId, onChanged));
-  }
-  
-  // 异步保存到数据库
-  void (async () => {
-    // 获取或创建标签
-    let tagId = state.tagIdToName[tag];
-    if (!tagId) {
-      tagId = await tagRepo.createTag({
-        name: tag,
-        source: "user" as any,
-        createdAt: Date.now()
-      });
-      state.tagLibrary[tagId] = {
-        tagId,
-        name: tag,
-        source: "user"
-      };
-      state.tagIdToName[tagId] = tag;
-    }
-
-    // 添加标签到分类
-    await categoryRepo.addTagsToCategory(categoryId, [tagId]);
-  })();
-  
-  // 不再调用 onChanged()，避免完整页面重新渲染
+  void queryAddTagToCategory(state, categoryId, tag, onChanged);
 }
 
 export function removeTagFromCategory(
@@ -79,34 +24,7 @@ export function removeTagFromCategory(
   tag: string,
   onChanged: RenderFn
 ): void {
-  const category = findCategory(state.categories, categoryId);
-  if (!category) {
-    return;
-  }
-  category.tags = category.tags.filter((item) => item !== tag);
-  
-  // 立即更新 UI，移除对应的标签元素
-  const tagsContainer = document.querySelector(`[data-category-id="${categoryId}"]`);
-  if (tagsContainer) {
-    const tagPills = Array.from(tagsContainer.querySelectorAll('.tag-pill'));
-    for (const pill of tagPills) {
-      if (pill.textContent === tag) {
-        pill.remove();
-        break;
-      }
-    }
-  }
-  
-  // 异步从数据库中移除
-  void (async () => {
-    const tagId = state.tagIdToName[tag];
-    if (!tagId) {
-      return;
-    }
-    await categoryRepo.removeTagsFromCategory(categoryId, [tagId]);
-  })();
-  
-  // 不再调用 onChanged()，避免完整页面重新渲染
+  void queryRemoveTagFromCategory(state, categoryId, tag, onChanged);
 }
 
 function renderCategoryTagPill(

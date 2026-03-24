@@ -12,7 +12,7 @@ export const DB_NAME = 'DiscoveryDB';
  * 数据库版本
  * 每次修改数据库结构时需要递增此版本号
  */
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 /**
  * 对象存储名称定义

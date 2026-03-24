@@ -1,30 +1,30 @@
 import { getInputValue, colorFromTag, removeFromList, resetFilters } from "./helpers.js";
-import type { FavoritesState, ChromeMessageResponse } from "./types.js";
-import { DBUtils, STORE_NAMES } from "../../database/indexeddb/index.js";
-import type { Tag } from "../../database/types/semantic.js";
+import type { FavoritesState } from "./types.js";
+import { getAllTags as getAllVideoTags } from "../../query/video/index.js";
+import { getTagsByIds } from "../../query/tag/index.js";
 
 type RefreshFn = () => void;
 
-// 标签缓存
-const tagCache = new Map<string, string>();
+// 标签名称缓存
+const tagNameCache = new Map<string, string>();
 
 /**
  * 获取标签名称
+ * 通过查询层获取标签数据
  */
 async function getTagName(tagId: string): Promise<string> {
-  // 先从缓存中查找
-  if (tagCache.has(tagId)) {
-    return tagCache.get(tagId)!;
+  const cached = tagNameCache.get(tagId);
+  if (cached) {
+    return cached;
   }
 
-  // 从数据库中获取
   try {
-    const tag = await DBUtils.get<Tag>(STORE_NAMES.TAGS, tagId);
-    const tagName = tag?.name || tagId;
-    tagCache.set(tagId, tagName);
+    const tag = await getTagsByIds([tagId]);
+    const tagName = tag.get(tagId)?.name || tagId;
+    tagNameCache.set(tagId, tagName);
     return tagName;
   } catch (error) {
-    console.error('[FilterManager] Error getting tag name:', error);
+    console.warn('[FilterManager] Error getting tag name:', error);
     return tagId;
   }
 }
@@ -112,8 +112,8 @@ export async function applyFilters(state: FavoritesState): Promise<void> {
     }
   }
 
-  state.filters = { 
-    keyword: searchKeyword, 
+  state.filters = {
+    keyword: searchKeyword,
     tagId: '',
     creatorId: creatorName,
     includeTags: state.filters.includeTags,
@@ -126,26 +126,13 @@ export async function applyFilters(state: FavoritesState): Promise<void> {
 }
 
 export async function updateFilterOptions(state: FavoritesState): Promise<void> {
-  // 从后端获取所有标签
-  let tagsResponse;
-
-  if (state.currentCollectionId === 'all') {
-    tagsResponse = await chrome.runtime.sendMessage({
-      type: 'get_all_collection_tags',
-      payload: { collectionType: state.currentCollectionType }
-    }) as unknown as { success: boolean; tags?: string[]; error?: string };
-  } else {
-    tagsResponse = await chrome.runtime.sendMessage({
-      type: 'get_collection_tags',
-      payload: { collectionId: state.currentCollectionId }
-    }) as unknown as { success: boolean; tags?: string[]; error?: string };
-  }
-
-  if (tagsResponse?.success && tagsResponse.tags) {
+  // 从查询层获取所有标签
+  try {
+    const tags = await getAllVideoTags(state.currentCollectionId || undefined);
     // 渲染标签列表
-    await renderTagList(state, tagsResponse.tags);
-  } else {
-    console.warn('[FilterManager] Failed to load tags:', tagsResponse?.error);
+    await renderTagList(state, tags);
+  } catch (error) {
+    console.error('[FilterManager] Error loading tags:', error);
     // 渲染空标签列表
     await renderTagList(state, []);
   }

@@ -352,6 +352,10 @@ export class CreatorRepository {
         // 使用存储的图片ID获取完整图片数据
         const fullImage = await this.imageRepository.getImage(creator.avatar);
         if (fullImage) {
+          // 更新图片的访问时间
+          await this.imageRepository.updateImageMetadata(creator.avatar, {
+            lastAccessTime: Date.now()
+          });
           return fullImage.data.data;
         }
       } catch (error) {

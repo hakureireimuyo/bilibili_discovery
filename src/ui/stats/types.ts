@@ -1,6 +1,5 @@
-import type { Creator, CreatorTagWeight } from "../../database/types/creator.js";
-import type { Tag, Category as DBCategory } from "../../database/types/semantic.js";
-import type { Platform } from "../../database/types/base.js";
+
+import type { Platform } from "../../../database/types/base.js";
 
 /**
  * UI使用的分类类型
@@ -63,46 +62,46 @@ export interface TagCacheData {
 export interface StatsState {
   // 平台
   platform: Platform;
-  
+
   // 所有标签计数
   allTagCounts: Record<string, number>;
-  
+
   // 过滤后的标签
   filteredTags: string[];
-  
+
   // 当前自定义标签
   currentCustomTags: string[];
-  
+
   // 分类列表
   categories: Category[];
-  
+
   // 过滤后的分类
   filteredCategories: Category[];
-  
+
   // 是否只显示已关注
   showFollowedOnly: boolean;
-  
+
   // 筛选状态
   filters: FilterState;
-  
+
   // 当前UP主ID列表
   currentUpList: string[];
-  
+
   // UP主标签映射
   currentUpTags: Record<string, string[]>;
-  
+
   // 标签库
   tagLibrary: Record<string, TagCacheData>;
-  
+
   // UP主缓存
   upCache: Record<string, UPCacheData>;
-  
+
   // 分类缓存
   categoryCache: Record<string, Category>;
-  
+
   // 标签ID到名称的映射
   tagIdToName: Record<string, string>;
-  
+
   // 统计数据
   stats: {
     totalCreators: number;

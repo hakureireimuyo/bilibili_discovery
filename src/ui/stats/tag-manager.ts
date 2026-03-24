@@ -1,13 +1,9 @@
-import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
-import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
-import { TagSource } from "../../database/types/base.js";
+
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, getInputValue, normalizeTag } from "./helpers.js";
 import type { StatsState } from "./types.js";
-
-// 初始化 repository 实例
-const creatorRepo = new CreatorRepository();
-const tagRepo = new TagRepository();
+import { createTag, getTagById } from "../../../query/tag/index.js";
+import { getCreator, updateTagWeights } from "../../../query/creator/index.js";
 
 type RenderFn = () => void | Promise<void>;
 
@@ -83,7 +79,7 @@ export function renderTagPill(
     } else {
       if (creatorId !== undefined && state && rerender) {
         if (getDragContext()?.originUpMid === creatorId && !getDragContext()?.dropped) {
-          void removeTagFromUp(state, creatorId, tagName, rerender);
+          void queryRemoveTagFromUp(state, creatorId, tagName, rerender);
         }
       } else if (onDetached && resolveDetach()) {
         onDetached();
@@ -113,16 +109,16 @@ export async function addTagToUp(
   // 查找或创建标签ID
   let tagId = Object.entries(state.tagIdToName).find(([_, name]) => name === nextTag)?.[0];
   if (!tagId) {
-    tagId = await tagRepo.createTag({
+    tagId = await createTag({
       name: nextTag,
-      source: TagSource.USER,
+      source: 'user',
       createdAt: Date.now()
     });
     // 更新标签库和映射
     state.tagLibrary[tagId] = {
       tagId,
       name: nextTag,
-      source: "user"
+      source: 'user'
     };
     state.tagIdToName[tagId] = nextTag;
   }
@@ -134,14 +130,14 @@ export async function addTagToUp(
   }
 
   // 添加标签到UP主
-  await creatorRepo.updateTagWeights(creatorId, state.platform, [{
+  await updateTagWeights(creatorId, state.platform, [{
     tagId,
-    source: "user" as any,
+    source: 'user',
     count: 0,
     createdAt: Date.now()
   }]);
 
-  // 更新缓存（存储标签ID）
+  // 更新缓存(存储标签ID)
   const upData = state.upCache[creatorId];
   if (upData) {
     upData.tags = [...upData.tags, tagId];
@@ -152,7 +148,7 @@ export async function addTagToUp(
   state.allTagCounts[tagId] = (state.allTagCounts[tagId] || 0) + 1;
 
   if (onChanged) {
-    onChanged();
+    await onChanged();
   }
 }
 
@@ -169,16 +165,16 @@ export async function removeTagFromUp(
   }
 
   // 获取创作者当前的标签权重
-  const creator = await creatorRepo.getCreator(creatorId, state.platform);
+  const creator = await getCreator(creatorId, state.platform);
   if (!creator) {
     return;
   }
 
   // 移除指定的标签
   const updatedTagWeights = creator.tagWeights.filter(tw => tw.tagId !== tagId);
-  await creatorRepo.updateTagWeights(creatorId, state.platform, updatedTagWeights);
+  await updateTagWeights(creatorId, state.platform, updatedTagWeights);
 
-  // 更新缓存（存储标签ID）
+  // 更新缓存(存储标签ID)
   const upData = state.upCache[creatorId];
   if (upData) {
     upData.tags = upData.tags.filter(t => t !== tagId);
@@ -189,7 +185,7 @@ export async function removeTagFromUp(
   state.allTagCounts[tagId] = Math.max(0, (state.allTagCounts[tagId] || 0) - 1);
 
   if (onChanged) {
-    onChanged();
+    await onChanged();
   }
 }
 
@@ -200,9 +196,9 @@ export async function addCustomTag(state: StatsState, tagName: string, onChanged
   }
 
   // 创建标签
-  const tagId = await tagRepo.createTag({
+  const tagId = await createTag({
     name: next,
-    source: TagSource.USER,
+    source: 'user',
     createdAt: Date.now()
   });
 
@@ -210,12 +206,14 @@ export async function addCustomTag(state: StatsState, tagName: string, onChanged
   state.tagLibrary[tagId] = {
     tagId,
     name: next,
-    source: "user"
+    source: 'user'
   };
   state.tagIdToName[tagId] = next;
 
   state.currentCustomTags = [...state.currentCustomTags, next];
-  await onChanged();
+  if (onChanged) {
+    await onChanged();
+  }
 }
 
 export async function renderTagList(state: StatsState): Promise<void> {

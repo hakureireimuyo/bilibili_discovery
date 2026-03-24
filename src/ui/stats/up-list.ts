@@ -1,10 +1,10 @@
-import type { StatsState, UPCacheData } from "./types.js";
-import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
-import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
 
+import type { StatsState, UPCacheData } from "./types.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue, updateToggleLabel, creatorToCacheData } from "./helpers.js";
 import { addTagToUp, removeTagFromUp, renderAutoTagPill, renderTagPill } from "./tag-manager.js";
+import { searchCreators, getCreator, getAvatarUrl } from "../query/index.js";
+import { imageLoader } from "../../utls/image-loader.js";
 
 type RenderFn = () => void;
 
@@ -23,12 +23,8 @@ let paginationState: PaginationState = {
   totalItems: 0
 };
 
-// 初始化 repository 实例
-const creatorRepo = new CreatorRepository();
-const tagRepo = new TagRepository();
-
 /**
- * 从数据库层获取过滤后的UP列表（带分页）
+ * 从查询层获取过滤后的UP列表（带分页）
  */
 async function fetchFilteredUpList(state: StatsState, page: number = 0): Promise<{
   items: UPCacheData[];
@@ -51,25 +47,8 @@ async function fetchFilteredUpList(state: StatsState, page: number = 0): Promise
     pageSize: paginationState.pageSize
   });
 
-  // 先获取总数
-  const allCreators = await creatorRepo.searchCreatorsByFilter(state.platform, {
-    isFollowing: state.showFollowedOnly,
-    includeTags: includeTagIds,
-    excludeTags: excludeTagIds,
-    includeCategories: state.filters.includeCategories,
-    excludeCategories: state.filters.excludeCategories,
-    keyword: getInputValue("up-search"),
-    page: 0,
-    pageSize: 100000  // 获取所有匹配项以计算总数
-  });
-
-  const total = allCreators.length;
-  const totalPages = Math.ceil(total / paginationState.pageSize);
-
-  console.log('[fetchFilteredUpList] 总数:', total, '总页数:', totalPages);
-
-  // 获取当前页的数据
-  const creators = await creatorRepo.searchCreatorsByFilter(state.platform, {
+  // 获取总数和分页数据
+  const result = await searchCreators(state.platform, {
     isFollowing: state.showFollowedOnly,
     includeTags: includeTagIds,
     excludeTags: excludeTagIds,
@@ -80,40 +59,13 @@ async function fetchFilteredUpList(state: StatsState, page: number = 0): Promise
     pageSize: paginationState.pageSize
   });
 
-  console.log('[fetchFilteredUpList] 当前页获取到的UP数量:', creators.length);
-  if (creators.length > 0) {
-    console.log('[fetchFilteredUpList] 第一个UP:', creators[0]);
+  console.log('[fetchFilteredUpList] 总数:', result.total, '总页数:', result.totalPages);
+  console.log('[fetchFilteredUpList] 当前页获取到的UP数量:', result.items.length);
+  if (result.items.length > 0) {
+    console.log('[fetchFilteredUpList] 第一个UP:', result.items[0]);
   }
 
-  // 转换为UPCacheData格式
-  const items = creators.map(creator => {
-    const userTags = creator.tagWeights
-      .filter(tw => tw.source === 'user')
-      .map(tw => tw.tagId);
-
-    return {
-      ...creatorToCacheData(creator),
-      tags: userTags
-    };
-  });
-
-  return { items, total, totalPages };
-}
-
-/**
- * 获取已关注UP的数量
- * 直接从数据库层获取统计数据
- */
-export async function getFollowedCount(state: StatsState): Promise<number> {
-  return await creatorRepo.getFollowedCount(state.platform);
-}
-
-/**
- * 获取未关注UP的数量
- * 直接从数据库层获取统计数据
- */
-export async function getUnfollowedCount(state: StatsState): Promise<number> {
-  return await creatorRepo.getUnfollowedCount(state.platform);
+  return result;
 }
 
 function setupUpTagDropZone(tagsEl: HTMLElement, creatorId: string, state: StatsState, rerender: RenderFn): void {
@@ -163,9 +115,9 @@ async function buildTagContainer(state: StatsState, creatorId: string, rerender:
   // 首先尝试从缓存获取
   let upData = state.upCache[creatorId];
 
-  // 如果缓存中没有，从数据库获取
+  // 如果缓存中没有，从查询层获取
   if (!upData) {
-    const creator = await creatorRepo.getCreator(creatorId, state.platform);
+    const creator = await getCreator(creatorId, state.platform);
     if (creator) {
       const userTags = creator.tagWeights
         .filter(tw => tw.source === 'user')
@@ -203,7 +155,7 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     return;
   }
 
-  // 从数据库获取过滤后的UP列表
+  // 从查询层获取过滤后的UP列表
   const result = await fetchFilteredUpList(state, paginationState.currentPage);
 
   console.log('[renderUpList] 获取到的列表长度:', result.items.length);
@@ -217,6 +169,21 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     state.upCache[up.creatorId] = up;
     state.currentUpTags[up.creatorId] = up.tags;
   });
+
+  // 预加载头像图片
+  void (async () => {
+    const avatarIds = result.items
+      .map(up => up.avatar)
+      .filter((avatar): avatar is string => !!avatar);
+
+    if (avatarIds.length > 0) {
+      try {
+        await imageLoader.preloadImages(avatarIds);
+      } catch (error) {
+        console.error('[up-list] Failed to preload avatar images:', error);
+      }
+    }
+  })();
 
   if (result.items.length === 0) {
     console.log('[renderUpList] 列表为空，显示"暂无关注UP"');
@@ -256,7 +223,7 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
       // 异步获取头像URL
       void (async () => {
         try {
-          const avatarUrl = await creatorRepo.getAvatarUrl(up.creatorId, state.platform);
+          const avatarUrl = await getAvatarUrl(up.creatorId, state.platform);
           if (avatarUrl) {
             avatar.src = avatarUrl;
           }
@@ -271,9 +238,21 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     // 头像加载失败处理
     avatar.onerror = async () => {
       console.warn(`[up-list] Failed to load avatar for UP: ${up.name}`);
+
+      // 如果有avatar字段，尝试使用ImageLoader加载
+      if (up.avatar) {
+        try {
+          const result = await imageLoader.loadImage(up.avatar);
+          avatar.src = result.data;
+          return;
+        } catch (error) {
+          console.error(`[up-list] Failed to load avatar from cache for UP: ${up.name}`, error);
+        }
+      }
+
       // 尝试通过API获取头像URL
       try {
-        const avatarUrl = await creatorRepo.getAvatarUrl(up.creatorId, state.platform);
+        const avatarUrl = await getAvatarUrl(up.creatorId, state.platform);
         if (avatarUrl) {
           avatar.src = avatarUrl;
         }
@@ -325,6 +304,24 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
 
   // 渲染分页控件
   renderPagination(container, result.total, paginationState.currentPage, paginationState.totalPages, rerender);
+
+  // 预加载下一页的头像
+  if (paginationState.currentPage < paginationState.totalPages - 1) {
+    void (async () => {
+      try {
+        const nextPageResult = await fetchFilteredUpList(state, paginationState.currentPage + 1);
+        const avatarIds = nextPageResult.items
+          .map(up => up.avatar)
+          .filter((avatar): avatar is string => !!avatar);
+
+        if (avatarIds.length > 0) {
+          await imageLoader.preloadImages(avatarIds);
+        }
+      } catch (error) {
+        console.error('[up-list] Failed to preload next page avatars:', error);
+      }
+    })();
+  }
 }
 
 /**
