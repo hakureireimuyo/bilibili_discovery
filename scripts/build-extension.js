@@ -17,7 +17,7 @@ function copyStaticAssets() {
 }
 
 function copyCompiledCode() {
-  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui", "utls"];
+  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui", "utls", "renderer"];
   for (const dir of runtimeDirs) {
     cpSync(join(compiledRoot, dir), join(extensionRoot, dir), { recursive: true });
   }

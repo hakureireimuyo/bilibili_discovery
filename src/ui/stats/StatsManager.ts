@@ -184,12 +184,20 @@ export class StatsManager {
       // 获取统计数据
       await this.loadStats();
 
-      // 并行加载所有数据
-      await Promise.all([
-        this.container.tagManager.renderTagList(),
-        this.container.categoryManager.renderCategories(() => this.rerender()),
-        this.container.upListManager.renderUpList(this.container.state)
-      ]);
+      // 顺序初始化各个管理器，确保依赖关系正确
+      // 1. 先初始化标签管理器
+      console.log('[StatsManager] 初始化标签管理器...');
+      await this.container.tagManager.renderTagList();
+
+      // 2. 然后初始化分类管理器
+      console.log('[StatsManager] 初始化分类管理器...');
+      await this.container.categoryManager.renderCategories(() => this.rerender());
+
+      // 3. 最后初始化UP列表管理器（依赖标签和分类）
+      console.log('[StatsManager] 初始化UP列表管理器...');
+      await this.container.upListManager.renderUpList(this.container.state);
+
+      console.log('[StatsManager] 所有管理器初始化完成');
     } catch (error) {
       console.error('[StatsManager] 加载数据失败:', error);
       this.container.state.error = error instanceof Error ? error.message : '加载失败';

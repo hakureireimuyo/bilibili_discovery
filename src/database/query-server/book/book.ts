@@ -22,6 +22,7 @@ export class Book<T> {
 
   protected repository: IDataRepository<T>;
   protected queryService: IQueryService<any>;
+  protected indexUpdateListeners: Set<import('../../../renderer/types.js').IIndexUpdateListener> = new Set();
 
   constructor(
     bookId: number,
@@ -108,6 +109,32 @@ export class Book<T> {
     this.state.totalPages = Math.ceil(newResultIds.length / this.state.pageSize);
     this.state.currentPage = 0;
     this.pages.clear(); // 清空页缓存
+
+    // 通知所有监听器
+    this.notifyIndexUpdate(newCondition);
+  }
+
+  /**
+   * 注册索引更新监听器
+   */
+  registerIndexUpdateListener(listener: import('../../../renderer/types.js').IIndexUpdateListener): void {
+    this.indexUpdateListeners.add(listener);
+  }
+
+  /**
+   * 取消注册索引更新监听器
+   */
+  unregisterIndexUpdateListener(listener: import('../../../renderer/types.js').IIndexUpdateListener): void {
+    this.indexUpdateListeners.delete(listener);
+  }
+
+  /**
+   * 通知所有监听器索引已更新
+   */
+  protected notifyIndexUpdate(condition: QueryCondition): void {
+    for (const listener of this.indexUpdateListeners) {
+      listener.onIndexUpdate(this.bookId, condition);
+    }
   }
 
   /**

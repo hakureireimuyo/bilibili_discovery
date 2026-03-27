@@ -152,15 +152,58 @@ h2 {
   font-weight: 600;
   color: #1f2430;
   text-decoration: none;
-  transition: color 0.2s ease;
-  flex: 1;
-  min-width: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, transparent 60%, rgba(139, 157, 195, 0.05) 100%);
+  max-width: calc(100% - 80px);
+  overflow: visible;
+}
+
+.up-name::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #8b9dc3, #a8b8d8);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.up-name::after {
+  content: " -> bilibili";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(8px);
+  font-size: 14px;
+  font-weight: 500;
+  color: #9ca3af;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .up-name:hover {
-  color: #8b9dc3;
-  text-decoration: underline;
+  color: #6b7db5;
+  background: linear-gradient(135deg, rgba(139, 157, 195, 0.08) 0%, rgba(168, 184, 216, 0.12) 100%);
+  transform: translateY(-1px);
+  text-shadow: 0 2px 4px rgba(139, 157, 195, 0.15);
   cursor: pointer;
+}
+
+.up-name:hover::before {
+  width: 100%;
+}
+
+.up-name:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(12px);
 }
 
 .up-follow-badge {
