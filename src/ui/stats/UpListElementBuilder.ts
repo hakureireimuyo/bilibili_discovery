@@ -8,9 +8,9 @@ import type { Creator } from "../../database/types/index.js";
 import type { IUpListElementBuilder } from "./up-list-types.js";
 import type { ServiceContainer } from "./services.js";
 import type { StatsState } from "./types.js";
-import { colorFromTag } from "../../utls/tag-utils.js";
-import { createDragGhost, setDragContext, getDragContext, type DragContext } from "../../utls/drag-utils.js";
-import { buildUserSpaceUrl, buildSearchUrl } from "../../utls/url-builder.js";
+import { colorFromTag } from "../../utils/tag-utils.js";
+import { createDragGhost, setDragContext, getDragContext, type DragContext } from "../../utils/drag-utils.js";
+import { buildUserSpaceUrl, buildSearchUrl } from "../../utils/url-builder.js";
 
 /**
  * UP列表元素构建器实现

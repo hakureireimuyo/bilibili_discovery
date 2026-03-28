@@ -1,5 +1,6 @@
-import { navigateToStats, navigateToTestTools, navigateToOptions } from "./popup-progress.js";
+import { navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings } from "./popup-progress.js";
 import { openExtensionPage } from "./popup-runtime.js";
+import { initThemedPage } from "../../themes/index.js";
 
 function formatTime(timestamp: number | null): string {
   if (!timestamp) {
@@ -24,17 +25,72 @@ async function loadStatus(): Promise<void> {
 }
 
 function bindButtons(): void {
-  document.getElementById("btn-stats")?.addEventListener("click", () => navigateToStats());
-  document.getElementById("btn-watch-stats")?.addEventListener("click", () => navigateToTestTools());
-  document.getElementById("btn-favorites")?.addEventListener("click", () => navigateToTestTools());
-  document.getElementById("btn-interest-stats")?.addEventListener("click", () => navigateToTestTools());
-  document.getElementById("btn-settings")?.addEventListener("click", () => navigateToOptions());
+  const btnStats = document.getElementById("btn-stats");
+  if (btnStats) {
+    btnStats.addEventListener("click", (event) => {
+      console.log("[popup] btn-stats clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToStats();
+    });
+  }
+
+  const btnWatchStats = document.getElementById("btn-watch-stats");
+  if (btnWatchStats) {
+    btnWatchStats.addEventListener("click", (event) => {
+      console.log("[popup] btn-watch-stats clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToTestTools();
+    });
+  }
+
+  const btnFavorites = document.getElementById("btn-favorites");
+  if (btnFavorites) {
+    btnFavorites.addEventListener("click", (event) => {
+      console.log("[popup] btn-favorites clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToTestTools();
+    });
+  }
+
+  const btnInterestStats = document.getElementById("btn-interest-stats");
+  if (btnInterestStats) {
+    btnInterestStats.addEventListener("click", (event) => {
+      console.log("[popup] btn-interest-stats clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToTestTools();
+    });
+  }
+
+  const btnThemeSettings = document.getElementById("btn-theme-settings");
+  if (btnThemeSettings) {
+    btnThemeSettings.addEventListener("click", (event) => {
+      console.log("[popup] btn-theme-settings clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToThemeSettings();
+    });
+  }
+
+  const btnSettings = document.getElementById("btn-settings");
+  if (btnSettings) {
+    btnSettings.addEventListener("click", (event) => {
+      console.log("[popup] btn-settings clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToOptions();
+    });
+  }
 }
 
 export function initPopup(): void {
   if (typeof document === "undefined") {
     return;
   }
+  initThemedPage("popup");
   bindButtons();
   void loadStatus();
 }

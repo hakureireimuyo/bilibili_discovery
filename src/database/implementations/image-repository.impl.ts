@@ -6,7 +6,7 @@
 import { Image, ImageMetadata, ImageData, ImagePurpose } from '../types/image.js';
 import { PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
-import { compressImage, shouldCompress } from '../../utls/image-utils.js';
+import { compressImage, shouldCompress } from '../../utils/image-utils.js';
 import { generateId } from './id-generator.js';
 
 export class ImageRepositoryImpl {

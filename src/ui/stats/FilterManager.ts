@@ -6,8 +6,8 @@
 import type { StatsState } from "./types.js";
 import type { ServiceContainer } from "./services.js";
 import type { ID } from "../../database/types/base.js";
-import { getDragContext, setDragContext } from "../../utls/drag-utils.js";
-import { colorFromTag } from "../../utls/tag-utils.js";
+import { getDragContext, setDragContext } from "../../utils/drag-utils.js";
+import { colorFromTag } from "../../utils/tag-utils.js";
 
 type RefreshFn = () => void;
 
@@ -122,19 +122,12 @@ export class FilterManager {
     refresh: RefreshFn
   ): HTMLElement {
     const tagElement = document.createElement("span");
-    tagElement.className = `filter-tag ${type}-tag`;
+    tagElement.className = `filter-tag filter-tag-${type}`;
     tagElement.textContent = tagName;
 
     // 使用colorFromTag函数计算标签颜色
     const tagColor = colorFromTag(tagName);
     tagElement.style.backgroundColor = tagColor;
-
-    // 根据类型设置边框颜色
-    if (type === 'include') {
-      tagElement.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-    } else {
-      tagElement.style.borderColor = 'rgba(0, 0, 0, 0.2)';
-    }
 
     // 设置标签可拖拽
     tagElement.draggable = true;
@@ -184,7 +177,6 @@ export class FilterManager {
     const removeBtn = document.createElement("button");
     removeBtn.className = "filter-tag-remove";
     removeBtn.textContent = "×";
-    removeBtn.style.cursor = 'pointer';
 
     // 阻止事件冒泡，防止触发标签的拖拽
     removeBtn.addEventListener('mousedown', (e) => {

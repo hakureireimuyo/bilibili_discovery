@@ -5,12 +5,14 @@
  */
 
 import { getStatsManager } from "./StatsManager.js";
+import { initThemedPage } from "../../themes/index.js";
 
 /**
  * 初始化统计页面
  * 使用StatsManager管理所有功能
  */
 export async function initStats(): Promise<void> {
+  initThemedPage("stats");
   await getStatsManager().init();
 }
 

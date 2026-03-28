@@ -6,8 +6,8 @@
 import type { CategoryInfo, TagInfo } from "./types.js";
 import type { ServiceContainer } from "./services.js";
 import type { ID } from "../../database/types/base.js";
-import { colorFromTag } from "../../utls/tag-utils.js";
-import { createDragGhost, setDragContext, type DragContext } from "../../utls/drag-utils.js";
+import { colorFromTag } from "../../utils/tag-utils.js";
+import { createDragGhost, setDragContext, type DragContext } from "../../utils/drag-utils.js";
 
 type RenderFn = () => void;
 

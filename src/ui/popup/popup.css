@@ -5,16 +5,20 @@
 body {
   margin: 0;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  color: #1f2430;
+  color: var(--theme-text-primary);
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, var(--theme-primary-softer), transparent 45%),
+    linear-gradient(160deg, var(--theme-page-gradient-start) 0%, var(--theme-page-gradient-end) 100%);
 }
 
 .app {
   width: 270px;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--theme-popup-shell-bg);
+  border: 1px solid var(--theme-popup-shell-border);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px var(--theme-shadow-medium);
   backdrop-filter: blur(10px);
   overflow: hidden;
 }
@@ -22,7 +26,7 @@ body {
 .header {
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--theme-border-primary);
 }
 
 .logo {
@@ -33,28 +37,28 @@ body {
 
 .logo i {
   font-size: 28px;
-  color: #fb7299;
+  color: var(--theme-popup-icon-color);
 }
 
 h1 {
   font-size: 20px;
   margin: 0;
   font-weight: 600;
-  color: #1f2430;
+  color: var(--theme-text-primary);
 }
 
 h2 {
   font-size: 14px;
   margin: 16px 0 12px 0;
   font-weight: 600;
-  color: #1f2430;
+  color: var(--theme-text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 h2 i {
-  color: #667eea;
+  color: var(--theme-popup-section-icon);
 }
 
 .actions {
@@ -67,15 +71,15 @@ button {
   padding: 12px 16px;
   border: none;
   border-radius: 8px;
-  color: #fff;
+  color: var(--theme-text-inverse);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  box-shadow: 0 2px 4px var(--theme-shadow-light);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -83,7 +87,7 @@ button {
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 8px var(--theme-shadow-medium);
 }
 
 button:active {
@@ -135,7 +139,7 @@ button i {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--theme-popup-progress-fill);
   z-index: 0;
   transition: width 0.25s ease;
 }
@@ -146,77 +150,65 @@ button i {
 }
 
 #btn-auto-classify.is-stopping .btn-progress-fill {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--theme-overlay-soft);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--theme-button-primary-bg) 0%, var(--theme-button-secondary-bg) 100%);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+  background: linear-gradient(135deg, var(--theme-button-primary-hover) 0%, var(--theme-button-secondary-hover) 100%);
 }
 
-.btn-accent {
-  background: linear-gradient(135deg, #fb7299 0%, #e85d8a 100%);
+.btn-accent,
+.btn-favorite {
+  background: linear-gradient(135deg, var(--theme-button-accent-bg) 0%, var(--theme-button-accent-hover) 100%);
 }
 
-.btn-accent:hover {
-  background: linear-gradient(135deg, #e06688 0%, #d14d7b 100%);
+.btn-accent:hover,
+.btn-favorite:hover {
+  background: linear-gradient(135deg, var(--theme-button-accent-hover) 0%, var(--theme-button-accent-bg) 100%);
 }
 
 .btn-secondary {
-  background: linear-gradient(135deg, #ff6b2b 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, var(--theme-warning) 0%, var(--theme-accent) 100%);
 }
 
 .btn-secondary:hover {
-  background: linear-gradient(135deg, #e55a1f 0%, #e67b33 100%);
+  background: linear-gradient(135deg, var(--theme-warning) 0%, var(--theme-accent-hover) 100%);
 }
 
-.btn-info {
-  background: linear-gradient(135deg, #42b983 0%, #35a372 100%);
+.btn-info,
+.btn-interest {
+  background: linear-gradient(135deg, var(--theme-success) 0%, var(--theme-info) 100%);
 }
 
-.btn-info:hover {
-  background: linear-gradient(135deg, #37a875 0%, #2e9264 100%);
+.btn-info:hover,
+.btn-interest:hover {
+  background: linear-gradient(135deg, var(--theme-success) 0%, var(--theme-primary) 100%);
 }
 
 .btn-watch {
-  background: linear-gradient(135deg, #5aa7ff 0%, #4b8fd9 100%);
+  background: linear-gradient(135deg, var(--theme-info) 0%, var(--theme-secondary) 100%);
 }
 
 .btn-watch:hover {
-  background: linear-gradient(135deg, #4b97f0 0%, #3f7fc4 100%);
+  background: linear-gradient(135deg, var(--theme-info) 0%, var(--theme-secondary-hover) 100%);
 }
 
 .btn-neutral {
-  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  background: linear-gradient(135deg, var(--theme-button-secondary-bg) 0%, var(--theme-button-secondary-hover) 100%);
 }
 
 .btn-neutral:hover {
-  background: linear-gradient(135deg, #5c6369 0%, #4a5156 100%);
-}
-
-.btn-interest {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.btn-interest:hover {
-  background: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
-}
-
-.btn-favorite {
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-}
-
-.btn-favorite:hover {
-  background: linear-gradient(135deg, #db2777 0%, #be185d 100%);
+  background: linear-gradient(135deg, var(--theme-button-secondary-hover) 0%, var(--theme-button-secondary-bg) 100%);
 }
 
 .section {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 2px solid #f0f0f0;
+  border-top: 2px solid var(--theme-border-primary);
 }
 
 .status-list {
@@ -230,13 +222,13 @@ button i {
   justify-content: space-between;
   align-items: center;
   padding: 10px;
-  background: #f8f9fa;
+  background: var(--theme-popup-status-bg);
   border-radius: 8px;
   transition: background 0.2s ease;
 }
 
 .status-item:hover {
-  background: #e9ecef;
+  background: var(--theme-popup-status-hover);
 }
 
 .status-label {
@@ -244,18 +236,18 @@ button i {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #495057;
+  color: var(--theme-text-secondary);
 }
 
 .status-label i {
-  color: #667eea;
+  color: var(--theme-popup-section-icon);
   font-size: 14px;
 }
 
 .status-value {
   font-size: 13px;
   font-weight: 500;
-  color: #1f2430;
+  color: var(--theme-text-primary);
 }
 
 .interest-list {
@@ -267,7 +259,7 @@ button i {
 .recommend {
   margin-top: 12px;
   font-size: 13px;
-  color: #3a4252;
+  color: var(--theme-text-secondary);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -275,7 +267,7 @@ button i {
 
 .recommend-title {
   font-weight: 600;
-  color: #1f2430;
+  color: var(--theme-text-primary);
 }
 
 .interest-item {
@@ -283,7 +275,7 @@ button i {
   justify-content: space-between;
   font-size: 13px;
   padding: 8px;
-  background: #f8f9fa;
+  background: var(--theme-surface-muted);
   border-radius: 6px;
 }
 
@@ -291,7 +283,7 @@ button i {
   display: inline-block;
   width: 80px;
   height: 8px;
-  background: #e9ecef;
+  background: var(--theme-border-primary);
   border-radius: 4px;
   overflow: hidden;
   margin-left: 8px;
@@ -299,7 +291,6 @@ button i {
 
 .bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
   transition: width 0.3s ease;
 }
-

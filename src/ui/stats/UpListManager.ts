@@ -4,7 +4,7 @@
 import type { Creator } from "../../database/types/index.js";
 import type { StatsState } from "./types.js";
 import type { ServiceContainer } from "./services.js";
-import { updateToggleLabel } from "../../utls/dom-utils.js";
+import { updateToggleLabel } from "../../utils/dom-utils.js";
 
 /**
  * UP列表管理器

@@ -1,0 +1,78 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>主题示例 - Bilibili Discovery</title>
+  <link rel="stylesheet" href="theme-example.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>主题示例页面</h1>
+      <p>展示如何在页面中使用主题管理器</p>
+    </header>
+
+    <main class="content">
+      <section class="section">
+        <h2>文本样式</h2>
+        <p class="text-primary">主要文本</p>
+        <p class="text-secondary">次要文本</p>
+        <p class="text-tertiary">第三级文本</p>
+      </section>
+
+      <section class="section">
+        <h2>按钮样式</h2>
+        <div class="button-group">
+          <button class="btn btn-primary">主要按钮</button>
+          <button class="btn btn-secondary">次要按钮</button>
+          <button class="btn btn-accent">强调按钮</button>
+          <button class="btn btn-success">成功按钮</button>
+          <button class="btn btn-warning">警告按钮</button>
+          <button class="btn btn-danger">危险按钮</button>
+          <button class="btn btn-info">信息按钮</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>卡片样式</h2>
+        <div class="card">
+          <h3>卡片标题</h3>
+          <p>这是一个示例卡片，使用主题变量定义的样式。</p>
+          <div class="card-actions">
+            <button class="btn btn-primary">操作</button>
+            <button class="btn btn-secondary">取消</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>表单元素</h2>
+        <div class="form-group">
+          <label class="form-label">输入框</label>
+          <input type="text" class="form-input" placeholder="请输入内容">
+        </div>
+        <div class="form-group">
+          <label class="form-label">选择框</label>
+          <select class="form-select">
+            <option>选项1</option>
+            <option>选项2</option>
+            <option>选项3</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>状态提示</h2>
+        <div class="alert alert-success">成功提示</div>
+        <div class="alert alert-warning">警告提示</div>
+        <div class="alert alert-danger">错误提示</div>
+        <div class="alert alert-info">信息提示</div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="theme-example.ts"></script>
+</body>
+</html>

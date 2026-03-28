@@ -3,13 +3,13 @@
  * 负责标签列表的渲染和交互
  */
 
-import { colorFromTag } from "../../utls/tag-utils.js";
+import { colorFromTag } from "../../utils/tag-utils.js";
 import type { TagInfo } from "./types.js";
 import type { Tag } from "../../database/types/semantic.js";
 import type { TagQueryCondition } from "../../database/query-server/cache/types.js";
 import type { ServiceContainer } from "./services.js";
 import { Platform, TagSource } from "../../database/types/base.js";
-import { setDragContext, createDragGhost } from "../../utls/drag-utils.js";
+import { setDragContext, createDragGhost } from "../../utils/drag-utils.js";
 
 type RenderFn = () => void | Promise<void>;
 

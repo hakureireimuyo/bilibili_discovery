@@ -11,3 +11,7 @@ export function navigateToTestTools(): void {
 export function navigateToOptions(): void {
   openExtensionPage("ui/options/options.html");
 }
+
+export function navigateToThemeSettings(): void {
+  openExtensionPage("ui/theme-settings/theme-settings.html");
+}

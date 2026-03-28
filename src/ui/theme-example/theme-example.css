@@ -1,0 +1,243 @@
+
+/**
+ * 主题示例页面样式
+ * 展示如何使用主题变量定义样式
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--theme-bg-primary);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px var(--theme-shadow-medium);
+  overflow: hidden;
+}
+
+.header {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+  padding: 30px 24px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.header p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.content {
+  padding: 24px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.section h2 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+}
+
+/* 文本样式 */
+.text-primary {
+  color: var(--theme-text-primary);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.text-secondary {
+  color: var(--theme-text-secondary);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.text-tertiary {
+  color: var(--theme-text-tertiary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+/* 按钮样式 */
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--theme-text-inverse);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--theme-shadow-light);
+}
+
+.btn-primary {
+  background: var(--theme-primary);
+}
+
+.btn-primary:hover {
+  background: var(--theme-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--theme-secondary);
+}
+
+.btn-secondary:hover {
+  background: var(--theme-secondary-hover);
+}
+
+.btn-accent {
+  background: var(--theme-accent);
+}
+
+.btn-accent:hover {
+  background: var(--theme-accent-hover);
+}
+
+.btn-success {
+  background: var(--theme-success);
+}
+
+.btn-warning {
+  background: var(--theme-warning);
+}
+
+.btn-danger {
+  background: var(--theme-danger);
+}
+
+.btn-info {
+  background: var(--theme-info);
+}
+
+/* 卡片样式 */
+.card {
+  background: var(--theme-bg-secondary);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px var(--theme-shadow-light);
+}
+
+.card h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+}
+
+.card p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+  line-height: 1.5;
+}
+
+.card-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* 表单样式 */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--theme-border-primary);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-primary);
+  transition: all 0.3s ease;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-primary-light);
+}
+
+.form-input::placeholder {
+  color: var(--theme-text-tertiary);
+}
+
+/* 状态提示样式 */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-success);
+  border-left: 4px solid var(--theme-success);
+}
+
+.alert-warning {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-warning);
+  border-left: 4px solid var(--theme-warning);
+}
+
+.alert-danger {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-danger);
+  border-left: 4px solid var(--theme-danger);
+}
+
+.alert-info {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-info);
+  border-left: 4px solid var(--theme-info);
+}

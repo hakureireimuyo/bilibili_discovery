@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>主题设置 - Bilibili Discovery</title>
+  <link rel="stylesheet" href="theme-settings.css">
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1>主题设置</h1>
+      <p class="subtitle">用固定组件预览主题效果，切换主题与明暗模式。新增主题统一由开发者在主题配置中维护。</p>
+    </div>
+
+    <div class="content">
+      <div class="layout">
+        <section class="section">
+          <div class="section-heading">
+            <h2 class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 3V21M3 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              主题预设
+            </h2>
+            <p class="section-desc">点击卡片即可切换主题。每张卡片都使用统一组件结构展示该主题的真实配色表现。</p>
+          </div>
+          <div class="theme-grid" id="theme-grid"></div>
+        </section>
+
+        <section class="section section-side">
+          <div class="panel">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                明暗切换
+              </h2>
+              <p class="section-desc">主题切换会立即同步到所有已打开的页面。</p>
+            </div>
+            <div class="mode-toggle" id="mode-toggle">
+              <button type="button" class="mode-btn" data-mode="light">浅色模式</button>
+              <button type="button" class="mode-btn" data-mode="dark">深色模式</button>
+            </div>
+          </div>
+
+          <div class="panel showcase-panel">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 5H21V19H3V5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                当前主题效果
+              </h2>
+              <p class="section-desc">这里会用固定组件实时展示当前主题在页面中的实际落地效果。</p>
+            </div>
+            <div class="live-preview">
+              <div class="live-card">
+                <div class="live-toolbar">
+                  <span class="live-badge">主题</span>
+                  <span class="live-pill" id="current-theme-label">莫兰迪</span>
+                </div>
+                <h3 class="live-title">主题效果预览</h3>
+                <p class="live-copy">统一观察标题、正文、卡片、边框、按钮、强调色与状态色在实际组件中的表现。</p>
+                <div class="live-stats">
+                  <div class="live-stat">
+                    <span class="live-stat-label">主要操作</span>
+                    <strong class="live-stat-value">清晰</strong>
+                  </div>
+                  <div class="live-stat">
+                    <span class="live-stat-label">层级关系</span>
+                    <strong class="live-stat-value">稳定</strong>
+                  </div>
+                </div>
+                <div class="live-actions">
+                  <button type="button" class="btn-primary">主要按钮</button>
+                  <button type="button" class="btn-secondary">次要按钮</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            新增主题方式
+          </h2>
+          <p class="section-desc">当前不开放用户自定义主题。后续新增主题请直接在主题配置文件中补充新的主题对象，并同步填写该主题的 tag 颜色映射范围。</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script type="module" src="theme-settings.ts"></script>
+</body>
+</html>

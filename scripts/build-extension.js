@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = process.cwd();
@@ -11,13 +11,25 @@ function resetExtensionDir() {
   mkdirSync(extensionRoot, { recursive: true });
 }
 
+function resetCompiledArtifacts() {
+  const staleCompiledDirs = [
+    join(compiledRoot, "ui", "theme-switcher"),
+    join(compiledRoot, "utils", "theme"),
+    join(compiledRoot, "utils", "themeManager.js")
+  ];
+
+  for (const target of staleCompiledDirs) {
+    rmSync(target, { recursive: true, force: true });
+  }
+}
+
 function copyStaticAssets() {
   cpSync(join(srcRoot, "ui"), join(extensionRoot, "ui"), { recursive: true });
   cpSync(join(srcRoot, "icons"), join(extensionRoot, "icons"), { recursive: true });
 }
 
 function copyCompiledCode() {
-  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui", "utls", "renderer"];
+  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui", "utils", "themes", "renderer"];
   for (const dir of runtimeDirs) {
     cpSync(join(compiledRoot, dir), join(extensionRoot, dir), { recursive: true });
   }
@@ -42,7 +54,9 @@ function patchHtmlEntryScripts() {
     join(extensionRoot, "ui", "options", "options.html"),
     join(extensionRoot, "ui", "stats", "stats.html"),
     // join(extensionRoot, "ui", "watch-stats", "watch-stats.html"),
-    join(extensionRoot, "ui", "test-tools", "test-tools.html")
+    join(extensionRoot, "ui", "test-tools", "test-tools.html"),
+    join(extensionRoot, "ui", "theme-settings", "theme-settings.html"),
+    join(extensionRoot, "ui", "theme-example", "theme-example.html")
   ];
 
   for (const file of htmlFiles) {
@@ -65,9 +79,58 @@ function removeTypeScriptArtifacts(dir) {
   }
 }
 
+function removeDeprecatedRuntimeArtifacts() {
+  const deprecatedTargets = [
+    join(extensionRoot, "ui", "theme-switcher"),
+    join(extensionRoot, "utils", "theme"),
+    join(extensionRoot, "utils", "themeManager.js")
+  ];
+
+  for (const target of deprecatedTargets) {
+    if (existsSync(target)) {
+      rmSync(target, { recursive: true, force: true });
+    }
+  }
+}
+
+function patchJsModuleSpecifiers(dir) {
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      patchJsModuleSpecifiers(fullPath);
+      continue;
+    }
+
+    if (!fullPath.endsWith(".js")) {
+      continue;
+    }
+
+    const content = readFileSync(fullPath, "utf-8");
+    const next = content
+      .replace(/(import\s+[^'"]*from\s+["'])(\.{1,2}\/[^"'?]+?)(["'])/g, (match, prefix, specifier, suffix) => {
+        return /\.[a-z]+$/i.test(specifier) ? match : `${prefix}${specifier}.js${suffix}`;
+      })
+      .replace(/(export\s+\*\s+from\s+["'])(\.{1,2}\/[^"'?]+?)(["'])/g, (match, prefix, specifier, suffix) => {
+        return /\.[a-z]+$/i.test(specifier) ? match : `${prefix}${specifier}.js${suffix}`;
+      })
+      .replace(/(export\s+\{[^}]+\}\s+from\s+["'])(\.{1,2}\/[^"'?]+?)(["'])/g, (match, prefix, specifier, suffix) => {
+        return /\.[a-z]+$/i.test(specifier) ? match : `${prefix}${specifier}.js${suffix}`;
+      });
+
+    if (next !== content) {
+      writeFileSync(fullPath, next);
+    }
+  }
+}
+
 resetExtensionDir();
+resetCompiledArtifacts();
 copyStaticAssets();
 copyCompiledCode();
 buildManifest();
 patchHtmlEntryScripts();
+removeDeprecatedRuntimeArtifacts();
 removeTypeScriptArtifacts(extensionRoot);
+patchJsModuleSpecifiers(extensionRoot);

@@ -42,8 +42,28 @@ export function removeRuntimeListener(listener: (message: unknown) => void): voi
 }
 
 export function openExtensionPage(path: string): void {
+  const url = hasChromeRuntime() ? chrome.runtime.getURL(path) : path;
+
   if (hasChromeRuntime()) {
-    chrome.tabs.create({ url: chrome.runtime.getURL(path) });
+    try {
+      chrome.tabs.create({ url });
+      return;
+    } catch (error) {
+      console.error("[popup-runtime] chrome.tabs.create 打开扩展页面失败:", error);
+    }
+  }
+
+  try {
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (opened) {
+      return;
+    }
+  } catch (error) {
+    console.error("[popup-runtime] window.open 打开扩展页面失败:", error);
+  }
+
+  if (typeof window !== "undefined") {
+    window.location.href = url;
   }
 }
 

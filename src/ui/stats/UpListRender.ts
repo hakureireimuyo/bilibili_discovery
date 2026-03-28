@@ -19,7 +19,7 @@ import type { RenderListConfig, IRenderBook } from "../../renderer/types.js";
 import { RenderList } from "../../renderer/RenderList.js";
 import { RenderBook } from "../../renderer/RenderBook.js";
 import { UpListElementBuilder } from "./UpListElementBuilder.js";
-import { updateToggleLabel } from "../../utls/dom-utils.js";
+import { updateToggleLabel } from "../../utils/dom-utils.js";
 
 /**
  * UP列表渲染类

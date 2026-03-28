@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, loadSettings, normalizeSettings, saveSettings } from "./settings.js";
+import { initThemedPage } from "../../themes/index.js";
 
 declare const chrome: { runtime: { getURL: (path: string) => string } };
 
@@ -85,6 +86,8 @@ export async function initOptions(): Promise<void> {
   if (typeof document === "undefined") {
     return;
   }
+
+  initThemedPage("options");
 
   const settings = await loadSettings();
   fillForm(settings);
