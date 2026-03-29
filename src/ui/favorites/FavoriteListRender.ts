@@ -45,11 +45,29 @@ export class FavoriteListRender extends RenderList<FavoriteVideoEntry, HTMLEleme
       }
     });
 
+    console.log('[FavoriteListRender] renderElements:', {
+      totalElements: elements.length,
+      existingElements: existingByVideoId.size
+    });
+
     const fragment = document.createDocumentFragment();
+    let reusedCount = 0;
+    let newCount = 0;
     elements.forEach((element) => {
       const videoId = element.dataset.videoId;
       const reusable = videoId ? existingByVideoId.get(videoId) : null;
+      if (reusable) {
+        reusedCount++;
+      } else {
+        newCount++;
+      }
       fragment.appendChild(reusable ?? element);
+    });
+
+    console.log('[FavoriteListRender] renderElements result:', {
+      reusedCount,
+      newCount,
+      totalInFragment: fragment.children.length
     });
 
     this.container.replaceChildren(fragment);

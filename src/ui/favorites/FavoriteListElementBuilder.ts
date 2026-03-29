@@ -12,6 +12,9 @@ export class FavoriteListElementBuilder implements IElementBuilder<FavoriteVideo
   private readonly cacheManager = CacheManager.getInstance();
   private readonly videoDataCache = this.cacheManager.getVideoDataCache();
   private readonly coverUrlCache = new Map<ID, string>();
+  private readonly loadingCovers = new Set<ID>();
+  private readonly coverQueue = new Array<{ videoId: ID; image: HTMLImageElement; item: FavoriteVideoEntry }>();
+  private isProcessingQueue = false;
 
   async buildElement(item: FavoriteVideoEntry): Promise<HTMLElement> {
     const card = document.createElement("article");

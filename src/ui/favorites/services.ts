@@ -172,6 +172,10 @@ export class FavoritesDataService {
         condition
       });
     }
+
+    // 优化：确保索引缓存已加载
+    await this.favoriteVideoQueryService.loadIndexCache(condition.platform);
+
     const page = await this.getQueryPage(condition, query.page, query.pageSize);
     if (FavoritesDataService.DEBUG) {
       console.log("[FavoritesDataService] queryVideos page:", {
@@ -184,8 +188,11 @@ export class FavoritesDataService {
       });
     }
 
+    // 优化：只转换当前页的数据
+    const items = page.items.map(entry => this.toVideoListItem(entry));
+
     return {
-      items: page.items.map(entry => this.toVideoListItem(entry)),
+      items,
       total: page.state.totalRecords,
       page: page.state.currentPage,
       pageSize: page.state.pageSize,
@@ -273,7 +280,7 @@ export class FavoritesDataService {
     return this.favoriteBook.getPage(safePage, { pageSize });
   }
 
-  private toQueryCondition(query: FavoriteVideoQuery): FavoriteVideoQueryCondition {
+  public toQueryCondition(query: FavoriteVideoQuery): FavoriteVideoQueryCondition {
     const { titleTerms, creatorTerms } = parseFavoriteSearch(query.keyword);
     const tagExpressions = [
       ...query.includeTagIds.map((tagId) => ({ tagId, operator: "AND" as const })),

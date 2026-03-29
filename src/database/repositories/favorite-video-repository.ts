@@ -39,6 +39,8 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
       return [];
     }
 
+    console.log('[FavoriteVideoRepository] getByIds called with ids:', ids.length);
+
     const result = new Map<ID, FavoriteVideoEntry>();
     const missingIds: ID[] = [];
 
@@ -51,24 +53,74 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
       }
     });
 
+    console.log('[FavoriteVideoRepository] getByIds cache hit:', result.size, 'missing:', missingIds.length);
+
     if (missingIds.length > 0) {
-      const allEntries = await this.getAll();
-      allEntries
-        .filter(entry => missingIds.includes(entry.favoriteEntryId))
-        .forEach((entry) => {
-          result.set(entry.favoriteEntryId, entry);
-        });
+      // 从索引缓存中获取缺失的索引
+      const missingIndexes = missingIds
+        .map(id => this.indexCache.get(id))
+        .filter((index): index is FavoriteVideoIndex => index !== undefined);
+
+      console.log('[FavoriteVideoRepository] getByIds found in index cache:', missingIndexes.length);
+
+      // 从视频仓库、创作者仓库和标签仓库获取完整数据
+      const videoIds = missingIndexes.map(index => index.videoId);
+      const videos = await this.videoRepo.getVideos(videoIds);
+      const creatorIds = Array.from(new Set(missingIndexes.map(index => index.creatorId)));
+      const creators = await this.creatorRepo.getCreators(creatorIds);
+      const tagIds = Array.from(new Set(missingIndexes.flatMap(index => index.tags)));
+      const tags = await this.tagRepo.getTags(tagIds);
+
+      // 构建 FavoriteVideoEntry
+      missingIndexes.forEach(index => {
+        const video = videos.get(index.videoId);
+        const creator = creators.get(index.creatorId);
+        if (!video || video.isInvalid) {
+          return;
+        }
+
+        const entry: FavoriteVideoEntry = {
+          favoriteEntryId: index.favoriteEntryId,
+          videoId: index.videoId,
+          platform: index.platform,
+          bv: video.bv,
+          title: index.title,
+          description: video.description,
+          creatorId: index.creatorId,
+          creatorName: creator?.name ?? `UP ${index.creatorId}`,
+          duration: video.duration,
+          publishTime: video.publishTime,
+          tags: index.tags,
+          tagNames: index.tags.map(tagId => tags.get(tagId)?.name ?? ''),
+          coverUrl: video.coverUrl,
+          picture: video.picture,
+          addedAt: index.addedAt,
+          collectionIds: index.collectionIds,
+          collectionNames: [], // 需要从 CollectionRepository 获取
+          collectionTypes: index.collectionTypes
+        };
+
+        result.set(index.favoriteEntryId, entry);
+        this.dataCache.set(index.favoriteEntryId, entry);
+      });
     }
 
-    return ids.map(id => result.get(id)).filter((entry): entry is FavoriteVideoEntry => Boolean(entry));
+    const finalResult = ids.map(id => result.get(id)).filter((entry): entry is FavoriteVideoEntry => Boolean(entry));
+    console.log('[FavoriteVideoRepository] getByIds final result:', finalResult.length);
+
+    return finalResult;
   }
 
   async getAll(): Promise<FavoriteVideoEntry[]> {
-    // 先检查数据缓存,如果已有数据则直接返回
-    if (this.dataCache.size() > 0) {
+    // 优化：先检查索引缓存，如果已有索引则只返回已缓存的数据
+    if (this.indexCache.size() > 0 && this.dataCache.size() > 0) {
+      console.log('[FavoriteVideoRepository] getAll returning cached data:', this.dataCache.size());
       return this.dataCache.values();
     }
 
+    console.log('[FavoriteVideoRepository] getAll building cache from scratch');
+
+    // 首次加载：构建索引缓存
     const collections = await this.collectionRepo.getCollectionsByPlatform(Platform.BILIBILI);
     const collectionMap = new Map(
       collections.map(collection => [collection.collectionId, collection])
@@ -108,6 +160,8 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
       });
     });
 
+    console.log('[FavoriteVideoRepository] getAll aggregated items:', aggregated.size);
+
     const videoIds = Array.from(aggregated.keys());
     const videos = await this.videoRepo.getVideos(videoIds);
     const creators = await this.creatorRepo.getCreators(
@@ -116,17 +170,21 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
     const tagIds = Array.from(new Set(Array.from(videos.values()).flatMap(video => video.tags)));
     const tags = await this.tagRepo.getTags(tagIds);
 
+    console.log('[FavoriteVideoRepository] getAll videos:', videos.size, 'creators:', creators.size, 'tags:', tags.size);
+
     // 确保 TagIndex 缓存被加载
     await this.ensureTagIndexCache(tagIds);
 
     const entries: FavoriteVideoEntry[] = [];
     const cacheEntries = new Map<ID, FavoriteVideoEntry>();
     const indexEntries = new Map<ID, FavoriteVideoIndex>();
+    let skippedCount = 0;
 
     videoIds.forEach((videoId) => {
       const video = videos.get(videoId);
       const aggregate = aggregated.get(videoId);
       if (!video || !aggregate || video.isInvalid) {
+        skippedCount++;
         return;
       }
 
@@ -137,6 +195,9 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
       indexEntries.set(entry.favoriteEntryId, this.toIndex(entry));
     });
 
+    console.log('[FavoriteVideoRepository] getAll skipped invalid videos:', skippedCount, 'valid entries:', entries.length);
+
+    // 批量设置缓存
     this.dataCache.setBatch(cacheEntries);
     this.indexCache.setBatch(indexEntries);
 

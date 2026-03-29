@@ -368,6 +368,7 @@ export class FavoritesManager {
     }
     loading?.style.setProperty("display", "none");
 
+    // 优化：复用 RenderBook 实例
     const renderBook = await this.dataService.getRenderBook(query, new FavoriteListElementBuilder());
     const total = renderBook.state.totalRecords;
     const totalPages = Math.max(1, renderBook.state.totalPages || 1);
@@ -392,6 +393,8 @@ export class FavoritesManager {
       }
     } else {
       empty.style.display = "none";
+
+      // 优化：只创建一次 RenderBook
       if (!this.favoriteListRender) {
         this.favoriteListRender = new FavoriteListRender({
           container: list,
@@ -406,6 +409,8 @@ export class FavoritesManager {
         });
         await this.favoriteListRender.initialize(safePage);
       } else {
+        // 更新 Book 的索引
+        await renderBook.updateIndex(this.dataService.toQueryCondition(query));
         await this.favoriteListRender.renderPage(safePage, { pageSize: this.state.pageSize });
       }
     }
