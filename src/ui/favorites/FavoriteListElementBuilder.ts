@@ -1,4 +1,4 @@
-import { VideoRepository, type FavoriteVideoEntry } from "../../database/index.js";
+import { VideoRepository, type FavoriteVideoEntry, CacheManager, type ID } from "../../database/index.js";
 import type { IElementBuilder } from "../../renderer/types.js";
 import { buildSearchUrl, buildUserSpaceUrl, buildVideoUrl } from "../../utils/url-builder.js";
 import { createDraggableTagPill } from "../shared/index.js";
@@ -9,6 +9,9 @@ const DEFAULT_COVER =
 
 export class FavoriteListElementBuilder implements IElementBuilder<FavoriteVideoEntry, HTMLElement> {
   private readonly videoRepository = new VideoRepository();
+  private readonly cacheManager = CacheManager.getInstance();
+  private readonly videoDataCache = this.cacheManager.getVideoDataCache();
+  private readonly coverUrlCache = new Map<ID, string>();
 
   async buildElement(item: FavoriteVideoEntry): Promise<HTMLElement> {
     const card = document.createElement("article");
@@ -112,18 +115,20 @@ export class FavoriteListElementBuilder implements IElementBuilder<FavoriteVideo
 
   private async applyCoverSource(image: HTMLImageElement, item: FavoriteVideoEntry): Promise<void> {
     try {
+      // 1. 先检查 URL 缓存
+      const cachedUrl = this.coverUrlCache.get(item.videoId);
+      if (cachedUrl) {
+        image.src = cachedUrl;
+        return;
+      }
+
+      // 2. 从数据库获取封面
       if (item.picture) {
         const coverBlob = await this.videoRepository.getVideoPicture(item.videoId);
         if (coverBlob) {
           const objectUrl = URL.createObjectURL(coverBlob);
+          this.coverUrlCache.set(item.videoId, objectUrl);
           image.src = objectUrl;
-          image.onload = () => {
-            URL.revokeObjectURL(objectUrl);
-          };
-          image.onerror = () => {
-            URL.revokeObjectURL(objectUrl);
-            this.applyRemoteCoverFallback(image, item.coverUrl);
-          };
           return;
         }
       }

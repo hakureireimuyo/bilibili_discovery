@@ -3,7 +3,7 @@ import type { Creator } from "../types/creator.js";
 import type { FavoriteVideoEntry } from "../types/favorite-video.js";
 import type { Tag } from "../types/semantic.js";
 import type { Video } from "../types/video.js";
-import type { FavoriteVideoIndex } from "../query-server/cache/types.js";
+import type { FavoriteVideoIndex, TagIndex } from "../query-server/cache/types.js";
 import { CacheManager } from "../query-server/cache/cache-manager.js";
 import { CollectionRepositoryImpl, CreatorRepository, Platform, TagRepository, VideoRepository, type ID } from "../index.js";
 import type { IDataRepository } from "../query-server/book/base-book-manager.js";
@@ -64,6 +64,11 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
   }
 
   async getAll(): Promise<FavoriteVideoEntry[]> {
+    // 先检查数据缓存,如果已有数据则直接返回
+    if (this.dataCache.size() > 0) {
+      return this.dataCache.values();
+    }
+
     const collections = await this.collectionRepo.getCollectionsByPlatform(Platform.BILIBILI);
     const collectionMap = new Map(
       collections.map(collection => [collection.collectionId, collection])
@@ -108,9 +113,11 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
     const creators = await this.creatorRepo.getCreators(
       Array.from(new Set(Array.from(videos.values()).map(video => video.creatorId)))
     );
-    const tags = await this.tagRepo.getTags(
-      Array.from(new Set(Array.from(videos.values()).flatMap(video => video.tags)))
-    );
+    const tagIds = Array.from(new Set(Array.from(videos.values()).flatMap(video => video.tags)));
+    const tags = await this.tagRepo.getTags(tagIds);
+
+    // 确保 TagIndex 缓存被加载
+    await this.ensureTagIndexCache(tagIds);
 
     const entries: FavoriteVideoEntry[] = [];
     const cacheEntries = new Map<ID, FavoriteVideoEntry>();
@@ -190,5 +197,31 @@ export class FavoriteVideoRepository implements IDataRepository<FavoriteVideoEnt
       tags: entry.tags,
       addedAt: entry.addedAt
     };
+  }
+
+  private async ensureTagIndexCache(tagIds: ID[]): Promise<void> {
+    const tagIndexCache = this.cacheManager.getTagIndexCache();
+
+    // 检查是否需要加载标签索引
+    const missingTagIds = tagIds.filter(tagId => !tagIndexCache.get(tagId));
+    if (missingTagIds.length === 0) {
+      return;
+    }
+
+    // 从数据库获取标签数据
+    const tags = await this.tagRepo.getTags(missingTagIds);
+
+    // 构建标签索引
+    const indexEntries = new Map<ID, TagIndex>();
+    tags.forEach((tag) => {
+      indexEntries.set(tag.tagId, {
+        tagId: tag.tagId,
+        name: tag.name,
+        source: tag.source
+      });
+    });
+
+    // 批量设置标签索引缓存
+    tagIndexCache.setBatch(indexEntries);
   }
 }

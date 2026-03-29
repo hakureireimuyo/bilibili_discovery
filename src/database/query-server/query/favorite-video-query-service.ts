@@ -4,7 +4,7 @@ import { CacheManager } from "../cache/cache-manager.js";
 import { IndexCache } from "../cache/index-cache.js";
 import { TagFilterEngine } from "./tag-filter-engine.js";
 import type { CreatorIndex, FavoriteVideoQueryCondition, QueryOutput } from "./types.js";
-import type { FavoriteVideoIndex, TagExpression } from "../cache/types.js";
+import type { FavoriteVideoIndex, TagExpression, TagIndex } from "../cache/types.js";
 import type { Platform, ID } from "../../types/base.js";
 
 export class FavoriteVideoQueryService {
@@ -13,6 +13,7 @@ export class FavoriteVideoQueryService {
   private readonly creatorIndexCache: IndexCache<CreatorIndex>;
   private readonly favoriteRepository: FavoriteVideoRepository;
   private readonly creatorRepository: CreatorRepository;
+  private static readonly DEBUG = false;
 
   constructor(
     favoriteRepository?: FavoriteVideoRepository,
@@ -31,21 +32,29 @@ export class FavoriteVideoQueryService {
 
   async query(condition: FavoriteVideoQueryCondition): Promise<QueryOutput> {
     await this.ensureIndexCaches(condition.platform);
-    console.log("[FavoriteVideoQueryService] query start:", condition);
+    if (FavoriteVideoQueryService.DEBUG) {
+      console.log("[FavoriteVideoQueryService] query start:", condition);
+    }
 
     let results = this.favoriteVideoIndexCache.values().filter(index => index.platform === condition.platform);
-    console.log("[FavoriteVideoQueryService] after platform:", results.length);
+    if (FavoriteVideoQueryService.DEBUG) {
+      console.log("[FavoriteVideoQueryService] after platform:", results.length);
+    }
 
     if (condition.collectionType) {
       results = results.filter(index => index.collectionTypes.includes(condition.collectionType!));
-      console.log("[FavoriteVideoQueryService] after collectionType:", results.length);
+      if (FavoriteVideoQueryService.DEBUG) {
+        console.log("[FavoriteVideoQueryService] after collectionType:", results.length);
+      }
     }
 
     if (condition.collectionIds && condition.collectionIds.length > 0) {
       results = results.filter(index =>
         condition.collectionIds!.some(collectionId => index.collectionIds.includes(collectionId))
       );
-      console.log("[FavoriteVideoQueryService] after collectionIds:", results.length);
+      if (FavoriteVideoQueryService.DEBUG) {
+        console.log("[FavoriteVideoQueryService] after collectionIds:", results.length);
+      }
     }
 
     if (condition.creatorKeyword) {
@@ -55,29 +64,37 @@ export class FavoriteVideoQueryService {
         .map(creator => creator.creatorId);
       const creatorIdSet = new Set(creatorIds);
       results = results.filter(index => creatorIdSet.has(index.creatorId));
-      console.log("[FavoriteVideoQueryService] after creatorKeyword:", {
-        creatorTerms,
-        creatorMatchCount: creatorIds.length,
-        resultCount: results.length
-      });
+      if (FavoriteVideoQueryService.DEBUG) {
+        console.log("[FavoriteVideoQueryService] after creatorKeyword:", {
+          creatorTerms,
+          creatorMatchCount: creatorIds.length,
+          resultCount: results.length
+        });
+      }
     }
 
     if (condition.tagExpressions && condition.tagExpressions.length > 0) {
       results = this.filterByTags(results, condition.tagExpressions);
-      console.log("[FavoriteVideoQueryService] after tagExpressions:", results.length);
+      if (FavoriteVideoQueryService.DEBUG) {
+        console.log("[FavoriteVideoQueryService] after tagExpressions:", results.length);
+      }
     }
 
     if (condition.keyword) {
       const titleTerms = this.normalizeSearchTerms(condition.keyword);
       results = results.filter(index => this.matchesAllTerms(index.title, titleTerms));
-      console.log("[FavoriteVideoQueryService] after keyword:", {
-        titleTerms,
-        resultCount: results.length
-      });
+      if (FavoriteVideoQueryService.DEBUG) {
+        console.log("[FavoriteVideoQueryService] after keyword:", {
+          titleTerms,
+          resultCount: results.length
+        });
+      }
     }
 
     results.sort((left, right) => right.addedAt - left.addedAt);
-    console.log("[FavoriteVideoQueryService] final result count:", results.length);
+    if (FavoriteVideoQueryService.DEBUG) {
+      console.log("[FavoriteVideoQueryService] final result count:", results.length);
+    }
 
     return {
       matchedIds: results.map(index => index.favoriteEntryId),
@@ -95,6 +112,14 @@ export class FavoriteVideoQueryService {
 
   clearIndexCache(): void {
     this.favoriteVideoIndexCache.clear();
+  }
+
+  getFavoriteVideoIndexCache(): IndexCache<FavoriteVideoIndex> {
+    return this.favoriteVideoIndexCache;
+  }
+
+  getTagIndexCache(): IndexCache<TagIndex> {
+    return this.cacheManager.getTagIndexCache();
   }
 
   private async ensureIndexCaches(platform: Platform): Promise<void> {

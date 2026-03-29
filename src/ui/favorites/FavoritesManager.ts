@@ -14,6 +14,7 @@ export class FavoritesManager {
   private readonly state: FavoritesPageState = createInitialFavoritesState();
   private readonly cleanupFns: Array<() => void> = [];
   private favoriteListRender: FavoriteListRender | null = null;
+  private static readonly DEBUG = false;
 
   async init(): Promise<void> {
     if (typeof document === "undefined") {
@@ -73,12 +74,16 @@ export class FavoritesManager {
     }));
 
     document.getElementById("type-user")?.addEventListener("click", () => {
-      console.log("[FavoritesManager] type switched:", { nextType: "user" });
+      if (FavoritesManager.DEBUG) {
+        console.log("[FavoritesManager] type switched:", { nextType: "user" });
+      }
       this.setCollectionType("user");
     });
 
     document.getElementById("type-subscription")?.addEventListener("click", () => {
-      console.log("[FavoritesManager] type switched:", { nextType: "subscription" });
+      if (FavoritesManager.DEBUG) {
+        console.log("[FavoritesManager] type switched:", { nextType: "subscription" });
+      }
       this.setCollectionType("subscription");
     });
 
@@ -91,7 +96,9 @@ export class FavoritesManager {
           if (!context.tagId) {
             return;
           }
-          console.log("[FavoritesManager] include tag dropped:", context);
+          if (FavoritesManager.DEBUG) {
+            console.log("[FavoritesManager] include tag dropped:", context);
+          }
           this.addIncludeTag(context.tagId);
         }
       }));
@@ -106,7 +113,9 @@ export class FavoritesManager {
           if (!context.tagId) {
             return;
           }
-          console.log("[FavoritesManager] exclude tag dropped:", context);
+          if (FavoritesManager.DEBUG) {
+            console.log("[FavoritesManager] exclude tag dropped:", context);
+          }
           this.addExcludeTag(context.tagId);
         }
       }));
@@ -196,10 +205,12 @@ export class FavoritesManager {
     tab.textContent = `${collection.name} (${collection.validVideoCount}|${collection.invalidVideoCount})`;
     tab.title = collection.description || collection.name;
     tab.addEventListener("click", () => {
-      console.log("[FavoritesManager] collection changed:", {
-        previousSelection: this.state.selectedCollectionId,
-        nextSelection: selection
-      });
+      if (FavoritesManager.DEBUG) {
+        console.log("[FavoritesManager] collection changed:", {
+          previousSelection: this.state.selectedCollectionId,
+          nextSelection: selection
+        });
+      }
       if (this.state.selectedCollectionId === selection) {
         return;
       }
@@ -274,11 +285,13 @@ export class FavoritesManager {
 
     const activeTagIds = [...this.state.includeTagIds, ...this.state.excludeTagIds];
     const tagMap = await this.dataService.getTagsByIds(activeTagIds);
-    console.log("[FavoritesManager] renderFilterTags active tags:", {
-      includeTagIds: [...this.state.includeTagIds],
-      excludeTagIds: [...this.state.excludeTagIds],
-      resolvedTagIds: [...tagMap.keys()]
-    });
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] renderFilterTags active tags:", {
+        includeTagIds: [...this.state.includeTagIds],
+        excludeTagIds: [...this.state.excludeTagIds],
+        resolvedTagIds: [...tagMap.keys()]
+      });
+    }
 
     this.state.includeTagIds.forEach((tagId) => {
       const tag = tagMap.get(tagId);
@@ -350,7 +363,9 @@ export class FavoritesManager {
       page: this.state.currentPage,
       pageSize: this.state.pageSize
     };
-    console.log("[FavoritesManager] renderVideos query:", query);
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] renderVideos query:", query);
+    }
     loading?.style.setProperty("display", "none");
 
     const renderBook = await this.dataService.getRenderBook(query, new FavoriteListElementBuilder());
@@ -360,11 +375,13 @@ export class FavoritesManager {
       ? 0
       : Math.min(this.state.currentPage, renderBook.state.totalPages - 1);
     this.state.currentPage = safePage;
-    console.log("[FavoritesManager] renderVideos renderBook state:", {
-      currentPage: safePage,
-      total,
-      totalPages
-    });
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] renderVideos renderBook state:", {
+        currentPage: safePage,
+        total,
+        totalPages
+      });
+    }
 
     if (total === 0) {
       list.innerHTML = "";
@@ -382,7 +399,9 @@ export class FavoritesManager {
           autoRender: false,
           onPageChange: (page) => {
             this.state.currentPage = page;
-            console.log("[FavoritesManager] page changed:", { page });
+            if (FavoritesManager.DEBUG) {
+              console.log("[FavoritesManager] page changed:", { page });
+            }
           }
         });
         await this.favoriteListRender.initialize(safePage);
@@ -409,17 +428,21 @@ export class FavoritesManager {
   }
 
   private applyKeywordSearch(keyword: string): void {
-    console.log("[FavoritesManager] applyKeywordSearch:", {
-      previousKeyword: this.state.searchKeyword,
-      nextKeyword: keyword
-    });
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] applyKeywordSearch:", {
+        previousKeyword: this.state.searchKeyword,
+        nextKeyword: keyword
+      });
+    }
     this.state.searchKeyword = keyword;
     this.state.currentPage = 0;
     void this.renderVideos();
   }
 
   private addIncludeTag(tagId: number): void {
-    console.log("[FavoritesManager] addIncludeTag:", { tagId });
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] addIncludeTag:", { tagId });
+    }
     if (!this.state.includeTagIds.includes(tagId)) {
       this.state.includeTagIds.push(tagId);
     }
@@ -430,7 +453,9 @@ export class FavoritesManager {
   }
 
   private addExcludeTag(tagId: number): void {
-    console.log("[FavoritesManager] addExcludeTag:", { tagId });
+    if (FavoritesManager.DEBUG) {
+      console.log("[FavoritesManager] addExcludeTag:", { tagId });
+    }
     if (!this.state.excludeTagIds.includes(tagId)) {
       this.state.excludeTagIds.push(tagId);
     }

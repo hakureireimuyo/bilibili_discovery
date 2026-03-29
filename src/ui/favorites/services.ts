@@ -28,6 +28,7 @@ export class FavoritesDataService {
   private readonly favoriteVideoRepo = new FavoriteVideoRepository();
   private readonly favoriteVideoQueryService = new FavoriteVideoQueryService(this.favoriteVideoRepo);
   private readonly videoRepo = new VideoRepository();
+  private static readonly DEBUG = false;
 
   private collections: FavoriteCollectionSummary[] = [];
   private favoriteBook: BookType<FavoriteVideoEntry> | null = null;
@@ -94,33 +95,52 @@ export class FavoritesDataService {
     selectedCollectionId: FavoritesCollectionSelection,
     keyword: string
   ): Promise<FavoriteTagSummary[]> {
-    const entries = await this.favoriteVideoRepo.getAll();
+    // 1. 确保索引已加载
+    await this.favoriteVideoQueryService.loadIndexCache(Platform.BILIBILI);
+
+    // 2. 从索引缓存中获取所有索引 (轻量级数据)
+    const allIndexes = this.favoriteVideoQueryService.getFavoriteVideoIndexCache().values();
+
+    // 3. 根据收藏夹类型和选中的收藏夹筛选索引
     const selectedCollectionIds = this.getSelectedCollectionIds(collectionType, selectedCollectionId);
-    const normalizedKeyword = keyword.trim().toLowerCase();
+    const filteredIndexes = allIndexes.filter(index => {
+      const typeMatch = index.collectionTypes.includes(collectionType);
+      const collectionMatch = selectedCollectionIds.length === 0 ||
+        selectedCollectionIds.some(id => index.collectionIds.includes(id));
+      return typeMatch && collectionMatch;
+    });
+
+    // 4. 构建标签统计 (只操作索引,不加载完整数据)
     const tagCounter = new Map<ID, FavoriteTagSummary>();
+    filteredIndexes.forEach((index) => {
+      index.tags.forEach((tagId) => {
+        const existing = tagCounter.get(tagId);
+        if (existing) {
+          existing.count += 1;
+          return;
+        }
 
-    entries
-      .filter(entry => entry.collectionTypes.includes(collectionType))
-      .filter(entry => selectedCollectionIds.length === 0 || selectedCollectionIds.some(id => entry.collectionIds.includes(id)))
-      .forEach((entry) => {
-        entry.tags.forEach((tagId, index) => {
-          const existing = tagCounter.get(tagId);
-          if (existing) {
-            existing.count += 1;
-            return;
-          }
-
-          tagCounter.set(tagId, {
-            tagId,
-            name: entry.tagNames[index] ?? `Tag ${tagId}`,
-            count: 1
-          });
+        // 从 TagIndex 缓存中获取标签名称,而不是从完整 entry
+        const tagName = this.getTagName(tagId);
+        tagCounter.set(tagId, {
+          tagId,
+          name: tagName,
+          count: 1
         });
       });
+    });
 
+    // 5. 应用关键词过滤和排序
+    const normalizedKeyword = keyword.trim().toLowerCase();
     return Array.from(tagCounter.values())
       .filter(tag => !normalizedKeyword || tag.name.toLowerCase().includes(normalizedKeyword))
       .sort((left, right) => right.count - left.count || left.name.localeCompare(right.name, "zh-CN"));
+  }
+
+  private getTagName(tagId: ID): string {
+    // 从 TagIndex 缓存中获取标签名称
+    const tagIndex = this.favoriteVideoQueryService.getTagIndexCache().get(tagId);
+    return tagIndex?.name ?? `Tag ${tagId}`;
   }
 
   async getTagsByIds(tagIds: ID[]): Promise<Map<ID, FavoriteTagSummary>> {
@@ -128,31 +148,17 @@ export class FavoritesDataService {
       return new Map();
     }
 
-    const entries = await this.favoriteVideoRepo.getAll();
     const result = new Map<ID, FavoriteTagSummary>();
 
-    entries.forEach((entry) => {
-      entry.tags.forEach((tagId, index) => {
-        if (!tagIds.includes(tagId) || result.has(tagId)) {
-          return;
-        }
-
-        result.set(tagId, {
-          tagId,
-          name: entry.tagNames[index] ?? `Tag ${tagId}`,
-          count: 0
-        });
-      });
-    });
-
+    // 直接从 TagIndex 缓存中获取标签信息,不需要加载完整数据
+    const tagIndexCache = this.favoriteVideoQueryService.getTagIndexCache();
     tagIds.forEach((tagId) => {
-      if (!result.has(tagId)) {
-        result.set(tagId, {
-          tagId,
-          name: `Tag ${tagId}`,
-          count: 0
-        });
-      }
+      const tagIndex = tagIndexCache.get(tagId);
+      result.set(tagId, {
+        tagId,
+        name: tagIndex?.name ?? `Tag ${tagId}`,
+        count: 0
+      });
     });
 
     return result;
@@ -160,19 +166,23 @@ export class FavoritesDataService {
 
   async queryVideos(query: FavoriteVideoQuery): Promise<FavoriteVideoQueryResult> {
     const condition = this.toQueryCondition(query);
-    console.log("[FavoritesDataService] queryVideos condition:", {
-      query,
-      condition
-    });
+    if (FavoritesDataService.DEBUG) {
+      console.log("[FavoritesDataService] queryVideos condition:", {
+        query,
+        condition
+      });
+    }
     const page = await this.getQueryPage(condition, query.page, query.pageSize);
-    console.log("[FavoritesDataService] queryVideos page:", {
-      requestedPage: query.page,
-      actualPage: page.state.currentPage,
-      pageSize: page.state.pageSize,
-      totalRecords: page.state.totalRecords,
-      totalPages: page.state.totalPages,
-      itemCount: page.items.length
-    });
+    if (FavoritesDataService.DEBUG) {
+      console.log("[FavoritesDataService] queryVideos page:", {
+        requestedPage: query.page,
+        actualPage: page.state.currentPage,
+        pageSize: page.state.pageSize,
+        totalRecords: page.state.totalRecords,
+        totalPages: page.state.totalPages,
+        itemCount: page.items.length
+      });
+    }
 
     return {
       items: page.items.map(entry => this.toVideoListItem(entry)),
@@ -189,10 +199,12 @@ export class FavoritesDataService {
     elementBuilder: IElementBuilder<FavoriteVideoEntry, HTMLElement>
   ): Promise<RenderBook<FavoriteVideoEntry, HTMLElement>> {
     const condition = this.toQueryCondition(query);
-    console.log("[FavoritesDataService] getRenderBook condition:", {
-      query,
-      condition
-    });
+    if (FavoritesDataService.DEBUG) {
+      console.log("[FavoritesDataService] getRenderBook condition:", {
+        query,
+        condition
+      });
+    }
 
     if (!this.favoriteBook) {
       this.favoriteBook = await bookManager.createBook(condition, {
@@ -200,18 +212,22 @@ export class FavoritesDataService {
         queryService: this.favoriteVideoQueryService,
         pageSize: query.pageSize
       });
-      console.log("[FavoritesDataService] created favoriteBook:", {
-        bookId: this.favoriteBook.bookId,
-        totalRecords: this.favoriteBook.state.totalRecords,
-        totalPages: this.favoriteBook.state.totalPages
-      });
+      if (FavoritesDataService.DEBUG) {
+        console.log("[FavoritesDataService] created favoriteBook:", {
+          bookId: this.favoriteBook.bookId,
+          totalRecords: this.favoriteBook.state.totalRecords,
+          totalPages: this.favoriteBook.state.totalPages
+        });
+      }
     } else {
       await this.favoriteBook.updateIndex(condition);
-      console.log("[FavoritesDataService] updated favoriteBook:", {
-        bookId: this.favoriteBook.bookId,
-        totalRecords: this.favoriteBook.state.totalRecords,
-        totalPages: this.favoriteBook.state.totalPages
-      });
+      if (FavoritesDataService.DEBUG) {
+        console.log("[FavoritesDataService] updated favoriteBook:", {
+          bookId: this.favoriteBook.bookId,
+          totalRecords: this.favoriteBook.state.totalRecords,
+          totalPages: this.favoriteBook.state.totalPages
+        });
+      }
     }
 
     if (!this.favoriteRenderBook) {
@@ -234,18 +250,22 @@ export class FavoritesDataService {
         queryService: this.favoriteVideoQueryService,
         pageSize
       });
-      console.log("[FavoritesDataService] getQueryPage created book:", {
-        bookId: this.favoriteBook.bookId,
-        totalRecords: this.favoriteBook.state.totalRecords,
-        totalPages: this.favoriteBook.state.totalPages
-      });
+      if (FavoritesDataService.DEBUG) {
+        console.log("[FavoritesDataService] getQueryPage created book:", {
+          bookId: this.favoriteBook.bookId,
+          totalRecords: this.favoriteBook.state.totalRecords,
+          totalPages: this.favoriteBook.state.totalPages
+        });
+      }
     } else {
       await this.favoriteBook.updateIndex(condition);
-      console.log("[FavoritesDataService] getQueryPage updated book:", {
-        bookId: this.favoriteBook.bookId,
-        totalRecords: this.favoriteBook.state.totalRecords,
-        totalPages: this.favoriteBook.state.totalPages
-      });
+      if (FavoritesDataService.DEBUG) {
+        console.log("[FavoritesDataService] getQueryPage updated book:", {
+          bookId: this.favoriteBook.bookId,
+          totalRecords: this.favoriteBook.state.totalRecords,
+          totalPages: this.favoriteBook.state.totalPages
+        });
+      }
     }
 
     const totalPages = this.favoriteBook.state.totalPages;
