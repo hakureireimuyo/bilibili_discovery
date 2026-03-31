@@ -1,6 +1,7 @@
 import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings } from "./popup-progress.js";
 import { openExtensionPage } from "./popup-runtime.js";
 import { initThemedPage } from "../../themes/index.js";
+import { getValue } from "../../database/implementations/index.js";
 
 function formatTime(timestamp: number | null): string {
   if (!timestamp) {
@@ -21,7 +22,27 @@ function setText(id: string, value: string): void {
 }
 
 async function loadStatus(): Promise<void> {
+  try {
+    const settings = await getValue<{ userId?: number }>("settings");
+    const userId = settings?.userId;
+    const userIdEl = document.getElementById("status-user-id");
 
+    if (userIdEl) {
+      if (userId) {
+        userIdEl.textContent = String(userId);
+      } else {
+        userIdEl.textContent = "未设置";
+        userIdEl.style.color = "#ff6b6b";
+        userIdEl.style.cursor = "pointer";
+        userIdEl.title = "点击前往设置页面";
+        userIdEl.addEventListener("click", () => {
+          navigateToOptions();
+        });
+      }
+    }
+  } catch (error) {
+    console.error("[popup] Failed to load status:", error);
+  }
 }
 
 function bindButtons(): void {
