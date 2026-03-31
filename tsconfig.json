@@ -3,10 +3,10 @@
     "target": "ES2020",
     "module": "ES2020",
     "moduleResolution": "bundler",
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "lib": ["ES2020", "DOM"],
-    "rootDir": ".",
-    "outDir": "dist",
+    "rootDir": "./src",
+    "outDir": "dist/extension",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,7 +16,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "temp"]

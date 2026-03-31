@@ -78,15 +78,16 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     if (!this.video.paused) {
       const now = Date.now();
       const watchedSeconds = (now - this.lastSentAt) / 1000;
-      this.accumulated = watchedSeconds;
 
+      // 计算实际播放进度
       const delta = this.video.currentTime - this.lastTime;
       if (delta > 0 && delta < 5) {
+        this.accumulated += delta;
         this.lastTime = this.video.currentTime;
       }
 
       // 只有当实际观看时长大于7秒时才触发收集
-      if (watchedSeconds > 7) {
+      if (this.accumulated >= 7) {
         this.triggerCollect("tick");
       }
     }
@@ -116,15 +117,14 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     }
 
     const currentTimestamp = Date.now();
-    const watchedSeconds = (currentTimestamp - this.lastSentAt) / 1000;
     const videoDuration = Number.isFinite(this.video.duration) ? this.video.duration : 0;
     const progress = videoDuration > 0 ? this.video.currentTime / videoDuration : 0;
     const isComplete = progress >= 0.9 ? 1 : 0;
 
     const data: WatchEventCollectData = {
       bv: this.bvid,
-      watchTime: currentTimestamp - watchedSeconds * 1000,
-      watchDuration: watchedSeconds,
+      watchTime: currentTimestamp - this.accumulated * 1000,
+      watchDuration: this.accumulated,
       videoDuration,
       progress,
       isComplete,
@@ -145,6 +145,8 @@ export class VideoMetadataTrigger implements VideoTrigger {
   private callbacks: Array<(data: WatchEventCollectData) => void> = [];
   private bvid: string | null = null;
   private video: HTMLVideoElement | null = null;
+  private timerId: number | null = null;
+  private hasTriggered = false;
 
   constructor(videoElement: HTMLVideoElement, bvid: string) {
     this.video = videoElement;
@@ -152,14 +154,26 @@ export class VideoMetadataTrigger implements VideoTrigger {
   }
 
   start(): void {
+    // 防止重复触发
+    if (this.hasTriggered) {
+      return;
+    }
+
     // 延迟触发，确保页面加载完成
-    setTimeout(() => {
+    this.timerId = window.setTimeout(() => {
       this.triggerCollect();
+      this.hasTriggered = true;
+      this.timerId = null;
     }, 10000);
   }
 
   stop(): void {
-    // 元数据触发器不需要停止监听
+    // 清除定时器
+    if (this.timerId !== null) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+    this.hasTriggered = false;
   }
 
   onCollect(callback: (data: WatchEventCollectData) => void): void {

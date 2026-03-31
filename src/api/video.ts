@@ -38,6 +38,7 @@ export async function getVideoDetail(
     pic: data.pic,
     pubdate: data.pubdate,
     duration: data.duration,
+    desc: data.desc, // 添加描述字段
     owner: {
       mid: data.owner?.mid,
       name: data.owner?.name,

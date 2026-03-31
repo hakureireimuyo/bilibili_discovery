@@ -5,7 +5,7 @@
  */
 
 import { FavoriteStatusEvent } from '../types.js';
-
+import { logger } from '../../utils/logger.js';
 /**
  * 收藏触发器接口
  */
@@ -52,9 +52,19 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
 
   private detectAndObserveButton(): void {
     const selectors = [
+      ".video-fav", // B站收藏按钮的主类名
+      ".video-toolbar-left-item.video-fav",
       ".toolbar-left .collect",
       ".video-toolbar .collect",
-      ".action-item.collect"
+      ".action-item.collect",
+      ".toolbar-left .video-coin-video",
+      ".video-toolbar .video-coin-video",
+      ".action-item.video-coin-video",
+      "[class*='collect']",
+      "[class*='favorite']",
+      "[class*='fav']",
+      ".video-actions .collect-btn",
+      ".video-actions .favorite-btn"
     ];
 
     for (const selector of selectors) {
@@ -66,12 +76,12 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
     }
 
     if (!this.favoriteBtn) {
-      console.log("[FavoriteTrigger] Favorite button not found, retrying...");
+      logger.debug("[FavoriteTrigger] Favorite button not found, retrying...");
       setTimeout(() => this.detectAndObserveButton(), 1000);
       return;
     }
 
-    console.log("[FavoriteTrigger] Favorite button found, setting up observer");
+    logger.debug("[FavoriteTrigger] Favorite button found, setting up observer");
 
     // 开始观察按钮变化
     if (this.observer) {
@@ -100,7 +110,7 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
     const bvid = bvidMatch ? bvidMatch[1] : "";
 
     if (!bvid) {
-      console.log("[FavoriteTrigger] Not on video page, skipping");
+      logger.debug("[FavoriteTrigger] Not on video page, skipping");
       return;
     }
 
@@ -108,13 +118,13 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
     const title = titleElement?.textContent?.trim() || "";
 
     const event: FavoriteStatusEvent = {
-      bvid,
+      bv: bvid,
       title,
       action: isFavorited ? "add" : "remove",
       timestamp: Date.now()
     };
 
-    console.log("[FavoriteTrigger] Favorite status changed:", event);
+    logger.debug("[FavoriteTrigger] Favorite status changed:", event);
     this.callbacks.forEach(callback => callback(event));
   }
 }

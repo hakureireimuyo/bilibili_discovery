@@ -21,17 +21,20 @@
   "content_scripts": [
     {
       "matches": ["https://www.bilibili.com/video/*"],
-      "js": ["content/tracker.ts", "content/favorite-tracker.ts"],
+      "js": ["content/index.js"],
+      "type": "module",
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.bilibili.com/*"],
-      "js": ["content/uid.ts"],
+      "js": ["content/index.js"],
+      "type": "module",
       "run_at": "document_idle"
     },
     {
       "matches": ["https://space.bilibili.com/*"],
-      "js": ["content/up-page-collector.ts"],
+      "js": ["content/index.js"],
+      "type": "module",
       "run_at": "document_idle"
     }
   ],

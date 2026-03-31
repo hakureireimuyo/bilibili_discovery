@@ -66,6 +66,7 @@ export interface VideoInfo {
   pubdate: number;
   duration: number;
   owner: UpInfo;
+  desc?: string; // 视频描述
 }
 
 /**

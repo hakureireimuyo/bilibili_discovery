@@ -2,10 +2,13 @@
  * Database Types 统一导出
  * 导出所有数据类型定义
  */
+export {
+    Platform,
+    TagSource,
+} from './base.js';
 
 export type {
-  Platform,
-  TagSource,
+
   VideoSource,
   InteractionType,
   NoteType,

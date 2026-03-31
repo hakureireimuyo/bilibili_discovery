@@ -4,18 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node ./scripts/build-extension.js",
-    "dev": "npm run build && node -e \"console.log('Load extension from: D:\\\\ProjectFloder\\\\TS\\\\bilibili_discovery\\\\dist\\\\extension')\"",
+    "prebuild": "node ./scripts/prebuild.js",
+    "build:dev": "cross-env NODE_ENV=development npm run build",
+    "build:prod": "cross-env NODE_ENV=production npm run build",
+    "build:extension": "tsc -p tsconfig.json && node ./scripts/build-extension.js && node ./scripts/bundle-content-script.js",
+    "build": "npm run prebuild && tsc -p tsconfig.json && node ./scripts/build-extension.js && node ./scripts/bundle-content-script.js",
+    "dev": "npm run build:dev && node -e \"console.log('Load extension from: D:\\\\ProjectFloder\\\\TS\\\\bilibili_discovery\\\\dist\\\\extension')\"",
     "test:db": "tsc -p tsconfig.json && node --experimental-specifier-resolution=node ./scripts/run-db-tests.js",
     "probe:bili": "node ./scripts/probe-bili-api.js",
     "probe:arcopen": "node ./scripts/probe-arcopen.js",
     "package": "node ./scripts/package-extension.js",
-    "release": "npm run build && node ./scripts/release.js"
+    "release": "npm run build:prod && node ./scripts/release.js"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.37",
     "typescript": "^5.5.4",
-    "fake-indexeddb": "^5.0.2"
+    "fake-indexeddb": "^5.0.2",
+    "esbuild": "^0.19.0",
+    "cross-env": "^7.0.3"
   },
   "dependencies": {
     "dexie": "^4.3.0"

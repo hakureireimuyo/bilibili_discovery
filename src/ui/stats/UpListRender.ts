@@ -19,9 +19,8 @@ import type { RenderListConfig, IRenderBook } from "../../renderer/types.js";
 import { RenderList } from "../../renderer/RenderList.js";
 import { RenderBook } from "../../renderer/RenderBook.js";
 import { UpListElementBuilder } from "./UpListElementBuilder.js";
-import { updateToggleLabel } from "../../utils/dom-utils.js";
 import { bindPaginationElements } from "../shared/index.js";
-
+import { logger } from '../../utils/logger.js';
 /**
  * UP列表渲染类
  */
@@ -53,7 +52,7 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
    * 初始化UP列表
    */
   async initialize(state: StatsState): Promise<void> {
-    console.log('[UpListRender] 初始化UP列表');
+    logger.debug('[UpListRender] 初始化UP列表');
     this.currentState = state;
 
     // 更新元素构建器的状态
@@ -64,7 +63,7 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
 
     // 使用services.paginationState.currentPage作为页码
     const targetPage = this.services.paginationState.currentPage;
-    console.log(`[UpListRender] 初始化渲染页码: ${targetPage}`);
+    logger.debug(`[UpListRender] 初始化渲染页码: ${targetPage}`);
     
     // 渲染指定页
     await this.renderPage(targetPage);
@@ -77,12 +76,12 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
    * 更新UP列表
    */
   async update(state: StatsState): Promise<void> {
-    console.log('[UpListRender] 更新UP列表');
+    logger.debug('[UpListRender] 更新UP列表');
     this.currentState = state;
 
     // 如果正在动画中，忽略此次请求
     if (this.isAnimating) {
-      console.log('[UpListRender] 动画进行中，忽略此次请求');
+      logger.debug('[UpListRender] 动画进行中，忽略此次请求');
       return;
     }
 
@@ -92,7 +91,7 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
 
       // 使用services.paginationState.currentPage作为页码
       const targetPage = this.services.paginationState.currentPage;
-      console.log(`[UpListRender] 渲染页码: ${targetPage}`);
+      logger.debug(`[UpListRender] 渲染页码: ${targetPage}`);
       
       // 渲染指定页
       await this.renderPage(targetPage);
@@ -127,7 +126,7 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
    * 渲染元素列表
    */
   protected renderElements(elements: HTMLElement[]): void {
-    console.log(`[UpListRender] 开始渲染 ${elements.length} 个元素`);
+    logger.debug(`[UpListRender] 开始渲染 ${elements.length} 个元素`);
 
     // 使用动画切换页面
     this.animatePageChange(() => {
@@ -146,7 +145,7 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
    */
   protected async deleteElement(element: HTMLElement, data: Creator): Promise<void> {
     // UP列表不需要删除功能
-    console.log('[UpListRender] deleteElement 被调用，但UP列表不需要删除功能');
+    logger.debug('[UpListRender] deleteElement 被调用，但UP列表不需要删除功能');
   }
 
   /**
@@ -237,6 +236,6 @@ export class UpListRender extends RenderList<Creator, HTMLElement> {
 
     super.destroy();
     this.currentState = null;
-    console.log('[UpListRender] UP列表已销毁');
+    logger.debug('[UpListRender] UP列表已销毁');
   }
 }

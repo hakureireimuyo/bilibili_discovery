@@ -4,7 +4,9 @@
  * 负责从页面中提取UP主相关信息
  */
 
-import { FollowStatusEvent, UPPageData, CreatorCollectData, Platform } from '../types.js';
+import { FollowStatusEvent, UPPageData, CreatorCollectData } from '../types.js';
+import { Platform } from '../../database/types/base.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * UP主信息接口
@@ -26,15 +28,19 @@ export class UpDataCollector {
    */
   extractUpInfo(): Partial<CreatorCollectData> | null {
     const url = window.location.href;
+    logger.debug('[UpCollector] extractUpInfo当前URL:', url);
 
     if (url.includes('/video/')) {
+      logger.debug('[UpCollector] 检测到视频页面，使用extractFromVideoPage');
       return this.extractFromVideoPage();
     }
 
     if (url.includes('space.bilibili.com')) {
+      logger.debug('[UpCollector] 检测到UP主页，使用extractFromSpacePage');
       return this.extractFromSpacePage();
     }
 
+    logger.debug('[UpCollector] 未识别的页面类型，返回null');
     return null;
   }
 
@@ -42,20 +48,28 @@ export class UpDataCollector {
    * 收集UP主数据
    */
   collectCreatorData(): CreatorCollectData | null {
+    logger.debug('[UpCollector] 开始收集UP主数据');
+
     const upInfo = this.extractUpInfo();
+    logger.debug('[UpCollector] extractUpInfo返回结果:', upInfo);
+
     if (!upInfo || !upInfo.creatorId) {
+      logger.debug('[UpCollector] UP主信息或creatorId为空，返回null');
       return null;
     }
 
-    return {
+    const result = {
       creatorId: upInfo.creatorId,
       platform: Platform.BILIBILI,
       name: upInfo.name || '',
       avatarUrl: upInfo.avatarUrl || '',
       description: upInfo.description || '',
-      isFollowing: upInfo.isFollowing,
-      followTime: upInfo.followTime
+      isFollowing: upInfo.isFollowing ?? 0,
+      followTime: upInfo.followTime ?? 0
     };
+
+    logger.debug('[UpCollector] 收集到的UP主数据:', result);
+    return result;
   }
 
   /**
@@ -75,12 +89,16 @@ export class UpDataCollector {
   /**
    * 从视频播放页面提取UP主信息
    */
-  private extractFromVideoPage(): Partial<FollowStatusEvent['creator']> | null {
+  private extractFromVideoPage(): Partial<CreatorCollectData> | null {
     try {
+      logger.debug('[UpCollector] 开始从视频页面提取UP主信息');
+
       const upInfoContainer = document.querySelector('.up-info-container');
       if (!upInfoContainer) {
+        logger.debug('[UpCollector] 未找到.up-info-container元素');
         return null;
       }
+      logger.debug('[UpCollector] 找到.up-info-container元素');
 
       // 提取UID
       let creatorId: number | null = null;
@@ -91,6 +109,7 @@ export class UpDataCollector {
         const match = href.match(/space\.bilibili\.com\/(\d+)/);
         if (match) {
           creatorId = parseInt(match[1], 10);
+          logger.debug('[UpCollector] 从头像链接提取到creatorId:', creatorId);
         }
       }
 
@@ -101,37 +120,82 @@ export class UpDataCollector {
           const match = href.match(/space\.bilibili\.com\/(\d+)/);
           if (match) {
             creatorId = parseInt(match[1], 10);
+            logger.debug('[UpCollector] 从名称链接提取到creatorId:', creatorId);
           }
         }
       }
 
       if (!creatorId || creatorId <= 0) {
+        logger.debug('[UpCollector] 未能提取到有效的creatorId');
         return null;
       }
 
       // 提取UP主名字
       const nameElement = upInfoContainer.querySelector('.up-name');
       const name = nameElement?.textContent?.trim() || '';
+      logger.debug('[UpCollector] 提取到UP主名称:', name);
 
       // 提取头像URL
       let avatarUrl = '';
       const avatarImg = upInfoContainer.querySelector('.bili-avatar-img');
       if (avatarImg instanceof HTMLImageElement) {
         avatarUrl = avatarImg.src || avatarImg.dataset.src || '';
+        logger.debug('[UpCollector] 提取到头像URL:', avatarUrl);
       }
 
       // 提取简介
       const descElement = upInfoContainer.querySelector('.up-description');
       const description = descElement?.textContent?.trim() || '';
+      logger.debug('[UpCollector] 提取到简介:', description);
 
       // 提取是否关注
       let isFollowing = 0;
-      const followBtn = upInfoContainer.querySelector('.follow-btn');
+      const followBtn = upInfoContainer.querySelector('.follow-btn') ||
+                       upInfoContainer.querySelector('[class*="follow-btn"]');
+
+      logger.debug('[UpCollector] 关注按钮元素:', followBtn);
+
       if (followBtn) {
-        isFollowing = followBtn.classList.contains('following') ? 1 : 0;
+        // 检查是否存在已关注按钮
+        const alreadyBtn = followBtn.querySelector('.already-btn');
+        logger.debug('[UpCollector] already-btn元素:', alreadyBtn);
+
+        if (alreadyBtn) {
+          isFollowing = 1;
+          logger.debug('[UpCollector] 通过already-btn判断已关注');
+        } else {
+          // 检查按钮文本是否包含"已关注"
+          const btnText = followBtn.textContent?.trim().toLowerCase() || '';
+          logger.debug('[UpCollector] 关注按钮文本:', btnText);
+
+          if (btnText.includes('已关注')) {
+            isFollowing = 1;
+            logger.debug('[UpCollector] 通过按钮文本判断已关注');
+          } else {
+            // 检查是否包含van-followed类（新版本UI）
+            const vanFollowed = followBtn.querySelector('.van-followed');
+            logger.debug('[UpCollector] van-followed元素:', vanFollowed);
+
+            if (vanFollowed) {
+              isFollowing = 1;
+              logger.debug('[UpCollector] 通过van-followed判断已关注');
+            } else {
+              // 回退到检查following类
+              const hasFollowingClass = followBtn.classList.contains('following');
+              logger.debug('[UpCollector] following类:', hasFollowingClass);
+
+              isFollowing = hasFollowingClass ? 1 : 0;
+              logger.debug('[UpCollector] 通过following类判断关注状态:', isFollowing);
+            }
+          }
+        }
+      } else {
+        logger.debug('[UpCollector] 未找到关注按钮');
       }
 
-      return {
+      logger.debug('[UpCollector] 最终关注状态:', isFollowing);
+
+      const result: Partial<CreatorCollectData> = {
         creatorId,
         name,
         avatarUrl,
@@ -139,6 +203,9 @@ export class UpDataCollector {
         isFollowing,
         followTime: isFollowing ? Date.now() : 0
       };
+
+      logger.debug('[UpCollector] 返回UP主信息:', result);
+      return result;
     } catch (error) {
       console.error('[UpCollector] 提取UP主信息失败:', error);
       return null;
@@ -148,7 +215,7 @@ export class UpDataCollector {
   /**
    * 从UP主页提取UP主信息
    */
-  private extractFromSpacePage(): Partial<FollowStatusEvent['creator']> | null {
+  private extractFromSpacePage(): Partial<CreatorCollectData> | null {
     try {
       const urlMatch = window.location.href.match(/space\.bilibili\.com\/(\d+)/);
       if (!urlMatch) {
@@ -196,12 +263,21 @@ export class UpDataCollector {
 
       // 提取是否关注
       let isFollowing = 0;
-      const followBtn = document.querySelector('.space-follow-btn');
+      const followBtn = document.querySelector('.space-follow-btn') ||
+                       document.querySelector('[class*="follow-btn"]');
+
       if (followBtn) {
-        isFollowing = followBtn.classList.contains('gray') ? 1 : 0;
+        // 检查按钮文本是否包含"已关注"
+        const btnText = followBtn.textContent?.trim().toLowerCase() || '';
+        if (btnText.includes('已关注')) {
+          isFollowing = 1;
+        } else {
+          // 检查gray类
+          isFollowing = followBtn.classList.contains('gray') ? 1 : 0;
+        }
       }
 
-      return {
+      const result: Partial<CreatorCollectData> = {
         creatorId,
         name,
         avatarUrl,
@@ -209,6 +285,8 @@ export class UpDataCollector {
         isFollowing,
         followTime: isFollowing ? Date.now() : 0
       };
+
+      return result;
     } catch (error) {
       console.error('[UpCollector] 提取UP主信息失败:', error);
       return null;
