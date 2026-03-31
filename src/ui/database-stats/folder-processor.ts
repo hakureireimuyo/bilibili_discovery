@@ -196,6 +196,15 @@ export class FolderProcessor {
                 tagIds.push(tagId);
               }
               await this.videoRepo.updateVideoTags(videoId, tagIds);
+              
+              // 将视频的tag信息添加到up主的tag信息中
+              const tagWeights = tagIds.map(tagId => ({
+                tagId,
+                source: TagSource.SYSTEM,
+                count: 1,
+                createdAt: Date.now()
+              }));
+              await this.creatorRepo.updateTagWeights(creatorId, tagWeights);
             }
           } catch (e) {
             console.error("tag fetch error:", e);
@@ -218,6 +227,15 @@ export class FolderProcessor {
                 tagIds.push(tagId);
               }
               await this.videoRepo.updateVideoTags(videoId, tagIds);
+              
+              // 将视频的tag信息添加到up主的tag信息中
+              const tagWeights = tagIds.map(tagId => ({
+                tagId,
+                source: TagSource.SYSTEM,
+                count: 1,
+                createdAt: Date.now()
+              }));
+              await this.creatorRepo.updateTagWeights(creatorId, tagWeights);
             }
           } catch (e) {
             console.error("tag fetch error:", e);
