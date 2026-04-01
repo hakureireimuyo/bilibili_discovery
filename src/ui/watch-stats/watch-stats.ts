@@ -7,14 +7,23 @@ import { Heatmap, LineChart } from '../shared/charts/index.js';
 import { StatCard } from '../shared/stats/index.js';
 import type { WatchStatsData, UPStat, VideoStat } from './types.js';
 import { DailyWatchStatsRepositoryImpl } from '../../database/implementations/daily-watch-stats-repository.impl.js';
+import { UPInteractionRepositoryImpl } from '../../database/implementations/up-interaction-repository.impl.js';
+import { WatchEventRepositoryImpl } from '../../database/implementations/watch-event-repository.impl.js';
+import { VideoRepositoryImpl } from '../../database/implementations/video-repository.impl.js';
+import { CreatorRepositoryImpl } from '../../database/implementations/creator-repository.impl.js';
 import { Platform } from '../../database/types/base.js';
-import { dbManager } from '../../database/indexeddb/index.js';
+import { dbManager, DBUtils, STORE_NAMES } from '../../database/indexeddb/index.js';
+import { WatchEvent } from '../../database/types/behavior.js';
 
 export class WatchStatsPage {
   private heatmap?: Heatmap;
   private lineChart?: LineChart;
   private statCards: Map<string, StatCard> = new Map();
   private dailyWatchStatsRepo: DailyWatchStatsRepositoryImpl;
+  private upInteractionRepo: UPInteractionRepositoryImpl;
+  private watchEventRepo: WatchEventRepositoryImpl;
+  private videoRepo: VideoRepositoryImpl;
+  private creatorRepo: CreatorRepositoryImpl;
   private currentView: 'month' | 'year' = 'month';
   private currentYear: number = new Date().getFullYear();
   private currentMonth: number = new Date().getMonth(); // 0-11
@@ -24,6 +33,10 @@ export class WatchStatsPage {
 
   constructor() {
     this.dailyWatchStatsRepo = new DailyWatchStatsRepositoryImpl();
+    this.upInteractionRepo = new UPInteractionRepositoryImpl();
+    this.watchEventRepo = new WatchEventRepositoryImpl();
+    this.videoRepo = new VideoRepositoryImpl();
+    this.creatorRepo = new CreatorRepositoryImpl();
     initThemedPage('watch-stats');
     this.init();
   }
@@ -48,6 +61,9 @@ export class WatchStatsPage {
 
     // 加载每日观看统计数据
     await this.loadDailyWatchStats();
+
+    // 加载Top 10列表
+    await this.loadTopLists();
   }
 
   /**
@@ -161,23 +177,24 @@ export class WatchStatsPage {
    */
   private initStatCards(): void {
     const cardConfigs = [
-      { id: 'stat-total', label: '总观看时长', theme: 'primary' as const },
-      { id: 'stat-today', label: '今日观看时长', theme: 'accent' as const },
-      { id: 'stat-7days', label: '近7天观看时长', theme: 'success' as const },
-      { id: 'stat-update', label: '统计更新时间', theme: 'info' as const }
+      { id: 'stat-total', label: '总观看时长', theme: 'primary' as const, icon: '⏱' },
+      { id: 'stat-today', label: '今日观看时长', theme: 'accent' as const, icon: '📅' },
+      { id: 'stat-7days', label: '近7天观看时长', theme: 'success' as const, icon: '📊' },
+      { id: 'stat-update', label: '统计更新时间', theme: 'info' as const, icon: '🔄' }
     ];
 
     for (const config of cardConfigs) {
       const container = document.getElementById(config.id);
       if (container) {
         const card = new StatCard(container, {
-          showIcon: false,
+          showIcon: true,
           enableHover: true
         });
         card.render({
           label: config.label,
           value: '-',
-          theme: config.theme
+          theme: config.theme,
+          icon: config.icon
         });
         this.statCards.set(config.id, card);
       }
@@ -220,6 +237,13 @@ export class WatchStatsPage {
           this.lastUpdate = stat.updateTime;
         }
       }
+
+      // 更新统计卡片
+      this.updateStatCards({
+        dailySeconds: this.dailySeconds,
+        totalSeconds: this.totalSeconds,
+        lastUpdate: this.lastUpdate
+      } as WatchStatsData);
 
       // 根据当前视图更新UI
       await this.updateView();
@@ -377,18 +401,18 @@ export class WatchStatsPage {
   private updateStatCards(data: WatchStatsData): void {
     const totalCard = this.statCards.get('stat-total');
     if (totalCard) {
-      totalCard.update({ value: this.formatSeconds(this.totalSeconds) });
+      totalCard.update({ value: this.formatSeconds(data.totalSeconds) });
     }
 
     const todayKey = this.getTodayKey();
-    const todaySeconds = this.dailySeconds[todayKey] ?? 0;
+    const todaySeconds = data.dailySeconds[todayKey] ?? 0;
     const todayCard = this.statCards.get('stat-today');
     if (todayCard) {
       todayCard.update({ value: this.formatSeconds(todaySeconds) });
     }
 
     const last7Days = this.getRecentDays(7);
-    const total7Days = last7Days.reduce((sum, day) => sum + (this.dailySeconds[day] ?? 0), 0);
+    const total7Days = last7Days.reduce((sum, day) => sum + (data.dailySeconds[day] ?? 0), 0);
     const weekCard = this.statCards.get('stat-7days');
     if (weekCard) {
       weekCard.update({ value: this.formatSeconds(total7Days) });
@@ -396,7 +420,7 @@ export class WatchStatsPage {
 
     const updateCard = this.statCards.get('stat-update');
     if (updateCard) {
-      updateCard.update({ value: this.formatTimestamp(this.lastUpdate) });
+      updateCard.update({ value: this.formatTimestamp(data.lastUpdate) });
     }
   }
 
@@ -424,7 +448,7 @@ export class WatchStatsPage {
       const date = new Date(day);
       return {
         label: `${date.getMonth() + 1}/${date.getDate()}`,
-        value: this.dailySeconds[day] ?? 0
+        value: data.dailySeconds[day] ?? 0
       };
     });
 
@@ -716,6 +740,85 @@ export class WatchStatsPage {
     }
 
     return days;
+  }
+
+  /**
+   * 加载Top 10列表
+   */
+  private async loadTopLists(): Promise<void> {
+    try {
+      // 确保数据库已初始化
+      await dbManager.init();
+
+      // 加载UP时长Top 10
+      const topUPs = await this.upInteractionRepo.getTopByWatchDuration(Platform.BILIBILI, 10);
+      const upStats: UPStat[] = [];
+
+      for (const up of topUPs) {
+        const creator = await this.creatorRepo.getCreator(up.creatorId);
+        if (creator) {
+          upStats.push({
+            mid: up.creatorId,
+            info: {
+              mid: up.creatorId,
+              name: creator.name,
+              face: creator.avatarUrl
+            },
+            totalWatchDuration: up.totalWatchDuration,
+            totalWatchCount: up.totalWatchCount,
+            likeCount: up.likeCount,
+            coinCount: up.coinCount,
+            favoriteCount: up.favoriteCount,
+            commentCount: up.commentCount,
+            lastWatchTime: up.lastWatchTime,
+            avgWatchDuration: up.totalWatchCount > 0 ? up.totalWatchDuration / up.totalWatchCount : 0,
+            interactionRate: up.totalWatchCount > 0 
+              ? (up.likeCount + up.coinCount + up.favoriteCount) / up.totalWatchCount 
+              : 0
+          });
+        }
+      }
+
+      this.updateUPList(upStats);
+
+      // 加载视频时长Top 10
+      // 从数据库获取所有观看事件
+      const allWatchEvents = await DBUtils.getAll<WatchEvent>(STORE_NAMES.WATCH_EVENTS);
+      const videoDurations = new Map<number, number>();
+
+      // 聚合每个视频的总观看时长
+      for (const event of allWatchEvents) {
+        const currentDuration = videoDurations.get(event.videoId) || 0;
+        videoDurations.set(event.videoId, currentDuration + event.watchDuration);
+      }
+
+      // 转换为数组并排序
+      const topVideos = Array.from(videoDurations.entries())
+        .map(([videoId, duration]) => ({ videoId, duration }))
+        .sort((a, b) => b.duration - a.duration)
+        .slice(0, 10);
+
+      const videoStats: VideoStat[] = [];
+
+      for (const item of topVideos) {
+        const video = await this.videoRepo.getVideo(item.videoId);
+        if (video) {
+          videoStats.push({
+            bvid: video.bv,
+            info: {
+              bvid: video.bv,
+              title: video.title,
+              duration: video.duration
+            },
+            seconds: item.duration
+          });
+        }
+      }
+
+      this.updateVideoList(videoStats);
+    } catch (error) {
+      console.error('[WatchStatsPage] 加载Top 10列表失败:', error);
+    }
   }
 
   /**

@@ -40,16 +40,41 @@ export class Heatmap {
    * 渲染热力图
    */
   render(data: HeatmapDataPoint[]): void {
-    this.container.innerHTML = '';
-
-    // 计算最大值（如果未指定）
-    const maxSeconds = this.options.maxSeconds || Math.max(...data.map(d => d.seconds), 1);
-
-    if (this.options.viewMode === 'year') {
-      this.renderYearView(data, maxSeconds);
-    } else {
-      this.renderMonthView(data, maxSeconds);
+    // 添加淡出动画
+    const oldContent = this.container.firstElementChild;
+    if (oldContent && oldContent instanceof HTMLElement) {
+      oldContent.style.opacity = '0';
+      oldContent.style.transform = 'scale(0.95)';
+      oldContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
     }
+
+    // 延迟渲染新内容以配合动画
+    setTimeout(() => {
+      this.container.innerHTML = '';
+
+      // 计算最大值（如果未指定）
+      const maxSeconds = this.options.maxSeconds || Math.max(...data.map(d => d.seconds), 1);
+
+      if (this.options.viewMode === 'year') {
+        this.renderYearView(data, maxSeconds);
+      } else {
+        this.renderMonthView(data, maxSeconds);
+      }
+
+      // 添加淡入动画
+      const newContent = this.container.firstElementChild;
+      if (newContent && newContent instanceof HTMLElement) {
+        newContent.style.opacity = '0';
+        newContent.style.transform = 'scale(1.05)';
+        newContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+        // 强制重绘
+        void newContent.offsetHeight;
+
+        newContent.style.opacity = '1';
+        newContent.style.transform = 'scale(1)';
+      }
+    }, 300);
   }
 
   /**
