@@ -357,27 +357,10 @@ export class VideoDataCollector {
    * 提取视频描述
    */
   private extractDescription(): string | undefined {
-    // 从准确的描述容器中提取
+    // 只从准确的描述容器中提取，不进行回退
     const descContainer = document.querySelector('.basic-desc-info .desc-info-text');
     if (descContainer) {
       const text = descContainer.textContent?.trim();
-      if (text && text.length > 0) {
-        return text;
-      }
-    }
-
-    // 回退到其他可能的位置
-    const fallbackSelectors = [
-      '#v_desc .desc-info-text',
-      '.video-info-container .video-desc',
-      '.video-desc',
-      '.desc-info-text',
-      '.video-info-detail-list'
-    ];
-
-    for (const selector of fallbackSelectors) {
-      const el = document.querySelector(selector);
-      const text = el?.textContent?.trim();
       if (text && text.length > 0) {
         return text;
       }

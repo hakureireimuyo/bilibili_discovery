@@ -130,6 +130,10 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     };
 
     this.callbacks.forEach(callback => callback(data));
+
+    // 重置累计时间和开始时间
+    this.accumulated = 0;
+    this.watchStartTime = currentTimestamp;
   }
 }
 

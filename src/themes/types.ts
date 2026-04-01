@@ -76,6 +76,19 @@ export interface TagColorConfig {
 }
 
 /**
+ * 热力图颜色映射配置
+ * 用于热力图的颜色梯度映射
+ */
+export interface HeatmapColorConfig {
+  level0: string;  // 0% - 无数据
+  level1: string;  // 1-20%
+  level2: string;  // 21-40%
+  level3: string;  // 41-60%
+  level4: string;  // 61-80%
+  level5: string;  // 81-100%
+}
+
+/**
  * 主题配置接口
  */
 export interface ThemeConfig {
@@ -84,6 +97,7 @@ export interface ThemeConfig {
   type: ThemeType;
   colors: ColorConfig;
   tagColors: TagColorConfig;
+  heatmapColors: HeatmapColorConfig;
 }
 
 /**

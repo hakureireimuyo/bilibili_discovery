@@ -111,7 +111,7 @@ function patchHtmlEntryScripts() {
     join(extensionRoot, "ui", "favorites", "favorites.html"),
     join(extensionRoot, "ui", "stats", "stats.html"),
     join(extensionRoot, "ui", "database-stats", "database-stats.html"),
-    // join(extensionRoot, "ui", "watch-stats", "watch-stats.html"),
+    join(extensionRoot, "ui", "watch-stats", "watch-stats.html"),
     join(extensionRoot, "ui", "test-tools", "test-tools.html"),
     join(extensionRoot, "ui", "theme-settings", "theme-settings.html"),
     join(extensionRoot, "ui", "theme-example", "theme-example.html")

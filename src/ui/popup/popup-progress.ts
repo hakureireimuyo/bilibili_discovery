@@ -23,3 +23,7 @@ export function navigateToThemeSettings(): void {
 export function navigateToDatabaseStats(): void {
   openExtensionPage("ui/database-stats/database-stats.html");
 }
+
+export function navigateToWatchStats(): void {
+  openExtensionPage("ui/watch-stats/watch-stats.html");
+}

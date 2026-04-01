@@ -12,7 +12,7 @@ export const DB_NAME = 'DiscoveryDB';
  * 数据库版本
  * 每次修改数据库结构时需要递增此版本号
  */
-export const DB_VERSION = 7;
+export const DB_VERSION = 9;
 
 /**
  * 对象存储名称定义
@@ -40,6 +40,8 @@ export const STORE_NAMES = {
   // Analytics Layer
   WATCH_TIME_STATS: 'watch_time_stats',
   WATCH_TIME_DISTRIBUTIONS: 'watch_time_distributions',
+  UP_INTERACTIONS: 'up_interactions',
+  DAILY_WATCH_STATS: 'daily_watch_stats',
   // App Layer
   APP_META: 'app_meta'
 } as const;
@@ -105,6 +107,17 @@ export const INDEX_DEFINITIONS = {
 
   [STORE_NAMES.APP_META]: [
     { name: 'updatedAt', keyPath: 'updatedAt', options: { unique: false } }
+  ],
+  [STORE_NAMES.UP_INTERACTIONS]: [
+    { name: 'creatorId', keyPath: 'creatorId', options: { unique: true } },
+    { name: 'platform', keyPath: 'platform', options: { unique: false } },
+    { name: 'totalWatchDuration', keyPath: 'totalWatchDuration', options: { unique: false } },
+    { name: 'lastWatchTime', keyPath: 'lastWatchTime', options: { unique: false } }
+  ],
+  [STORE_NAMES.DAILY_WATCH_STATS]: [
+    { name: 'statsId', keyPath: 'statsId', options: { unique: true } },
+    { name: 'dateKey', keyPath: 'dateKey', options: { unique: false } },
+    { name: 'platform', keyPath: 'platform', options: { unique: false } }
   ]
 } as const;
 
@@ -126,5 +139,7 @@ export const KEY_PATHS = {
   [STORE_NAMES.COLLECTION_ITEMS]: 'itemId',
   [STORE_NAMES.WATCH_TIME_STATS]: 'statsId',
   [STORE_NAMES.WATCH_TIME_DISTRIBUTIONS]: 'date',
+  [STORE_NAMES.UP_INTERACTIONS]: 'interactionId',
+  [STORE_NAMES.DAILY_WATCH_STATS]: 'statsId',
   [STORE_NAMES.APP_META]: 'key'
 } as const;

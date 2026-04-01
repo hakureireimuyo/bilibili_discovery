@@ -25,6 +25,14 @@ const morandiLightTheme: ThemeConfig = {
     lightnessMin: 85,
     lightnessMax: 94
   },
+  heatmapColors: {
+    level0: '#f5f5f7',
+    level1: '#e8eef5',
+    level2: '#d4ddea',
+    level3: '#a8b8c8',
+    level4: '#8b9dc3',
+    level5: '#6b7fa3'
+  },
   colors: {
     primary: '#8b9dc3',
     primaryHover: '#7a8db5',
@@ -76,6 +84,14 @@ const morandiDarkTheme: ThemeConfig = {
     saturationMax: 42,
     lightnessMin: 32,
     lightnessMax: 44
+  },
+  heatmapColors: {
+    level0: '#2a2f3a',
+    level1: '#3a4050',
+    level2: '#4a5060',
+    level3: '#5a6070',
+    level4: '#6a7080',
+    level5: '#7a8090'
   },
   colors: {
     primary: '#9da8c9',

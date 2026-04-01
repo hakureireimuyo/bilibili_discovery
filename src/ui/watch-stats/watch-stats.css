@@ -1,0 +1,453 @@
+/**
+ * 观看统计页面样式
+ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.app {
+  max-width: 1600px;
+  margin: 0 auto;
+  background: var(--theme-bg-primary);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px var(--theme-shadow-medium);
+  overflow: hidden;
+}
+
+.header {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+  padding: 30px 24px;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* 统计卡片区域 */
+.stats-section {
+  width: 100%;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.stat-card-container {
+  width: 100%;
+}
+
+/* 图表区域 */
+.charts-section {
+  width: 100%;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 16px;
+}
+
+.chart-panel {
+  background: var(--theme-bg-secondary);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 14px var(--theme-shadow-light);
+  transition: box-shadow 0.2s ease;
+}
+
+.chart-panel:hover {
+  box-shadow: 0 6px 20px var(--theme-shadow-medium);
+}
+
+.heatmap-container {
+  width: 100%;
+  min-height: 300px;
+  margin-top: 16px;
+}
+
+/* 热力图控制面板 */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.view-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.view-btn {
+  padding: 6px 16px;
+  border: 2px solid var(--theme-border-secondary);
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-secondary);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+  border-color: var(--theme-primary);
+  color: var(--theme-primary);
+  background: var(--theme-primary-light);
+}
+
+.view-btn.active {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+  border-color: var(--theme-primary);
+}
+
+.heatmap-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  background: var(--theme-bg-tertiary);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px var(--theme-shadow-light);
+}
+
+.control-btn:hover {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--theme-shadow-medium);
+}
+
+.control-btn:active {
+  transform: translateY(0);
+}
+
+.period-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  min-width: 120px;
+  text-align: center;
+}
+
+/* 热力图单元格样式 */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 8px;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 2px 4px var(--theme-shadow-light);
+}
+
+.heatmap-cell:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 8px 16px var(--theme-shadow-medium);
+  z-index: 10;
+}
+
+.heatmap-cell:active {
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* 热力图提示框样式 */
+.heatmap-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-bg-inverse);
+  color: var(--theme-text-inverse);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px var(--theme-shadow-medium);
+}
+
+.heatmap-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--theme-bg-inverse);
+}
+
+.heatmap-cell:hover .heatmap-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* 年度视图样式 */
+.heatmap-year-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 12px;
+  padding: 8px;
+}
+
+.heatmap-month-block {
+  background: var(--theme-bg-tertiary);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.heatmap-month-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--theme-shadow-medium);
+}
+
+.heatmap-month-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  text-align: center;
+  padding: 4px;
+}
+
+.heatmap-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.heatmap-cell-compact {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.heatmap-cell-compact:hover {
+  transform: scale(1.15);
+  z-index: 10;
+}
+
+.heatmap-cell-compact .heatmap-tooltip {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.line-chart {
+  width: 100%;
+  height: 300px;
+}
+
+/* 列表区域 */
+.lists-section {
+  width: 100%;
+}
+
+.lists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+}
+
+.list-panel {
+  background: var(--theme-bg-secondary);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 14px var(--theme-shadow-light);
+  transition: box-shadow 0.2s ease;
+}
+
+.list-panel:hover {
+  box-shadow: 0 6px 20px var(--theme-shadow-medium);
+}
+
+.panel-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  border-bottom: 2px solid var(--theme-primary);
+  padding-bottom: 8px;
+}
+
+.list-container {
+  max-height: 500px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--theme-text-primary);
+  padding: 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.list-item:hover {
+  background-color: var(--theme-bg-tertiary);
+  transform: translateX(4px);
+}
+
+.list-item .info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-item .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.list-item .name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-item .value {
+  font-weight: 600;
+  color: var(--theme-primary);
+  flex-shrink: 0;
+}
+
+.list-item .detail {
+  font-size: 12px;
+  color: var(--theme-text-tertiary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--theme-text-tertiary);
+  font-size: 14px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lists-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-year-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .heatmap-year-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(12, 1fr);
+  }
+
+  .app {
+    padding: 16px;
+    margin: 16px;
+    border-radius: 16px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

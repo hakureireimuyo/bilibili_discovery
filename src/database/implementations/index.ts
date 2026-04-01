@@ -24,6 +24,12 @@ export { VideoRepositoryImpl } from './video-repository.impl.js';
 // Behavior 实现
 export { WatchEventRepositoryImpl } from './watch-event-repository.impl.js';
 
+// UP主交互实现
+export { UPInteractionRepositoryImpl } from './up-interaction-repository.impl.js';
+
+// 每日观看统计实现
+export { DailyWatchStatsRepositoryImpl } from './daily-watch-stats-repository.impl.js';
+
 // Collection 实现
 export { CollectionRepositoryImpl } from './collection-repository.impl.js';
 export { CollectionItemRepositoryImpl } from './collection-item-repository.impl.js';

@@ -138,6 +138,14 @@ export function buildThemeVariables(theme: ThemeConfig): ThemeVariableMap {
     "--theme-stats-followed-bg": colors.primaryLight,
     "--theme-stats-followed-text": colors.primary,
     "--theme-stats-unfollowed-bg": colors.background.tertiary,
-    "--theme-stats-unfollowed-text": colors.text.tertiary
+    "--theme-stats-unfollowed-text": colors.text.tertiary,
+
+    // 热力图颜色
+    "--theme-heatmap-level0": theme.heatmapColors.level0,
+    "--theme-heatmap-level1": theme.heatmapColors.level1,
+    "--theme-heatmap-level2": theme.heatmapColors.level2,
+    "--theme-heatmap-level3": theme.heatmapColors.level3,
+    "--theme-heatmap-level4": theme.heatmapColors.level4,
+    "--theme-heatmap-level5": theme.heatmapColors.level5
   };
 }

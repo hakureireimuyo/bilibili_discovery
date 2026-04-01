@@ -1,4 +1,4 @@
-import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings, navigateToDatabaseStats } from "./popup-progress.js";
+import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings, navigateToDatabaseStats, navigateToWatchStats } from "./popup-progress.js";
 import { openExtensionPage } from "./popup-runtime.js";
 import { initThemedPage } from "../../themes/index.js";
 import { getValue } from "../../database/implementations/index.js";
@@ -62,7 +62,7 @@ function bindButtons(): void {
       console.log("[popup] btn-watch-stats clicked");
       event.preventDefault();
       event.stopPropagation();
-      navigateToTestTools();
+      navigateToWatchStats();
     });
   }
 

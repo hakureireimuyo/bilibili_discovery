@@ -5,6 +5,7 @@ export type ThemePageId =
   | "options"
   | "favorites"
   | "stats"
+  | "watch-stats"
   | "database-stats"
   | "theme-settings"
   | "theme-example";

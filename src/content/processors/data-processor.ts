@@ -26,6 +26,12 @@ import {
 import { 
   ImageRepositoryImpl 
 } from '../../database/implementations/image-repository.impl.js';
+import {
+  UPInteractionRepositoryImpl
+} from '../../database/implementations/up-interaction-repository.impl.js';
+import {
+  DailyWatchStatsRepositoryImpl
+} from '../../database/implementations/daily-watch-stats-repository.impl.js';
 import { 
   Platform,
   TagSource,
@@ -47,6 +53,8 @@ export class DataProcessor {
   private watchEventRepo: WatchEventRepositoryImpl;
   private tagRepo: TagRepositoryImpl;
   private imageRepo: ImageRepositoryImpl;
+  private upInteractionRepo: UPInteractionRepositoryImpl;
+  private dailyWatchStatsRepo: DailyWatchStatsRepositoryImpl;
 
   private dbInitialized = false;
   private initPromise: Promise<void> | null = null;
@@ -57,6 +65,8 @@ export class DataProcessor {
     this.videoRepo = new VideoRepositoryImpl();
     this.watchEventRepo = new WatchEventRepositoryImpl();
     this.tagRepo = new TagRepositoryImpl();
+    this.upInteractionRepo = new UPInteractionRepositoryImpl();
+    this.dailyWatchStatsRepo = new DailyWatchStatsRepositoryImpl();
   }
 
   /**
@@ -176,6 +186,9 @@ export class DataProcessor {
       if (data.avatarUrl) {
         await this.downloadAndSaveAvatar(data.creatorId, data.avatarUrl);
       }
+
+      // 检查该UP主是否存在交互数据，没有则创建
+      await this.ensureUPInteractionExists(data.creatorId, data.platform);
     }
   }
 
@@ -365,6 +378,18 @@ export class DataProcessor {
 
       await this.watchEventRepo.recordWatchEvent(watchEvent);
     }
+
+    // 同步更新UP主的总观看时长
+    if (data.creatorId) {
+      await this.upInteractionRepo.recordWatch(
+        data.creatorId,
+        data.watchDuration,
+        data.watchTime || Date.now()
+      );
+    }
+
+    // 更新每日观看统计
+    await this.updateDailyWatchStats(data);
   }
 
   /**
@@ -530,5 +555,93 @@ export class DataProcessor {
     const allVideos = await this.videoRepo.getAllVideos();
     const video = allVideos.find(v => v.bv === bv);
     return video?.videoId;
+  }
+
+  /**
+   * 确保UP主交互数据存在
+   * 如果不存在则创建新的交互记录
+   */
+  private async ensureUPInteractionExists(creatorId: ID, platform: Platform): Promise<void> {
+    // 确保数据库已初始化
+    await this.ensureDbInitialized();
+
+    // 检查UP主交互数据是否存在
+    const existingInteraction = await this.upInteractionRepo.getInteraction(creatorId);
+
+    if (!existingInteraction) {
+      // 不存在则创建新的交互记录
+      const now = Date.now();
+      const newInteraction = {
+        interactionId: now,
+        platform,
+        creatorId,
+        totalWatchDuration: 0,
+        totalWatchCount: 0,
+        likeCount: 0,
+        coinCount: 0,
+        favoriteCount: 0,
+        commentCount: 0,
+        lastWatchTime: now,
+        firstWatchTime: now,
+        updateTime: now
+      };
+
+      await this.upInteractionRepo.upsertInteraction(newInteraction);
+      logger.debug('[DataProcessor] UP主交互数据已创建:', creatorId);
+    }
+  }
+
+  /**
+   * 更新每日观看统计
+   * @param data 观看事件数据
+   */
+  private async updateDailyWatchStats(data: WatchEventCollectData): Promise<void> {
+    logger.debug('[DataProcessor] 更新每日观看统计:', data);
+
+    // 确保数据库已初始化
+    await this.ensureDbInitialized();
+
+    // 生成日期键，格式为 YYYY-MM-DD
+    const watchTime = data.watchTime || Date.now();
+    const date = new Date(watchTime);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    // 收集UP主ID和视频ID
+    const creatorIds: ID[] = [];
+    const videoIds: ID[] = [];
+
+    if (data.creatorId) {
+      creatorIds.push(data.creatorId);
+    }
+
+    // 查找视频ID
+    const videoId = await this.findVideoIdByBv(data.bv);
+    if (videoId) {
+      videoIds.push(videoId);
+    }
+
+    // 判断是否完整观看
+    const isComplete = data.isComplete === 1 || data.progress >= 0.9;
+
+    // 记录每日观看统计
+    await this.dailyWatchStatsRepo.recordWatch(
+      Platform.BILIBILI,
+      dateKey,
+      data.watchDuration,
+      creatorIds,
+      videoIds,
+      isComplete
+    );
+
+    logger.debug('[DataProcessor] 每日观看统计已更新:', {
+      dateKey,
+      watchDuration: data.watchDuration,
+      creatorIds,
+      videoIds,
+      isComplete
+    });
   }
 }

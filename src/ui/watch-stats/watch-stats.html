@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>观看统计 - Bilibili Discovery</title>
+  <link rel="stylesheet" href="watch-stats.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>观看统计</h1>
+      <p class="subtitle">基于播放器进度的真实观看时长统计</p>
+    </header>
+
+    <main class="content">
+      <!-- 统计卡片区域 -->
+      <section class="stats-section">
+        <div class="stats-grid">
+          <div id="stat-total" class="stat-card-container"></div>
+          <div id="stat-today" class="stat-card-container"></div>
+          <div id="stat-7days" class="stat-card-container"></div>
+          <div id="stat-update" class="stat-card-container"></div>
+        </div>
+      </section>
+
+      <!-- 图表区域 -->
+      <section class="charts-section">
+        <div class="charts-grid">
+          <div class="chart-panel">
+            <div class="panel-header">
+              <h2 class="panel-title">观看热力图</h2>
+              <div class="view-controls">
+                <button id="btn-view-month" class="view-btn active">月度</button>
+                <button id="btn-view-year" class="view-btn">年度</button>
+              </div>
+            </div>
+            <div class="heatmap-controls">
+              <button id="btn-prev" class="control-btn" title="上一个">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <span id="current-period" class="period-label">2024年4月</span>
+              <button id="btn-next" class="control-btn" title="下一个">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+            <div id="heatmap-container" class="heatmap-container"></div>
+          </div>
+          <div class="chart-panel">
+            <h2 class="panel-title">近7天趋势</h2>
+            <canvas id="line-chart" class="line-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- 列表区域 -->
+      <section class="lists-section">
+        <div class="lists-grid">
+          <div class="list-panel">
+            <h2 class="panel-title">UP 时长 Top 10</h2>
+            <div id="up-list" class="list-container"></div>
+          </div>
+          <div class="list-panel">
+            <h2 class="panel-title">视频时长 Top 10</h2>
+            <div id="video-list" class="list-container"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="watch-stats.ts"></script>
+</body>
+</html>
