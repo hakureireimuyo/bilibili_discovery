@@ -1,6 +1,6 @@
 /**
  * 热力图组件
- * 用于展示月度观看数据的热力图
+ * 用于展示年度观看数据的热力图，类似GitHub贡献图
  */
 
 import type { HeatmapDataPoint, HeatmapOptions } from './types.js';
@@ -11,8 +11,8 @@ export class Heatmap {
   private todayKey: string;
 
   constructor(container: HTMLElement | string, options: HeatmapOptions = {}) {
-    this.container = typeof container === 'string' 
-      ? document.getElementById(container)! 
+    this.container = typeof container === 'string'
+      ? document.getElementById(container)!
       : container;
 
     // 设置默认选项
@@ -21,7 +21,7 @@ export class Heatmap {
       showTodayMarker: options.showTodayMarker ?? true,
       showTooltip: options.showTooltip ?? true,
       onCellClick: options.onCellClick ?? (() => {}),
-      viewMode: options.viewMode ?? 'month'
+      viewMode: 'year'
     };
 
     // 获取今天的日期
@@ -30,137 +30,178 @@ export class Heatmap {
   }
 
   /**
-   * 设置视图模式
-   */
-  setViewMode(mode: 'month' | 'year'): void {
-    this.options.viewMode = mode;
-  }
-
-  /**
    * 渲染热力图
    */
   render(data: HeatmapDataPoint[]): void {
-    // 添加淡出动画
-    const oldContent = this.container.firstElementChild;
-    if (oldContent && oldContent instanceof HTMLElement) {
-      oldContent.style.opacity = '0';
-      oldContent.style.transform = 'scale(0.95)';
-      oldContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    }
+    this.container.innerHTML = '';
 
-    // 延迟渲染新内容以配合动画
-    setTimeout(() => {
-      this.container.innerHTML = '';
+    // 计算最大值（如果未指定）
+    const maxSeconds = this.options.maxSeconds || Math.max(...data.map(d => d.seconds), 1);
 
-      // 计算最大值（如果未指定）
-      const maxSeconds = this.options.maxSeconds || Math.max(...data.map(d => d.seconds), 1);
-
-      if (this.options.viewMode === 'year') {
-        this.renderYearView(data, maxSeconds);
-      } else {
-        this.renderMonthView(data, maxSeconds);
-      }
-
-      // 添加淡入动画
-      const newContent = this.container.firstElementChild;
-      if (newContent && newContent instanceof HTMLElement) {
-        newContent.style.opacity = '0';
-        newContent.style.transform = 'scale(1.05)';
-        newContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-
-        // 强制重绘
-        void newContent.offsetHeight;
-
-        newContent.style.opacity = '1';
-        newContent.style.transform = 'scale(1)';
-      }
-    }, 300);
-  }
-
-  /**
-   * 渲染月度视图
-   */
-  private renderMonthView(data: HeatmapDataPoint[], maxSeconds: number): void {
-    // 创建热力图网格
-    const grid = document.createElement('div');
-    grid.className = 'heatmap-grid';
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    grid.style.width = '100%';
-    grid.style.height = '100%';
-
-    // 渲染每个数据点
-    for (const point of data) {
-      const cell = this.createCell(point, maxSeconds);
-      grid.appendChild(cell);
-    }
-
-    this.container.appendChild(grid);
+    // 渲染年度热力图
+    this.renderYearView(data, maxSeconds);
   }
 
   /**
    * 渲染年度视图
    */
   private renderYearView(data: HeatmapDataPoint[], maxSeconds: number): void {
-    // 创建年度视图容器
-    const yearContainer = document.createElement('div');
-    yearContainer.className = 'heatmap-year-grid';
-    yearContainer.style.width = '100%';
-    yearContainer.style.height = '100%';
+    const now = new Date();
+    const currentYear = now.getFullYear();
 
-    // 按月份分组数据
-    const monthData: HeatmapDataPoint[][] = Array.from({ length: 12 }, () => []);
-    for (const point of data) {
-      if (point.date) {
-        const month = parseInt(point.date.split('-')[1]) - 1;
-        monthData[month].push(point);
+    // 创建主容器
+    const mainContainer = document.createElement('div');
+    mainContainer.style.position = 'relative';
+    mainContainer.style.width = '100%';
+    mainContainer.style.height = '100%';
+    mainContainer.style.paddingLeft = '30px';
+    mainContainer.style.paddingTop = '25px';
+    mainContainer.style.display = 'flex';
+    mainContainer.style.flexDirection = 'column';
+
+    // 创建信息显示区域
+    const infoContainer = document.createElement('div');
+    infoContainer.className = 'heatmap-info-display';
+
+    const dateLabel = document.createElement('span');
+    dateLabel.textContent = '日期: ';
+    const dateValue = document.createElement('span');
+    dateValue.id = 'heatmap-date';
+    dateValue.textContent = '请选择日期';
+
+    const timeLabel = document.createElement('span');
+    timeLabel.textContent = '观看时长: ';
+    const timeValue = document.createElement('span');
+    timeValue.id = 'heatmap-time';
+    timeValue.textContent = '--:--:--';
+
+    infoContainer.appendChild(dateLabel);
+    infoContainer.appendChild(dateValue);
+    infoContainer.appendChild(timeLabel);
+    infoContainer.appendChild(timeValue);
+
+    mainContainer.appendChild(infoContainer);
+
+    // 添加星期标签
+    const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+    const dayLabelsContainer = document.createElement('div');
+    dayLabelsContainer.style.position = 'absolute';
+    dayLabelsContainer.style.left = '0';
+    dayLabelsContainer.style.top = '25px';
+    dayLabelsContainer.style.height = 'calc(100% - 25px)';
+    dayLabelsContainer.style.display = 'flex';
+    dayLabelsContainer.style.flexDirection = 'column';
+    dayLabelsContainer.style.justifyContent = 'space-between';
+    dayLabelsContainer.style.paddingTop = '5px';
+    
+    dayLabels.forEach((label, index) => {
+      if (label) {
+        const dayLabel = document.createElement('div');
+        dayLabel.className = 'heatmap-day-label';
+        dayLabel.textContent = label;
+        dayLabel.style.position = 'relative';
+        dayLabelsContainer.appendChild(dayLabel);
       }
+    });
+    
+    mainContainer.appendChild(dayLabelsContainer);
+
+    // 添加月份标签
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const startDate = new Date(currentYear, 0, 1);
+    const endDate = new Date(currentYear, 11, 31);
+    const totalWeeks = this.getWeekNumber(endDate) + 1;
+
+    const monthLabelsContainer = document.createElement('div');
+    monthLabelsContainer.style.position = 'absolute';
+    monthLabelsContainer.style.left = '30px';
+    monthLabelsContainer.style.top = '0';
+    monthLabelsContainer.style.width = 'calc(100% - 30px)';
+    monthLabelsContainer.style.height = '20px';
+    monthLabelsContainer.style.display = 'flex';
+    monthLabelsContainer.style.justifyContent = 'space-between';
+    monthLabelsContainer.style.padding = '0 5px';
+
+    monthNames.forEach((monthName, monthIndex) => {
+      const monthDate = new Date(currentYear, monthIndex, 1);
+      const weekNumber = this.getWeekNumber(monthDate);
+      const monthLabel = document.createElement('div');
+      monthLabel.className = 'heatmap-month-label';
+      monthLabel.textContent = monthName;
+      monthLabel.style.position = 'relative';
+      monthLabel.style.left = `${(weekNumber / totalWeeks) * 100}%`;
+      monthLabelsContainer.appendChild(monthLabel);
+    });
+    
+    mainContainer.appendChild(monthLabelsContainer);
+
+    // 创建热力图网格容器
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'heatmap-year-grid';
+    gridContainer.style.flex = '1';
+    gridContainer.style.paddingTop = '25px';
+
+    // 计算需要显示的周数
+    const startWeek = this.getWeekNumber(startDate);
+    const weeksToShow = totalWeeks - startWeek + 1;
+
+    // 创建每周的列
+    for (let week = startWeek; week <= totalWeeks; week++) {
+      const weekColumn = document.createElement('div');
+      weekColumn.className = 'heatmap-week-column';
+      weekColumn.style.flex = '1';
+      weekColumn.style.minWidth = '12px';
+
+      // 获取该周的所有日期
+      const weekDates = this.getWeekDates(currentYear, week);
+
+      // 为每一天创建单元格
+      weekDates.forEach(date => {
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const dataPoint = data.find(d => d.date === dateKey);
+        const cell = this.createCell(dataPoint || { date: dateKey, seconds: 0, day: date.getDate() }, maxSeconds);
+        weekColumn.appendChild(cell);
+      });
+
+      gridContainer.appendChild(weekColumn);
     }
 
-    // 渲染每个月份
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    for (let i = 0; i < 12; i++) {
-      const monthBlock = this.createMonthBlock(monthNames[i], monthData[i], maxSeconds);
-      yearContainer.appendChild(monthBlock);
-    }
-
-    this.container.appendChild(yearContainer);
+    mainContainer.appendChild(gridContainer);
+    this.container.appendChild(mainContainer);
   }
 
   /**
-   * 创建月份块
+   * 获取指定年份和周数的所有日期
    */
-  private createMonthBlock(monthName: string, data: HeatmapDataPoint[], maxSeconds: number): HTMLElement {
-    const block = document.createElement('div');
-    block.className = 'heatmap-month-block';
-    block.style.flex = '1';
-    block.style.display = 'flex';
-    block.style.flexDirection = 'column';
+  private getWeekDates(year: number, weekNumber: number): Date[] {
+    const dates: Date[] = [];
+    const firstDayOfYear = new Date(year, 0, 1);
+    const daysOffset = (weekNumber * 7) - firstDayOfYear.getDay() - 6;
+    const startDate = new Date(year, 0, 1 + daysOffset);
 
-    // 添加月份标题
-    const title = document.createElement('div');
-    title.className = 'heatmap-month-title';
-    title.textContent = monthName;
-    block.appendChild(title);
-
-    // 创建月份热力图网格
-    const grid = document.createElement('div');
-    grid.className = 'heatmap-month-grid';
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    grid.style.gap = '2px';
-    grid.style.flex = '1';
-    grid.style.width = '100%';
-
-    // 渲染该月的每个数据点
-    for (const point of data) {
-      const cell = this.createCell(point, maxSeconds);
-      cell.classList.add('heatmap-cell-compact');
-      grid.appendChild(cell);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      if (date.getFullYear() === year) {
+        dates.push(date);
+      } else {
+        dates.push(new Date(year, 0, 1)); // 填充空白
+      }
     }
 
-    block.appendChild(grid);
-    return block;
+    return dates;
+  }
+
+  /**
+   * 获取日期所在的周数（0-52）
+   */
+  private getWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return Math.min(weekNo - 1, 52);
   }
 
   /**
@@ -174,12 +215,10 @@ export class Heatmap {
     if (point.date) {
       const ratio = Math.min(point.seconds / maxSeconds, 1);
       cell.style.backgroundColor = this.getHeatmapColor(ratio);
-      cell.textContent = String(point.day);
 
       // 标记今天
       if (this.options.showTodayMarker && point.date === this.todayKey) {
-        cell.style.border = '2px solid var(--theme-warning)';
-        cell.style.boxShadow = `0 0 8px var(--theme-shadow-light)`;
+        cell.style.outline = '2px solid var(--theme-warning)';
       }
 
       // 添加点击事件
@@ -187,35 +226,22 @@ export class Heatmap {
         this.options.onCellClick(point.date, point.seconds);
       });
 
-      // 添加提示框
+      // 添加悬停事件，更新信息显示区域
       if (this.options.showTooltip) {
-        const tooltip = this.createTooltip(point);
-        cell.appendChild(tooltip);
-        
-        // 悬停显示提示框
+
+
         cell.addEventListener('mouseenter', () => {
-          tooltip.style.opacity = '1';
-          tooltip.style.visibility = 'visible';
-        });
-        cell.addEventListener('mouseleave', () => {
-          tooltip.style.opacity = '0';
-          tooltip.style.visibility = 'hidden';
+          const dateElement = document.getElementById('heatmap-date');
+          const timeElement = document.getElementById('heatmap-time');
+          if (dateElement && timeElement) {
+            dateElement.textContent = point.date;
+            timeElement.textContent = this.formatSeconds(point.seconds);
+          }
         });
       }
     }
 
     return cell;
-  }
-
-  /**
-   * 创建提示框
-   */
-  private createTooltip(point: HeatmapDataPoint): HTMLElement {
-    const tooltip = document.createElement('div');
-    tooltip.className = 'heatmap-tooltip';
-    tooltip.textContent = `${point.date}: ${this.formatSeconds(point.seconds)}`;
-
-    return tooltip;
   }
 
   /**

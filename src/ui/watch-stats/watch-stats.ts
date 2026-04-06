@@ -75,8 +75,7 @@ export class WatchStatsPage {
     if (heatmapContainer && !this.heatmap) {
       this.heatmap = new Heatmap(heatmapContainer, {
         showTodayMarker: true,
-        showTooltip: true,
-        viewMode: this.currentView
+        showTooltip: true
       });
     }
 
@@ -162,14 +161,7 @@ export class WatchStatsPage {
    * 更新周期标签
    */
   private updatePeriodLabel(): void {
-    const periodLabel = document.getElementById('current-period');
-    if (periodLabel) {
-      if (this.currentView === 'month') {
-        periodLabel.textContent = `${this.currentYear}年${this.currentMonth + 1}月`;
-      } else {
-        periodLabel.textContent = `${this.currentYear}年`;
-      }
-    }
+    // 周期标签已移除，此方法不再执行任何操作
   }
 
   /**
@@ -209,11 +201,11 @@ export class WatchStatsPage {
       // 确保数据库已初始化
       await dbManager.init();
 
-      // 获取最近7天的统计数据
+      // 获取最近30天的统计数据
       const now = new Date();
       const endDate = new Date(now);
       const startDate = new Date(now);
-      startDate.setDate(now.getDate() - 6); // 获取最近7天（包括今天）
+      startDate.setDate(now.getDate() - 29); // 获取最近30天（包括今天）
 
       const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const endKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
@@ -272,9 +264,6 @@ export class WatchStatsPage {
     this.currentView = 'month';
     this.currentYear = year;
     this.currentMonth = month;
-    if (this.heatmap) {
-      this.heatmap.setViewMode('month');
-    }
     await this.updateView();
   }
 
@@ -284,9 +273,6 @@ export class WatchStatsPage {
   public async switchToYearView(year: number): Promise<void> {
     this.currentView = 'year';
     this.currentYear = year;
-    if (this.heatmap) {
-      this.heatmap.setViewMode('year');
-    }
     await this.updateView();
   }
 
@@ -339,11 +325,8 @@ export class WatchStatsPage {
     // 重新初始化热力图以应用新的视图模式
     this.initCharts();
     
-    if (this.currentView === 'month') {
-      await this.updateMonthView();
-    } else {
-      await this.updateYearView();
-    }
+    // 始终使用年度视图
+    await this.updateYearView();
   }
 
   /**
@@ -441,13 +424,8 @@ export class WatchStatsPage {
    * 更新热力图
    */
   private updateHeatmap(data: WatchStatsData): void {
-    // 热力图现在由 updateMonthView 和 updateYearView 方法更新
-    // 这个方法保留以兼容现有代码
-    if (this.currentView === 'month') {
-      this.updateMonthView();
-    } else {
-      this.updateYearView();
-    }
+    // 始终使用年度视图
+    this.updateYearView();
   }
 
   /**
@@ -456,8 +434,8 @@ export class WatchStatsPage {
   private updateLineChart(data: WatchStatsData): void {
     if (!this.lineChart) return;
 
-    const recentDays = this.getRecentDays(7).reverse();
-    console.log('[WatchStatsPage] 最近7天日期列表:', recentDays);
+    const recentDays = this.getRecentDays(30).reverse();
+    console.log('[WatchStatsPage] 最近30天日期列表:', recentDays);
 
     const chartData = recentDays.map(day => {
       const date = new Date(day);
@@ -737,24 +715,32 @@ export class WatchStatsPage {
   private getYearDays(year: number): Array<{ date: string; day: number }> {
     const days: Array<{ date: string; day: number }> = [];
 
-    // 遍历一年的12个月
-    for (let month = 0; month < 12; month++) {
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-
-      // 获取月份的第一天是星期几（0-6，0是周日）
-      const startDayOfWeek = firstDay.getDay();
-
-      // 添加空白单元格填充
-      for (let i = 0; i < startDayOfWeek; i++) {
-        days.push({ date: '', day: 0 });
-      }
-
-      // 添加日期
-      for (let d = 1; d <= lastDay.getDate(); d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        days.push({ date: dateStr, day: d });
-      }
+    // 获取该年的第一天（1月1日）
+    const startDate = new Date(year, 0, 1);
+    
+    // 获取1月1日是星期几（0-6，0是周日）
+    const startDayOfWeek = startDate.getDay();
+    
+    // 计算需要添加的空白天数（使第一周从周日开始）
+    const paddingDays = startDayOfWeek === 0 ? 0 : startDayOfWeek;
+    
+    // 添加空白单元格填充
+    for (let i = 0; i < paddingDays; i++) {
+      days.push({ date: '', day: 0 });
+    }
+    
+    // 获取该年的总天数
+    const endDate = new Date(year, 11, 31);
+    const totalDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // 添加所有日期
+    for (let d = 0; d < totalDays; d++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + d);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      days.push({ date: dateStr, day: day });
     }
 
     return days;

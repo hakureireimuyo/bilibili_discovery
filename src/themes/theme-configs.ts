@@ -26,12 +26,12 @@ const morandiLightTheme: ThemeConfig = {
     lightnessMax: 94
   },
   heatmapColors: {
-    level0: '#f5f5f7',
-    level1: '#e8eef5',
-    level2: '#d4ddea',
-    level3: '#a8b8c8',
-    level4: '#8b9dc3',
-    level5: '#6b7fa3'
+    level0: '#ebedf0',
+    level1: '#b6e3ff',
+    level2: '#54aeff',
+    level3: '#0969da',
+    level4: '#0a3069',
+    level5: '#002d6b'
   },
   colors: {
     primary: '#8b9dc3',
