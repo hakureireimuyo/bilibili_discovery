@@ -29,6 +29,11 @@ export function setDragContext(next: DragContext | null): void {
   dragContext = next;
 }
 
+export function clearDragState(): void {
+  setDragContext(null);
+  removeDragGhost();
+}
+
 export function createDragGhost(e: DragEvent, tag: string): void {
   removeDragGhost();
   const ghost = document.createElement("div");
@@ -36,11 +41,26 @@ export function createDragGhost(e: DragEvent, tag: string): void {
   ghost.textContent = tag;
   const rootStyles = getComputedStyle(document.documentElement);
   ghost.style.backgroundColor = colorFromTag(tag);
+  ghost.style.position = "fixed";
+  ghost.style.left = "0";
+  ghost.style.top = "0";
+  ghost.style.display = "inline-flex";
+  ghost.style.alignItems = "center";
+  ghost.style.width = "max-content";
+  ghost.style.maxWidth = "280px";
   ghost.style.padding = "8px 16px";
   ghost.style.borderRadius = "999px";
   ghost.style.color = rootStyles.getPropertyValue("--theme-text-primary").trim() || "#1f2430";
   ghost.style.fontSize = "13px";
   ghost.style.fontWeight = "600";
+  ghost.style.lineHeight = "1.2";
+  ghost.style.whiteSpace = "nowrap";
+  ghost.style.overflow = "hidden";
+  ghost.style.textOverflow = "ellipsis";
+  ghost.style.pointerEvents = "none";
+  ghost.style.zIndex = "2147483647";
+  ghost.style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.18)";
+  ghost.style.transform = "translate(-9999px, -9999px)";
   document.body.appendChild(ghost);
   dragGhost = ghost;
 

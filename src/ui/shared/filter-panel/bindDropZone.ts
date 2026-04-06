@@ -1,4 +1,4 @@
-import { getDragContext } from "../../../utils/drag-utils.js";
+import { clearDragState, getDragContext } from "../../../utils/drag-utils.js";
 import type { DropZoneBindingOptions } from "./types.js";
 
 export function bindDropZone(options: DropZoneBindingOptions): () => void {
@@ -28,10 +28,13 @@ export function bindDropZone(options: DropZoneBindingOptions): () => void {
     }
 
     if (options.accept && !options.accept(context)) {
+      clearDragState();
       return;
     }
 
     await options.onDrop(context);
+    context.dropped = true;
+    clearDragState();
   };
 
   zone.addEventListener("dragover", handleDragOver);

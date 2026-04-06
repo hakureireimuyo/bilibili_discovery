@@ -1,4 +1,4 @@
-import { createDragGhost, setDragContext } from "../../../utils/drag-utils.js";
+import { clearDragState, createDragGhost, setDragContext } from "../../../utils/drag-utils.js";
 import { createTagPill } from "./createTagPill.js";
 import type { DraggableTagPillOptions } from "./types.js";
 
@@ -25,11 +25,10 @@ export function createDraggableTagPill(options: DraggableTagPillOptions): HTMLEl
     options.onDragStart?.(dragEvent, element);
   });
 
-  if (options.onDragEnd) {
-    element.addEventListener("dragend", (event) => {
-      options.onDragEnd?.(event as DragEvent, element);
-    });
-  }
+  element.addEventListener("dragend", (event) => {
+    clearDragState();
+    options.onDragEnd?.(event as DragEvent, element);
+  });
 
   return element;
 }

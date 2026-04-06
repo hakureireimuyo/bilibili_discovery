@@ -1,5 +1,5 @@
 import { bindThemeTagColorRefresh } from "../../utils/tag-utils.js";
-import { bindDebouncedTextInput, createFilterChip, createDraggableTagPill, renderEmptyState } from "../shared/index.js";
+import { bindDebouncedTextInput, bindDropZone, createFilterChip, createDraggableTagPill, renderEmptyState } from "../shared/index.js";
 import { initThemedPage } from "../../themes/index.js";
 import { WatchHistoryListElementBuilder } from "./WatchHistoryListElementBuilder.js";
 import { WatchHistoryListRender } from "./WatchHistoryListRender.js";
@@ -25,6 +25,7 @@ export class WatchHistoryManager {
     try {
       await this.dataService.init();
       this.bindEvents();
+      this.bindDropZones();
       this.cleanupFns.push(bindThemeTagColorRefresh());
       this.state.loading = false;
       await this.renderAll();
@@ -118,6 +119,36 @@ export class WatchHistoryManager {
       };
       resetButton.addEventListener("click", handler);
       this.cleanupFns.push(() => resetButton.removeEventListener("click", handler));
+    }
+  }
+
+  private bindDropZones(): void {
+    const includeZone = document.getElementById("includeTags");
+    if (includeZone) {
+      this.cleanupFns.push(bindDropZone({
+        zone: includeZone,
+        accept: (context) => typeof context.tagId === "number",
+        onDrop: async (context) => {
+          if (typeof context.tagId !== "number") {
+            return;
+          }
+          this.addIncludeTag(context.tagId);
+        }
+      }));
+    }
+
+    const excludeZone = document.getElementById("excludeTags");
+    if (excludeZone) {
+      this.cleanupFns.push(bindDropZone({
+        zone: excludeZone,
+        accept: (context) => typeof context.tagId === "number",
+        onDrop: async (context) => {
+          if (typeof context.tagId !== "number") {
+            return;
+          }
+          this.addExcludeTag(context.tagId);
+        }
+      }));
     }
   }
 
@@ -244,7 +275,14 @@ export class WatchHistoryManager {
         colorTag: tag.name,
         variant: "include",
         className: "history-filter-tag history-filter-tag-include",
-        draggable: false,
+        draggable: true,
+        dragEffect: "move",
+        createDragContext: () => ({
+          tagId,
+          tagName: tag.name,
+          dropped: false,
+          isFilterTag: true
+        }),
         onRemove: () => {
           this.removeTag(tagId, "include");
         }
@@ -261,7 +299,14 @@ export class WatchHistoryManager {
         colorTag: tag.name,
         variant: "exclude",
         className: "history-filter-tag history-filter-tag-exclude",
-        draggable: false,
+        draggable: true,
+        dragEffect: "move",
+        createDragContext: () => ({
+          tagId,
+          tagName: tag.name,
+          dropped: false,
+          isFilterTag: true
+        }),
         onRemove: () => {
           this.removeTag(tagId, "exclude");
         }

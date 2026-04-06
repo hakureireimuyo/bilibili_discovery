@@ -1,5 +1,5 @@
 import { applyTagColor } from "../../../utils/tag-utils.js";
-import { createDragGhost, setDragContext } from "../../../utils/drag-utils.js";
+import { clearDragState, createDragGhost, setDragContext } from "../../../utils/drag-utils.js";
 import type { FilterChipOptions } from "./types.js";
 
 export function createFilterChip(options: FilterChipOptions): HTMLElement {
@@ -31,11 +31,10 @@ export function createFilterChip(options: FilterChipOptions): HTMLElement {
     });
   }
 
-  if (options.onDragEnd) {
-    element.addEventListener("dragend", (event) => {
-      options.onDragEnd?.(event as DragEvent, element);
-    });
-  }
+  element.addEventListener("dragend", (event) => {
+    clearDragState();
+    options.onDragEnd?.(event as DragEvent, element);
+  });
 
   if (options.onRemove && options.showRemoveButton !== false) {
     const removeButton = document.createElement("button");

@@ -62,7 +62,7 @@ export class VideoDataCollector {
     const tags = await this.extractTags();
     // 描述和发布时间优先使用API数据
     const description = apiVideoInfo?.desc || this.extractDescription();
-    const publishTime = apiVideoInfo?.pubdate || this.extractPublishTime();
+    const publishTime = this.normalizeTimestamp(apiVideoInfo?.pubdate) || await this.extractPublishTime();
     const coverUrl = apiVideoInfo?.pic || this.extractCoverUrl();
 
     return { title, upMid, upName, upFace, tags, description, publishTime, coverUrl, apiVideoInfo };
@@ -372,40 +372,120 @@ export class VideoDataCollector {
   /**
    * 提取视频发布时间
    */
-  private extractPublishTime(): number | undefined {
-    // 从准确的发布时间元素中提取
-    const pubdateElement = document.querySelector('.pubdate-ip .pubdate-ip-text');
-    if (pubdateElement) {
-      const text = pubdateElement.textContent?.trim();
-      if (text) {
-        // 尝试解析时间字符串
-        const date = new Date(text);
-        if (!isNaN(date.getTime())) {
-          return date.getTime();
-        }
-      }
-    }
-
-    // 回退到其他可能的位置
-    const fallbackSelectors = [
+  private async extractPublishTime(): Promise<number | undefined> {
+    const selectors = [
+      '.pubdate-ip .pubdate-ip-text',
       '.pubdate-ip-text',
       '.pubdate-text',
       '.video-info-detail-list .pubdate'
     ];
 
-    for (const selector of fallbackSelectors) {
+    const immediateValue = this.findPublishTimeFromSelectors(selectors);
+    if (immediateValue) {
+      return immediateValue;
+    }
+
+    // B站的视频信息区经常是异步渲染，短暂等待后再尝试一次
+    return this.waitForPublishTime(selectors, 6000);
+  }
+
+  private findPublishTimeFromSelectors(selectors: string[]): number | undefined {
+    for (const selector of selectors) {
       const el = document.querySelector(selector);
-      const text = el?.textContent?.trim();
-      if (text) {
-        // 尝试解析时间字符串
-        const date = new Date(text);
-        if (!isNaN(date.getTime())) {
-          return date.getTime();
-        }
+      const value = this.parsePublishTimeText(el?.textContent);
+      if (value) {
+        return value;
+      }
+    }
+
+    return this.findPublishTimeFromText();
+  }
+
+  private findPublishTimeFromText(): number | undefined {
+    const candidates = Array.from(document.querySelectorAll('div, span, time'));
+    for (const node of candidates) {
+      const value = this.parsePublishTimeText(node.textContent);
+      if (value) {
+        return value;
       }
     }
 
     return undefined;
+  }
+
+  private waitForPublishTime(selectors: string[], timeoutMs: number): Promise<number | undefined> {
+    return new Promise((resolve) => {
+      const existingValue = this.findPublishTimeFromSelectors(selectors);
+      if (existingValue) {
+        resolve(existingValue);
+        return;
+      }
+
+      const observer = new MutationObserver(() => {
+        const value = this.findPublishTimeFromSelectors(selectors);
+        if (value) {
+          observer.disconnect();
+          clearTimeout(timer);
+          resolve(value);
+        }
+      });
+
+      const timer = window.setTimeout(() => {
+        observer.disconnect();
+        resolve(this.findPublishTimeFromSelectors(selectors));
+      }, timeoutMs);
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    });
+  }
+
+  private parsePublishTimeText(text?: string | null): number | undefined {
+    const normalized = text?.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    const dateTimeMatch = normalized.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (dateTimeMatch) {
+      const [, year, month, day, hours, minutes, seconds = '00'] = dateTimeMatch;
+      const timestamp = new Date(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hours),
+        Number(minutes),
+        Number(seconds)
+      ).getTime();
+
+      if (!Number.isNaN(timestamp)) {
+        return timestamp;
+      }
+    }
+
+    const dateMatch = normalized.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch;
+      const timestamp = new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+      if (!Number.isNaN(timestamp)) {
+        return timestamp;
+      }
+    }
+
+    const parsed = new Date(normalized).getTime();
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+
+  private normalizeTimestamp(timestamp?: number): number | undefined {
+    if (!timestamp || !Number.isFinite(timestamp)) {
+      return undefined;
+    }
+
+    // B站接口通常返回秒级时间戳，统一转换为毫秒
+    return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
   }
 
   /**
