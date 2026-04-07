@@ -46,6 +46,10 @@ export interface AppSettings {
    * API请求最大间隔（毫秒）
    */
   apiMaxInterval: number;
+  /**
+   * 获取UP主视频的最大数量
+   */
+  maxVideosToFetch: number;
 }
 
 interface SettingsRecord<T = unknown> {

@@ -346,7 +346,7 @@ export class CollectionRepositoryImpl {
    */
   async removeItemsFromCollection(
     collectionId: ID,
-    itemIds: string[]
+    itemIds: ID[]
   ): Promise<void> {
     if (!itemIds.length) return;
 
@@ -425,7 +425,7 @@ export class CollectionRepositoryImpl {
    * @param collectionId 收藏夹ID
    * @returns 收藏项列表
    */
-  async getCollectionItems(collectionId: string): Promise<CollectionItem[]> {
+  async getCollectionItems(collectionId: ID): Promise<CollectionItem[]> {
     return DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
       'collectionId',
@@ -464,7 +464,7 @@ export class CollectionRepositoryImpl {
    * @returns 收藏项列表
    */
   async getCollectionItemsPaginated(
-    collectionId: string,
+    collectionId: ID,
     offset: number,
     limit: number
   ): Promise<CollectionItem[]> {

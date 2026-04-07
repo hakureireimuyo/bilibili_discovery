@@ -6,9 +6,8 @@
 import { VideoRepositoryImpl } from "../../database/implementations/video-repository.impl.js";
 import { CreatorRepositoryImpl } from "../../database/implementations/creator-repository.impl.js";
 import { CollectionRepositoryImpl } from "../../database/implementations/collection-repository.impl.js";
-import { CollectionItemRepositoryImpl } from "../../database/implementations/collection-item-repository.impl.js";
 import { TagRepositoryImpl } from "../../database/implementations/tag-repository.impl.js";
-import { getFavoriteVideos, getCollectedVideos, getSeasonVideos } from "../../api/favorite.js";
+import { getFavoriteVideos, getSeasonVideos } from "../../api/favorite.js";
 import { getVideoTagsDetail } from "../../api/video.js";
 import { RateLimitError } from "../../api/request.js";
 import { getValue } from "../../database/implementations/settings-repository.impl.js";
@@ -20,7 +19,7 @@ import type {
   SubscribedFavoriteVideoInfo
 } from "../../api/types.js";
 
-import { Platform, TagSource } from "../../database/types/base.js";
+import { Platform, TagSource, type ID } from "../../database/types/base.js";
 import type { Video } from "../../database/types/video.js";
 import type { ProgressCallback } from "./types.js";
 
@@ -55,7 +54,6 @@ export class FolderProcessor {
   private videoRepo = new VideoRepositoryImpl();
   private creatorRepo = new CreatorRepositoryImpl();
   private collectionRepo = new CollectionRepositoryImpl();
-  private collectionItemRepo = new CollectionItemRepositoryImpl();
   private tagRepo = new TagRepositoryImpl();
 
   /**
@@ -80,15 +78,14 @@ export class FolderProcessor {
         type: folderType,
         createdAt: Date.now(),
         lastUpdate: Date.now(),
-        videoCount: folder.media_count
+        videoCount: 0
       });
-    }
-
-    // 判断是否需要获取视频
-    // 如果本地数据库中的videoCount与API返回的media_count相同，则跳过获取
-    if (localCollection && localCollection.videoCount === folder.media_count) {
-      onProgress(1, folder.media_count, `收藏夹已存在且视频数量一致，跳过获取`);
-      return;
+    } else {
+      await this.collectionRepo.updateCollection(folderId, {
+        name: folder.title,
+        description: strategy.getDescription(folder),
+        type: folderType
+      });
     }
 
     // 获取所有视频
@@ -128,12 +125,57 @@ export class FolderProcessor {
       throw error;
     }
 
+    // 先获取当前收藏夹中所有已存在的视频ID和对应的bvid，用于避免重复添加
+    const existingCollectionItems = await this.collectionRepo.getCollectionItems(folderId);
+    const existingVideos = await Promise.all(
+      existingCollectionItems.map(item => this.videoRepo.getVideo(item.videoId))
+    );
+    const remoteBvidSet = new Set(
+      totalVideos
+        .map(raw => strategy.normalizeVideo(raw).bvid.trim())
+        .filter((bv): bv is string => Boolean(bv))
+    );
+    const staleItemIds: ID[] = [];
+
+    existingCollectionItems.forEach((item, index) => {
+      const bv = existingVideos[index]?.bv?.trim();
+      if (bv && !remoteBvidSet.has(bv)) {
+        staleItemIds.push(item.itemId);
+      }
+    });
+
+    if (staleItemIds.length > 0) {
+      await this.collectionRepo.removeItemsFromCollection(folderId, staleItemIds);
+      onProgress(0, totalVideos.length, `已移除 ${staleItemIds.length} 个本地多余视频`);
+    }
+
+    const staleItemIdSet = new Set(staleItemIds);
+
+    const remainingCollectionItems = staleItemIds.length > 0
+      ? existingCollectionItems.filter(item => !staleItemIdSet.has(item.itemId))
+      : existingCollectionItems;
+    const remainingVideos = staleItemIds.length > 0
+      ? existingVideos.filter((_, index) => !staleItemIdSet.has(existingCollectionItems[index].itemId))
+      : existingVideos;
+    const existingBvidSet = new Set(
+      remainingVideos
+        .map(video => video?.bv?.trim())
+        .filter((bv): bv is string => Boolean(bv))
+    );
+    let addedItemCount = 0;
+
     // 处理每个视频
     for (let i = 0; i < totalVideos.length; i++) {
       if (abortSignal.aborted) throw new Error("AbortError");
 
       const raw = totalVideos[i];
       const video = strategy.normalizeVideo(raw);
+      const normalizedBvid = video.bvid.trim();
+
+      if (!normalizedBvid) {
+        onProgress(i + 1, totalVideos.length, `跳过缺少BV号的视频: ${video.title}`);
+        continue;
+      }
 
       onProgress(i + 1, totalVideos.length, `正在处理视频: ${video.title}`);
 
@@ -160,14 +202,14 @@ export class FolderProcessor {
       }
 
       // 检查视频是否已存在
-      const existingVideo = await this.videoRepo.getVideoByBv(video.bvid);
+      const existingVideo = await this.videoRepo.getVideoByBv(normalizedBvid);
       let videoId: number;
       const isNewVideo = !existingVideo;
       const hasTags = existingVideo?.tags && existingVideo.tags.length > 0;
 
       // 准备视频数据
       const videoData = {
-        bv: video.bvid,
+        bv: normalizedBvid,
         platform: Platform.BILIBILI,
         creatorId,
         title: video.title,
@@ -188,7 +230,7 @@ export class FolderProcessor {
         // 如果视频已存在但没有tags，且视频未失效，则尝试获取tags
         if (!hasTags && !isInvalid) {
           try {
-            const tags = await getVideoTagsDetail(video.bvid);
+            const tags = await getVideoTagsDetail(normalizedBvid);
             if (tags?.length) {
               const tagIds: number[] = [];
               for (const t of tags) {
@@ -214,14 +256,14 @@ export class FolderProcessor {
       } else {
         // 新视频，创建并获取tags
         // 获取标签获取间隔设置
-        const tagFetchInterval = await getValue<number>('tagFetchInterval') ?? 200;
+        await getValue<number>('tagFetchInterval');
         const created = await this.videoRepo.createVideo(videoData);
         videoId = created.videoId;
 
         // 只对新视频且没有失效时获取tags
         if (!isInvalid) {
           try {
-            const tags = await getVideoTagsDetail(video.bvid);
+            const tags = await getVideoTagsDetail(normalizedBvid);
             if (tags?.length) {
               const tagIds: number[] = [];
               for (const t of tags) {
@@ -246,21 +288,30 @@ export class FolderProcessor {
         }
       }
 
-      // 检查收藏项是否已存在于当前收藏夹
-      const itemExists = await this.collectionRepo.hasVideoInCollection(folderId, videoId);
-      if (!itemExists) {
+      // 使用bvid来检查收藏项是否已存在，因为bvid是平台中视频的唯一标识
+      if (!existingBvidSet.has(normalizedBvid)) {
         // 收藏项不存在，添加到收藏夹（自动维护计数器）
         try {
           await this.collectionRepo.addItemToCollection(folderId, {
             videoId,
             order: i
           });
+          // 添加成功后，更新Set以避免后续重复添加
+          existingBvidSet.add(normalizedBvid);
+          addedItemCount++;
         } catch (e) {
-          // 如果添加失败（可能是重复），忽略错误
+          // 如果添加失败（可能是重复），记录错误但继续处理
           console.error('Add item to collection error:', e);
         }
       }
     }
+
+    await this.collectionRepo.updateCollection(folderId, {
+      name: folder.title,
+      description: strategy.getDescription(folder),
+      type: folderType,
+      videoCount: remainingCollectionItems.length + addedItemCount
+    });
   }
 
   /**

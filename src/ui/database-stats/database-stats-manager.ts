@@ -339,37 +339,33 @@ export class DatabaseStatsManager {
           break;
         }
 
-        // 计算当前预估时间（如果已有处理过的UP主）
-        let timeStr = '';
-        if (processedCount > 0) {
-          const elapsedTime = Date.now() - startTime;
-          const avgTimePerUp = elapsedTime / processedCount;
-          const remainingCount = allUPs.length - processedCount;
-          const estimatedRemainingTime = Math.round(avgTimePerUp * remainingCount / 1000); // 转换为秒
+        // 计算已处理经过的时间
+        const elapsedTime = Date.now() - startTime;
+        const elapsedSeconds = Math.floor(elapsedTime / 1000);
 
-          // 格式化剩余时间
-          if (estimatedRemainingTime >= 60) {
-            const minutes = Math.floor(estimatedRemainingTime / 60);
-            const seconds = estimatedRemainingTime % 60;
-            timeStr = `${minutes}分${seconds}秒`;
-          } else {
-            timeStr = `${estimatedRemainingTime}秒`;
-          }
+        // 格式化已用时间
+        let timeStr = '';
+        if (elapsedSeconds >= 60) {
+          const minutes = Math.floor(elapsedSeconds / 60);
+          const seconds = elapsedSeconds % 60;
+          timeStr = `${minutes}分${seconds}秒`;
+        } else {
+          timeStr = `${elapsedSeconds}秒`;
         }
 
-        // 更新第二个进度条（显示当前正在处理的UP主和预估时间）
+        // 更新第二个进度条（显示当前正在处理的UP主和已用时间）
         showUPDetailProgress(
           processedCount,
           allUPs.length,
-          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length})${timeStr ? ` - 预计剩余: ${timeStr}` : ''}`
+          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length}) - 已用: ${timeStr}`
         );
 
         try {
           // 检查UP主是否已存在
           const existingCreator = await this.creatorRepo.getCreator(up.mid);
           
-          // 如果UP主已存在且标签数量大于15个，则跳过
-          if (existingCreator && existingCreator.tagWeights.length > 15) {
+          // 如果UP主已存在且标签数量大于5个，则跳过
+          if (existingCreator && existingCreator.tagWeights.length > 5) {
             console.log(`[DatabaseStatsManager] UP主 ${up.uname} 已存在且标签数量(${existingCreator.tagWeights.length})大于5，跳过`);
             processedCount++;
             continue;
@@ -399,7 +395,9 @@ export class DatabaseStatsManager {
 
           // 获取UP主的视频系列列表
           try {
-            const videos = await getUPSeasonSeries(up.mid, 1, 10);
+            // 获取视频获取数量设置
+            const maxVideosToFetch = await getValue<number>('maxVideosToFetch') ?? 3;
+            const videos = await getUPSeasonSeries(up.mid, 1, maxVideosToFetch);
             
             // 获取标签获取间隔设置
             const tagFetchInterval = await getValue<number>('tagFetchInterval') ?? 20;

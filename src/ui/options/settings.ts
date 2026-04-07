@@ -9,7 +9,8 @@ export const DEFAULT_SETTINGS: Settings = {
   imageCacheRetentionDays: 30,
   tagFetchInterval: 200,
   apiMinInterval: 500,
-  apiMaxInterval: 1000
+  apiMaxInterval: 1000,
+  maxVideosToFetch: 3
 };
 
 export function normalizeSettings(input: Partial<Settings>): Settings {
@@ -36,6 +37,8 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
   const apiMinInterval = Math.min(5000, Math.max(0, apiMinIntervalRaw));
   const apiMaxIntervalRaw = Number(input.apiMaxInterval ?? DEFAULT_SETTINGS.apiMaxInterval);
   const apiMaxInterval = Math.min(10000, Math.max(apiMinInterval, apiMaxIntervalRaw));
+  const maxVideosToFetchRaw = Number(input.maxVideosToFetch ?? DEFAULT_SETTINGS.maxVideosToFetch);
+  const maxVideosToFetch = Math.min(10, Math.max(1, maxVideosToFetchRaw));
 
   return {
     cacheHours,
@@ -46,7 +49,8 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
     imageCacheRetentionDays,
     tagFetchInterval,
     apiMinInterval,
-    apiMaxInterval
+    apiMaxInterval,
+    maxVideosToFetch
   };
 }
 

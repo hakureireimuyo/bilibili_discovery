@@ -29,6 +29,7 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   const tagFetchIntervalEl = document.getElementById("tag-fetch-interval") as HTMLInputElement | null;
   const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
   const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
+  const maxVideosToFetchEl = document.getElementById("max-videos-to-fetch") as HTMLInputElement | null;
 
   if (cacheHoursEl) cacheHoursEl.value = String(settings.cacheHours);
   if (userIdEl && settings.userId) userIdEl.value = String(settings.userId);
@@ -39,6 +40,7 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   if (tagFetchIntervalEl) tagFetchIntervalEl.value = String(settings.tagFetchInterval);
   if (apiMinIntervalEl) apiMinIntervalEl.value = String(settings.apiMinInterval);
   if (apiMaxIntervalEl) apiMaxIntervalEl.value = String(settings.apiMaxInterval);
+  if (maxVideosToFetchEl) maxVideosToFetchEl.value = String(settings.maxVideosToFetch);
 }
 
 function readForm() {
@@ -51,6 +53,7 @@ function readForm() {
   const tagFetchIntervalEl = document.getElementById("tag-fetch-interval") as HTMLInputElement | null;
   const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
   const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
+  const maxVideosToFetchEl = document.getElementById("max-videos-to-fetch") as HTMLInputElement | null;
 
   return normalizeSettings({
     cacheHours: Number(cacheHoursEl?.value ?? DEFAULT_SETTINGS.cacheHours),
@@ -63,7 +66,8 @@ function readForm() {
     apiKey: String(apiKeyEl?.value ?? DEFAULT_SETTINGS.apiKey),
     tagFetchInterval: Number(tagFetchIntervalEl?.value ?? DEFAULT_SETTINGS.tagFetchInterval),
     apiMinInterval: Number(apiMinIntervalEl?.value ?? DEFAULT_SETTINGS.apiMinInterval),
-    apiMaxInterval: Number(apiMaxIntervalEl?.value ?? DEFAULT_SETTINGS.apiMaxInterval)
+    apiMaxInterval: Number(apiMaxIntervalEl?.value ?? DEFAULT_SETTINGS.apiMaxInterval),
+    maxVideosToFetch: Number(maxVideosToFetchEl?.value ?? DEFAULT_SETTINGS.maxVideosToFetch)
   });
 }
 
