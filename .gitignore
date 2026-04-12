@@ -24,6 +24,9 @@ build/
 .env.*.local
 evn
 
+# Private key for extension packaging
+key.pem
+
 # B站认证配置（包含敏感信息）
 extension/api/bili-config.ts
 
