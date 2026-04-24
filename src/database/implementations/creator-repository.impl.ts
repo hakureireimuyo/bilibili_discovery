@@ -111,14 +111,12 @@ export class CreatorRepositoryImpl {
 
         // 跳过前面的数据
         if (cursor.primaryKey && typeof cursor.primaryKey === 'number' && cursor.primaryKey < offset) {
-          cursor.continue();
           return;
         }
 
         // 收集当前页数据
         if (results.length < pageSize) {
           results.push(value);
-          cursor.continue();
         } else {
           // 停止遍历
           return false;
@@ -166,27 +164,23 @@ export class CreatorRepositoryImpl {
     // 使用游标遍历实现分页，避免一次性获取全部数据
     await DBUtils.cursor<Creator>(
       STORE_NAMES.CREATORS,
-      (value, cursor) => {
+      (value) => {
         // 只处理指定平台的已关注创作者
         if (value.platform === platform) {
           totalCount++;
 
           // 跳过前面的数据
           if (totalCount <= offset) {
-            cursor.continue();
             return;
           }
 
           // 收集当前页数据
           if (results.length < pageSize) {
             results.push(value);
-            cursor.continue();
           } else {
             // 停止遍历
             return false;
           }
-        } else {
-          cursor.continue();
         }
       },
       'isFollowing',

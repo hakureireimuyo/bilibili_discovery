@@ -1,33 +1,37 @@
 import { openExtensionPage } from "./popup-runtime.js";
 
+export function navigateToWorkbench(view: string = "overview"): void {
+  openExtensionPage(`ui/workbench/workbench.html#${view}`);
+}
+
 export function navigateToStats(): void {
-  openExtensionPage("ui/stats/stats.html");
+  navigateToWorkbench("stats");
 }
 
 export function navigateToFavorites(): void {
-  openExtensionPage("ui/favorites/favorites.html");
+  navigateToWorkbench("favorites");
 }
 
 export function navigateToTestTools(): void {
-  openExtensionPage("ui/test-tools/test-tools.html");
+  navigateToWorkbench("test-tools");
 }
 
 export function navigateToOptions(): void {
-  openExtensionPage("ui/options/options.html");
+  navigateToWorkbench("settings");
 }
 
 export function navigateToThemeSettings(): void {
-  openExtensionPage("ui/theme-settings/theme-settings.html");
+  navigateToWorkbench("themes");
 }
 
 export function navigateToDatabaseStats(): void {
-  openExtensionPage("ui/database-stats/database-stats.html");
+  navigateToWorkbench("database");
 }
 
 export function navigateToWatchStats(): void {
-  openExtensionPage("ui/watch-stats/watch-stats.html");
+  navigateToWorkbench("watch-stats");
 }
 
 export function navigateToWatchHistory(): void {
-  openExtensionPage("ui/watch-history/watch-history.html");
+  navigateToWorkbench("watch-history");
 }

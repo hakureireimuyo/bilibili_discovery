@@ -9,7 +9,8 @@ export type ThemePageId =
   | "watch-stats"
   | "database-stats"
   | "theme-settings"
-  | "theme-example";
+  | "theme-example"
+  | "workbench";
 
 /**
  * 为页面建立统一的主题接入点。

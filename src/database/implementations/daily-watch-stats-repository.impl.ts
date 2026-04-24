@@ -99,14 +99,13 @@ export class DailyWatchStatsRepositoryImpl {
     // 使用游标遍历，按日期键降序获取
     await DBUtils.cursor<DailyWatchStats>(
       STORE_NAMES.DAILY_WATCH_STATS,
-      (value, cursor) => {
+      (value) => {
         if (value.platform === platform) {
           results.push(value);
           if (results.length >= limit) {
             return false;
           }
         }
-        cursor.continue();
       },
       'dateKey',
       undefined,

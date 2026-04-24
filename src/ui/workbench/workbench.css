@@ -1,0 +1,280 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  color: var(--theme-text-primary);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 10%, color-mix(in srgb, var(--theme-primary) 10%, transparent), transparent 28%),
+    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--theme-secondary) 9%, transparent), transparent 24%),
+    linear-gradient(160deg, color-mix(in srgb, var(--theme-page-gradient-start) 92%, white 8%), color-mix(in srgb, var(--theme-page-gradient-end) 94%, white 6%));
+}
+
+.workbench {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px 7px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-page-gradient-start) 74%, white 26%), color-mix(in srgb, var(--theme-page-gradient-start) 48%, transparent));
+  backdrop-filter: blur(14px);
+}
+
+.topbar-brand {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--theme-text-secondary);
+  background: color-mix(in srgb, var(--theme-surface-primary) 42%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-border-primary) 28%, transparent);
+}
+
+.brand-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--theme-primary) 50%, transparent);
+}
+
+.brand-name {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.nav-list {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.nav-item {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--theme-border-primary) 28%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-surface-primary) 26%, transparent);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+.nav-item::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--theme-primary) 26%, white 12%), transparent 58%);
+  transition: opacity 0.25s ease;
+}
+
+.nav-item:hover {
+  transform: translateY(-1px);
+  color: var(--theme-text-primary);
+  border-color: color-mix(in srgb, var(--theme-primary) 28%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--theme-primary) 8%, transparent),
+    0 0 24px color-mix(in srgb, var(--theme-primary) 18%, transparent);
+}
+
+.nav-item:hover::before {
+  opacity: 1;
+}
+
+.nav-item.is-active {
+  color: #213046;
+  border-color: color-mix(in srgb, white 72%, var(--theme-primary) 28%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 24px rgba(255, 255, 255, 0.18);
+}
+
+.nav-item.is-active::before {
+  opacity: 0.55;
+}
+
+.nav-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  opacity: 0.92;
+}
+
+.nav-label {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.workspace {
+  padding: 2px 10px 10px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+}
+
+.workspace-titlebar {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  color: color-mix(in srgb, var(--theme-text-secondary) 88%, white 12%);
+}
+
+.workspace-kicker {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.workspace-title {
+  font-size: 12px;
+  opacity: 0.94;
+}
+
+.frame-shell {
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 52px);
+  border: 1px solid color-mix(in srgb, var(--theme-border-primary) 18%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--theme-surface-primary) 18%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 30px color-mix(in srgb, var(--theme-shadow-light) 20%, transparent);
+}
+
+.frame-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--theme-text-secondary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--theme-surface-primary) 6%, transparent), color-mix(in srgb, var(--theme-surface-primary) 14%, transparent));
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+
+.frame-loading.is-visible {
+  opacity: 1;
+}
+
+.workbench-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  transform: scale(1.008);
+  filter: saturate(0.98);
+  pointer-events: none;
+  transition:
+    opacity 0.34s ease,
+    transform 0.42s ease,
+    filter 0.42s ease;
+}
+
+.workbench-frame.is-active {
+  z-index: 2;
+  opacity: 1;
+  transform: scale(1);
+  filter: saturate(1);
+  pointer-events: auto;
+}
+
+.workbench-frame.is-staged {
+  z-index: 3;
+}
+
+.frame-shell.is-switching .workbench-frame.is-active {
+  opacity: 0.18;
+  transform: scale(0.996);
+  filter: saturate(0.94);
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nav-list {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 7px 8px 6px;
+  }
+
+  .workspace {
+    padding: 2px 6px 6px;
+  }
+
+  .frame-shell,
+  .workbench-frame {
+    min-height: calc(100vh - 78px);
+  }
+}
+
+html,
+body,
+.workbench,
+.workspace,
+.frame-shell {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.workbench::-webkit-scrollbar,
+.workspace::-webkit-scrollbar,
+.frame-shell::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

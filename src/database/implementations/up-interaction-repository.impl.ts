@@ -118,14 +118,12 @@ export class UPInteractionRepositoryImpl {
 
         // 跳过前面的数据
         if (cursor.primaryKey && typeof cursor.primaryKey === 'number' && cursor.primaryKey < offset) {
-          cursor.continue();
           return;
         }
 
         // 收集当前页数据
         if (results.length < pageSize) {
           results.push(value);
-          cursor.continue();
         } else {
           // 停止遍历
           return false;
@@ -339,14 +337,13 @@ export class UPInteractionRepositoryImpl {
     // 使用游标遍历，按最近观看时间降序获取
     await DBUtils.cursor<UPInteraction>(
       STORE_NAMES.UP_INTERACTIONS,
-      (value, cursor) => {
+      (value) => {
         if (value.platform === platform) {
           results.push(value);
           if (results.length >= limit) {
             return false;
           }
         }
-        cursor.continue();
       },
       'lastWatchTime',
       undefined,

@@ -1,5 +1,6 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { createPublicKey, generateKeyPairSync } from "node:crypto";
 
 const root = process.cwd();
 const srcRoot = resolve(root, "src");
@@ -87,6 +88,7 @@ function copyCompiledCode() {
 function buildManifest() {
   const manifestPath = join(srcRoot, "manifest.tson");
   const packageJsonPath = join(root, "package.json");
+  const keyFile = join(root, "key.pem");
   
   const manifestJson = JSON.parse(readFileSync(manifestPath, "utf-8"));
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
@@ -104,6 +106,22 @@ function buildManifest() {
     js: script.js.map((item) => item.replace(/\.ts$/, ".js"))
   }));
 
+  if (!existsSync(keyFile)) {
+    console.log("Generating private key...");
+    const { privateKey } = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: "spki", format: "pem" },
+      privateKeyEncoding: { type: "pkcs8", format: "pem" }
+    });
+    writeFileSync(keyFile, privateKey);
+    console.log(`Private key generated: ${keyFile}`);
+  }
+
+  const privateKeyPem = readFileSync(keyFile, "utf-8");
+  const publicKeyObj = createPublicKey(privateKeyPem);
+  const publicKeyDer = publicKeyObj.export({ type: "spki", format: "der" });
+  manifestJson.key = publicKeyDer.toString("base64");
+
   writeFileSync(join(extensionRoot, "manifest.json"), JSON.stringify(manifestJson, null, 2));
 }
 
@@ -118,7 +136,8 @@ function patchHtmlEntryScripts() {
     join(extensionRoot, "ui", "watch-stats", "watch-stats.html"),
     join(extensionRoot, "ui", "test-tools", "test-tools.html"),
     join(extensionRoot, "ui", "theme-settings", "theme-settings.html"),
-    join(extensionRoot, "ui", "theme-example", "theme-example.html")
+    join(extensionRoot, "ui", "theme-example", "theme-example.html"),
+    join(extensionRoot, "ui", "workbench", "workbench.html")
   ];
 
   for (const file of htmlFiles) {

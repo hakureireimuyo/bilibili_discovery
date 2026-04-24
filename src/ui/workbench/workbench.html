@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bilibili Discovery 工作台</title>
+    <link rel="stylesheet" href="./workbench.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div class="workbench">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <span class="brand-dot"></span>
+          <span class="brand-name">Bilibili Discovery</span>
+        </div>
+
+        <nav id="workbench-nav" class="nav-list" aria-label="工作台导航"></nav>
+      </header>
+
+      <main class="workspace">
+        <div id="workspace-titlebar" class="workspace-titlebar">
+          <span id="workspace-kicker" class="workspace-kicker">Overview</span>
+          <span id="workspace-title" class="workspace-title">观看统计</span>
+        </div>
+
+        <section class="frame-shell">
+          <div id="frame-loading" class="frame-loading">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span>正在切换视图...</span>
+          </div>
+          <iframe
+            id="workbench-frame-a"
+            class="workbench-frame is-active"
+            title="Bilibili Discovery 工作台内容 A"
+          ></iframe>
+          <iframe
+            id="workbench-frame-b"
+            class="workbench-frame"
+            title="Bilibili Discovery 工作台内容 B"
+          ></iframe>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./workbench.ts"></script>
+  </body>
+</html>
