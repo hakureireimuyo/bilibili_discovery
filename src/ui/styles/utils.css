@@ -1,0 +1,205 @@
+:root {
+  /* 工具类前缀 */
+  --u-prefix: u-;
+}
+
+/* ========== 间距工具类 ========== */
+.u-mt-0 { margin-top: 0; }
+.u-mt-xs { margin-top: var(--spacing-xs); }
+.u-mt-sm { margin-top: var(--spacing-sm); }
+.u-mt-md { margin-top: var(--spacing-md); }
+.u-mt-lg { margin-top: var(--spacing-lg); }
+.u-mt-xl { margin-top: var(--spacing-xl); }
+.u-mt-2xl { margin-top: var(--spacing-2xl); }
+.u-mt-3xl { margin-top: var(--spacing-3xl); }
+
+.u-mb-0 { margin-bottom: 0; }
+.u-mb-xs { margin-bottom: var(--spacing-xs); }
+.u-mb-sm { margin-bottom: var(--spacing-sm); }
+.u-mb-md { margin-bottom: var(--spacing-md); }
+.u-mb-lg { margin-bottom: var(--spacing-lg); }
+.u-mb-xl { margin-bottom: var(--spacing-xl); }
+.u-mb-2xl { margin-bottom: var(--spacing-2xl); }
+.u-mb-3xl { margin-bottom: var(--spacing-3xl); }
+
+.u-ml-0 { margin-left: 0; }
+.u-ml-xs { margin-left: var(--spacing-xs); }
+.u-ml-sm { margin-left: var(--spacing-sm); }
+.u-ml-md { margin-left: var(--spacing-md); }
+.u-ml-lg { margin-left: var(--spacing-lg); }
+.u-ml-xl { margin-left: var(--spacing-xl); }
+.u-ml-2xl { margin-left: var(--spacing-2xl); }
+.u-ml-3xl { margin-left: var(--spacing-3xl); }
+
+.u-mr-0 { margin-right: 0; }
+.u-mr-xs { margin-right: var(--spacing-xs); }
+.u-mr-sm { margin-right: var(--spacing-sm); }
+.u-mr-md { margin-right: var(--spacing-md); }
+.u-mr-lg { margin-right: var(--spacing-lg); }
+.u-mr-xl { margin-right: var(--spacing-xl); }
+.u-mr-2xl { margin-right: var(--spacing-2xl); }
+.u-mr-3xl { margin-right: var(--spacing-3xl); }
+
+.u-mx-0 { margin-left: 0; margin-right: 0; }
+.u-mx-xs { margin-left: var(--spacing-xs); margin-right: var(--spacing-xs); }
+.u-mx-sm { margin-left: var(--spacing-sm); margin-right: var(--spacing-sm); }
+.u-mx-md { margin-left: var(--spacing-md); margin-right: var(--spacing-md); }
+.u-mx-lg { margin-left: var(--spacing-lg); margin-right: var(--spacing-lg); }
+.u-mx-xl { margin-left: var(--spacing-xl); margin-right: var(--spacing-xl); }
+.u-mx-2xl { margin-left: var(--spacing-2xl); margin-right: var(--spacing-2xl); }
+.u-mx-3xl { margin-left: var(--spacing-3xl); margin-right: var(--spacing-3xl); }
+
+.u-my-0 { margin-top: 0; margin-bottom: 0; }
+.u-my-xs { margin-top: var(--spacing-xs); margin-bottom: var(--spacing-xs); }
+.u-my-sm { margin-top: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
+.u-my-md { margin-top: var(--spacing-md); margin-bottom: var(--spacing-md); }
+.u-my-lg { margin-top: var(--spacing-lg); margin-bottom: var(--spacing-lg); }
+.u-my-xl { margin-top: var(--spacing-xl); margin-bottom: var(--spacing-xl); }
+.u-my-2xl { margin-top: var(--spacing-2xl); margin-bottom: var(--spacing-2xl); }
+.u-my-3xl { margin-top: var(--spacing-3xl); margin-bottom: var(--spacing-3xl); }
+
+/* ========== 内边距工具类 ========== */
+.u-pt-0 { padding-top: 0; }
+.u-pt-xs { padding-top: var(--spacing-xs); }
+.u-pt-sm { padding-top: var(--spacing-sm); }
+.u-pt-md { padding-top: var(--spacing-md); }
+.u-pt-lg { padding-top: var(--spacing-lg); }
+.u-pt-xl { padding-top: var(--spacing-xl); }
+.u-pt-2xl { padding-top: var(--spacing-2xl); }
+.u-pt-3xl { padding-top: var(--spacing-3xl); }
+
+.u-pb-0 { padding-bottom: 0; }
+.u-pb-xs { padding-bottom: var(--spacing-xs); }
+.u-pb-sm { padding-bottom: var(--spacing-sm); }
+.u-pb-md { padding-bottom: var(--spacing-md); }
+.u-pb-lg { padding-bottom: var(--spacing-lg); }
+.u-pb-xl { padding-bottom: var(--spacing-xl); }
+.u-pb-2xl { padding-bottom: var(--spacing-2xl); }
+.u-pb-3xl { padding-bottom: var(--spacing-3xl); }
+
+.u-pl-0 { padding-left: 0; }
+.u-pl-xs { padding-left: var(--spacing-xs); }
+.u-pl-sm { padding-left: var(--spacing-sm); }
+.u-pl-md { padding-left: var(--spacing-md); }
+.u-pl-lg { padding-left: var(--spacing-lg); }
+.u-pl-xl { padding-left: var(--spacing-xl); }
+.u-pl-2xl { padding-left: var(--spacing-2xl); }
+.u-pl-3xl { padding-left: var(--spacing-3xl); }
+
+.u-pr-0 { padding-right: 0; }
+.u-pr-xs { padding-right: var(--spacing-xs); }
+.u-pr-sm { padding-right: var(--spacing-sm); }
+.u-pr-md { padding-right: var(--spacing-md); }
+.u-pr-lg { padding-right: var(--spacing-lg); }
+.u-pr-xl { padding-right: var(--spacing-xl); }
+.u-pr-2xl { padding-right: var(--spacing-2xl); }
+.u-pr-3xl { padding-right: var(--spacing-3xl); }
+
+.u-px-0 { padding-left: 0; padding-right: 0; }
+.u-px-xs { padding-left: var(--spacing-xs); padding-right: var(--spacing-xs); }
+.u-px-sm { padding-left: var(--spacing-sm); padding-right: var(--spacing-sm); }
+.u-px-md { padding-left: var(--spacing-md); padding-right: var(--spacing-md); }
+.u-px-lg { padding-left: var(--spacing-lg); padding-right: var(--spacing-lg); }
+.u-px-xl { padding-left: var(--spacing-xl); padding-right: var(--spacing-xl); }
+.u-px-2xl { padding-left: var(--spacing-2xl); padding-right: var(--spacing-2xl); }
+.u-px-3xl { padding-left: var(--spacing-3xl); padding-right: var(--spacing-3xl); }
+
+.u-py-0 { padding-top: 0; padding-bottom: 0; }
+.u-py-xs { padding-top: var(--spacing-xs); padding-bottom: var(--spacing-xs); }
+.u-py-sm { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
+.u-py-md { padding-top: var(--spacing-md); padding-bottom: var(--spacing-md); }
+.u-py-lg { padding-top: var(--spacing-lg); padding-bottom: var(--spacing-lg); }
+.u-py-xl { padding-top: var(--spacing-xl); padding-bottom: var(--spacing-xl); }
+.u-py-2xl { padding-top: var(--spacing-2xl); padding-bottom: var(--spacing-2xl); }
+.u-py-3xl { padding-top: var(--spacing-3xl); padding-bottom: var(--spacing-3xl); }
+
+/* ========== 文本工具类 ========== */
+.u-text-xs { font-size: var(--font-size-xs); }
+.u-text-sm { font-size: var(--font-size-sm); }
+.u-text-base { font-size: var(--font-size-base); }
+.u-text-lg { font-size: var(--font-size-lg); }
+.u-text-xl { font-size: var(--font-size-xl); }
+.u-text-2xl { font-size: var(--font-size-2xl); }
+.u-text-3xl { font-size: var(--font-size-3xl); }
+
+.u-text-normal { font-weight: var(--font-weight-normal); }
+.u-text-medium { font-weight: var(--font-weight-medium); }
+.u-text-semibold { font-weight: var(--font-weight-semibold); }
+.u-text-bold { font-weight: var(--font-weight-bold); }
+
+.u-text-primary { color: var(--theme-text-primary); }
+.u-text-secondary { color: var(--theme-text-secondary); }
+.u-text-tertiary { color: var(--theme-text-tertiary); }
+.u-text-inverse { color: var(--theme-text-inverse); }
+
+.u-text-left { text-align: left; }
+.u-text-center { text-align: center; }
+.u-text-right { text-align: right; }
+
+/* ========== 显示工具类 ========== */
+.u-block { display: block; }
+.u-inline-block { display: inline-block; }
+.u-inline { display: inline; }
+.u-flex { display: flex; }
+.u-inline-flex { display: inline-flex; }
+.u-hidden { display: none; }
+
+/* ========== Flex布局工具类 ========== */
+.u-flex-row { flex-direction: row; }
+.u-flex-col { flex-direction: column; }
+.u-flex-wrap { flex-wrap: wrap; }
+.u-flex-nowrap { flex-wrap: nowrap; }
+
+.u-justify-start { justify-content: flex-start; }
+.u-justify-center { justify-content: center; }
+.u-justify-end { justify-content: flex-end; }
+.u-justify-between { justify-content: space-between; }
+.u-justify-around { justify-content: space-around; }
+
+.u-items-start { align-items: flex-start; }
+.u-items-center { align-items: center; }
+.u-items-end { align-items: flex-end; }
+.u-items-stretch { align-items: stretch; }
+
+.u-flex-1 { flex: 1 1 0%; }
+.u-flex-auto { flex: 1 1 auto; }
+.u-flex-none { flex: none; }
+
+/* ========== 定位工具类 ========== */
+.u-relative { position: relative; }
+.u-absolute { position: absolute; }
+.u-fixed { position: fixed; }
+.u-sticky { position: sticky; }
+
+/* ========== 尺寸工具类 ========== */
+.u-w-full { width: 100%; }
+.u-h-full { height: 100%; }
+.u-min-h-screen { min-height: 100vh; }
+
+/* ========== 圆角工具类 ========== */
+.u-rounded-none { border-radius: 0; }
+.u-rounded-sm { border-radius: 4px; }
+.u-rounded { border-radius: var(--theme-control-radius); }
+.u-rounded-lg { border-radius: 12px; }
+.u-rounded-full { border-radius: 9999px; }
+
+/* ========== 溢出工具类 ========== */
+.u-overflow-auto { overflow: auto; }
+.u-overflow-hidden { overflow: hidden; }
+.u-overflow-visible { overflow: visible; }
+.u-overflow-scroll { overflow: scroll; }
+
+/* ========== 透明度工具类 ========== */
+.u-opacity-0 { opacity: 0; }
+.u-opacity-25 { opacity: 0.25; }
+.u-opacity-50 { opacity: 0.5; }
+.u-opacity-75 { opacity: 0.75; }
+.u-opacity-100 { opacity: 1; }
+
+/* ========== 状态工具类 ========== */
+.is-loading { opacity: 0.6; pointer-events: none; }
+.is-disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+.is-active { color: var(--theme-primary); }
+.is-error { color: var(--theme-danger); }
+.is-success { color: var(--theme-success); }
+.is-warning { color: var(--theme-warning); }

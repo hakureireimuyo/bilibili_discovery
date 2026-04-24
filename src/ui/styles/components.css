@@ -1,0 +1,340 @@
+:root {
+  /* 组件前缀 */
+  --component-prefix: c-;
+}
+
+/* ========== 按钮组件 ========== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--theme-control-padding-y) var(--theme-control-padding-x);
+  border-radius: calc(var(--theme-control-radius) * 1.2);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  outline: none;
+  gap: var(--spacing-sm);
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--theme-focus-ring);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--theme-button-primary-bg);
+  color: var(--theme-text-inverse);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--theme-button-primary-hover);
+}
+
+.btn--secondary {
+  background: var(--theme-button-secondary-bg);
+  color: var(--theme-text-inverse);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--theme-button-secondary-hover);
+}
+
+.btn--accent {
+  background: var(--theme-button-accent-bg);
+  color: var(--theme-text-inverse);
+}
+
+.btn--accent:hover:not(:disabled) {
+  background: var(--theme-button-accent-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--theme-text-primary);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--theme-surface-hover);
+}
+
+.btn--sm {
+  padding: 6px 12px;
+  font-size: var(--font-size-sm);
+}
+
+.btn--lg {
+  padding: 14px 24px;
+  font-size: var(--font-size-lg);
+}
+
+/* ========== 卡片组件 ========== */
+.card {
+  padding: var(--spacing-lg);
+  border-radius: var(--theme-control-radius);
+  background: var(--theme-surface-primary);
+  border: 1px solid var(--theme-border-primary);
+  box-shadow: 0 8px 24px var(--theme-shadow-light);
+  transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: 0 12px 32px var(--theme-shadow-medium);
+}
+
+.card--compact {
+  padding: var(--spacing-md);
+}
+
+.card--bordered {
+  border-width: 2px;
+}
+
+.card--elevated {
+  box-shadow: 0 12px 32px var(--theme-shadow-medium);
+}
+
+.card--elevated:hover {
+  box-shadow: 0 16px 48px var(--theme-shadow-dark);
+}
+
+/* ========== 徽章组件 ========== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+}
+
+.badge--success {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+
+.badge--warning {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+
+.badge--danger {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger);
+}
+
+.badge--info {
+  background: var(--theme-info-soft);
+  color: var(--theme-info);
+}
+
+.badge--primary {
+  background: var(--theme-primary-soft);
+  color: var(--theme-primary);
+}
+
+/* ========== 面板组件 ========== */
+.panel {
+  padding: var(--spacing-lg);
+  border-radius: var(--theme-control-radius);
+  background: var(--theme-surface-primary);
+  border: 1px solid var(--theme-border-primary);
+}
+
+.panel--dense {
+  padding: var(--spacing-md);
+}
+
+.panel--bordered {
+  border-width: 2px;
+}
+
+.panel--elevated {
+  box-shadow: 0 8px 24px var(--theme-shadow-light);
+}
+
+/* ========== 输入框组件 ========== */
+.input {
+  width: 100%;
+  padding: var(--theme-control-padding-y) var(--theme-control-padding-x);
+  border: 1px solid var(--theme-border-primary);
+  border-radius: var(--theme-control-radius);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--theme-text-primary);
+  background: var(--theme-surface-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 3px var(--theme-focus-ring);
+}
+
+.input::placeholder {
+  color: var(--theme-text-tertiary);
+}
+
+.input--error {
+  border-color: var(--theme-danger);
+}
+
+.input--error:focus {
+  box-shadow: 0 0 0 3px var(--theme-danger-soft);
+}
+
+/* ========== 标签组件 ========== */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--theme-control-radius);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.5;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-primary);
+  transition: background var(--transition-fast);
+}
+
+.tag:hover {
+  background: var(--theme-surface-hover);
+}
+
+.tag--primary {
+  background: var(--theme-primary-soft);
+  color: var(--theme-primary);
+}
+
+.tag--primary:hover {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+}
+
+.tag--success {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+
+.tag--warning {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+
+.tag--danger {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger);
+}
+
+/* ========== 头像组件 ========== */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.avatar--sm {
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-size-sm);
+}
+
+.avatar--lg {
+  width: 48px;
+  height: 48px;
+  font-size: var(--font-size-lg);
+}
+
+.avatar--xl {
+  width: 64px;
+  height: 64px;
+  font-size: var(--font-size-xl);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ========== 分隔线组件 ========== */
+.divider {
+  height: 1px;
+  background: var(--theme-border-primary);
+  margin: var(--spacing-lg) 0;
+}
+
+.divider--vertical {
+  width: 1px;
+  height: auto;
+  margin: 0 var(--spacing-lg);
+}
+
+/* ========== 加载中组件 ========== */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--theme-border-primary);
+  border-top-color: var(--theme-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+}
+
+.spinner--lg {
+  width: 32px;
+  height: 32px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========== 进度条组件 ========== */
+.progress {
+  width: 100%;
+  height: 8px;
+  background: var(--theme-surface-muted);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--theme-primary);
+  border-radius: 9999px;
+  transition: width var(--transition-base);
+}
+
+.progress-bar--success {
+  background: var(--theme-success);
+}
+
+.progress-bar--warning {
+  background: var(--theme-warning);
+}
+
+.progress-bar--danger {
+  background: var(--theme-danger);
+}

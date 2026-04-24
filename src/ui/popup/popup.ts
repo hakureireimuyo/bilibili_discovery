@@ -230,21 +230,27 @@ async function loadSnapshotSafely(): Promise<LoadSnapshotResult> {
     };
   } catch (error) {
     console.error("[popup] Failed to load snapshot:", error);
-    return {
-      snapshot: {
-        userId: null,
-        todayWatchDuration: 0,
-        weeklyWatchDuration: 0,
-        followingCount: 0,
-        favoriteCount: 0,
-        tagCount: 0,
-        watchRecordCount: 0,
-        lastUpdateTime: null,
-        recentActiveDays: 0,
-        focusCreators: []
-      },
-      partialFailure: true
-    };
+    // 如果是popup环境下的IndexedDB错误，返回空数据而不是抛出错误
+    if (error instanceof Error && (error.message.includes("IndexedDB") || error.message.includes("database"))) {
+      console.warn("[popup] Database not available in popup context, showing empty state");
+      return {
+        snapshot: {
+          userId: null,
+          todayWatchDuration: 0,
+          weeklyWatchDuration: 0,
+          followingCount: 0,
+          favoriteCount: 0,
+          tagCount: 0,
+          watchRecordCount: 0,
+          lastUpdateTime: null,
+          recentActiveDays: 0,
+          focusCreators: [],
+        },
+        partialFailure: true,
+      };
+    }
+    // 其他错误仍然抛出
+    throw error;
   }
 }
 
@@ -409,18 +415,26 @@ function bindWidgetSelector(allWidgets: FocusWidget[], initialVisibleIds: Widget
 }
 
 async function initPopupView(): Promise<void> {
-  const { snapshot, partialFailure } = await loadSnapshotSafely();
-  const widgets = buildWidgets(snapshot);
-  const visibleWidgets = getStoredWidgets();
+  try {
+    // 延迟一小段时间，让数据库有时间初始化
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-  renderHighlights(snapshot);
-  bindStatusLink(snapshot);
-  bindWidgetSelector(widgets, visibleWidgets);
+    const { snapshot, partialFailure } = await loadSnapshotSafely();
+    const widgets = buildWidgets(snapshot);
+    const visibleWidgets = getStoredWidgets();
 
-  if (partialFailure) {
-    setHeroStatus("error", "部分数据暂时不可用，已展示当前可读取内容");
-  } else {
-    setHeroStatus("ready", "观察窗口已整理完成");
+    renderHighlights(snapshot);
+    bindStatusLink(snapshot);
+    bindWidgetSelector(widgets, visibleWidgets);
+
+    if (partialFailure) {
+      setHeroStatus("error", "部分数据暂时不可用，已展示当前可读取内容");
+    } else {
+      setHeroStatus("ready", "观察窗口已整理完成");
+    }
+  } catch (error) {
+    console.error("[popup] Failed to initialize:", error);
+    setHeroStatus("error", "数据加载失败，请稍后重试");
   }
 }
 

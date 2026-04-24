@@ -24,6 +24,13 @@ function getTargetSize(purpose: ImagePurpose): { width: number; height: number }
  */
 async function getImageSize(src: string): Promise<{ width: number; height: number }> {
   console.log("[ImageUtils] Getting image size...");
+
+  // 在没有DOM的环境中（如service worker），跳过尺寸检查
+  if (typeof Image === 'undefined') {
+    console.log("[ImageUtils] Image API not available, skipping size check");
+    return { width: 0, height: 0 };
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image();
     // 只有当src是URL时才设置crossOrigin，DataURL不需要
@@ -51,6 +58,14 @@ async function getImageSize(src: string): Promise<{ width: number; height: numbe
  */
 export async function compressImage(src: string, purpose: ImagePurpose): Promise<Blob> {
   console.log(`[ImageUtils] Starting compression for purpose: ${purpose}...`);
+
+  // 在没有DOM的环境中（如service worker），跳过压缩
+  if (typeof Image === 'undefined' || typeof document === 'undefined') {
+    console.log("[ImageUtils] DOM APIs not available, skipping compression");
+    // 将DataURL转换为Blob并返回
+    return dataUrlToBlob(src);
+  }
+
   const { width: targetWidth, height: targetHeight } = getTargetSize(purpose);
 
   return new Promise((resolve, reject) => {
@@ -127,6 +142,13 @@ export async function compressImage(src: string, purpose: ImagePurpose): Promise
  */
 export async function shouldCompress(src: string, purpose: ImagePurpose): Promise<boolean> {
   console.log(`[ImageUtils] Checking if image needs compression for purpose: ${purpose}...`);
+
+  // 在没有DOM的环境中（如service worker），跳过压缩检查
+  if (typeof Image === 'undefined') {
+    console.log("[ImageUtils] Image API not available, skipping compression check");
+    return false;
+  }
+
   const { width: targetWidth, height: targetHeight } = getTargetSize(purpose);
   const { width, height } = await getImageSize(src);
   const needsCompress = width > targetWidth || height > targetHeight;

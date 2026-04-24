@@ -1,0 +1,218 @@
+/**
+ * 主题变量声明文件
+ * 
+ * 这个文件用于声明所有主题相关的 CSS 变量及其默认值。
+ * 实际的变量值由主题管理器在运行时注入到 document.documentElement。
+ * 
+ * 变量分类：
+ * 1. 基础颜色：primary、secondary、accent 等
+ * 2. 语义颜色：text、background、border、shadow
+ * 3. 表面颜色：surface-primary、surface-muted 等
+ * 4. 控件样式：radius、gap、height、padding
+ * 5. 按钮颜色：button-primary、button-secondary 等
+ * 6. 状态颜色：danger-soft、success-soft 等
+ * 7. 特殊页面样式：popup-shell、options-hero、stats-*
+ * 8. 深度阴影：shadow-xs 到 shadow-2xl
+ * 9. 排版：font-size、line-height、font-weight
+ * 10. 间距：space-xs 到 space-2xl
+ * 11. 圆角：radius-xs 到 radius-full
+ */
+
+:root {
+  /* ========== 基础颜色变量 ========== */
+  --theme-primary: #8b9dc3;
+  --theme-primary-hover: #7a8db5;
+  --theme-primary-light: #e8eef5;
+  --theme-secondary: #9ca3af;
+  --theme-secondary-hover: #8b949d;
+  --theme-accent: #d4a5a5;
+  --theme-accent-hover: #c49494;
+  --theme-success: #a8b8a8;
+  --theme-warning: #d4b896;
+  --theme-danger: #d4a5a5;
+  --theme-info: #8b9dc3;
+
+  /* ========== 文本颜色 ========== */
+  --theme-text-primary: #2c2c2c;
+  --theme-text-secondary: #5b6475;
+  --theme-text-tertiary: #9ca3af;
+  --theme-text-inverse: #ffffff;
+
+  /* ========== 背景颜色 ========== */
+  --theme-bg-primary: #ffffff;
+  --theme-bg-secondary: #f5f5f7;
+  --theme-bg-tertiary: #f8f9fa;
+  --theme-bg-inverse: #2c2c2c;
+
+  /* ========== 边框颜色 ========== */
+  --theme-border-primary: #e5e7eb;
+  --theme-border-secondary: #cbd3e1;
+  --theme-border-tertiary: #e2e8f0;
+  --theme-border-strong: #cbd3e1;
+  --theme-border-accent: rgba(139, 157, 195, 0.28);
+
+  /* ========== 阴影 ========== */
+  --theme-shadow-light: rgba(20, 30, 50, 0.08);
+  --theme-shadow-medium: rgba(20, 30, 50, 0.12);
+  --theme-shadow-dark: rgba(20, 30, 50, 0.18);
+  --theme-shadow-xs: 0 1px 2px rgba(20, 30, 50, 0.05);
+  --theme-shadow-sm: 0 2px 4px rgba(20, 30, 50, 0.08);
+  --theme-shadow-md: 0 4px 8px rgba(20, 30, 50, 0.12);
+  --theme-shadow-lg: 0 8px 16px rgba(20, 30, 50, 0.15);
+  --theme-shadow-xl: 0 12px 24px rgba(20, 30, 50, 0.18);
+  --theme-shadow-2xl: 0 18px 36px rgba(20, 30, 50, 0.2);
+
+  /* ========== 页面背景 ========== */
+  --theme-page-bg: #f5f5f7;
+  --theme-page-gradient-start: rgb(177, 186, 207);
+  --theme-page-gradient-end: rgb(195, 205, 220);
+
+  /* ========== 表面颜色 ========== */
+  --theme-surface-primary: #ffffff;
+  --theme-surface-muted: #f8f9fa;
+  --theme-surface-overlay: rgba(44, 44, 44, 0.75);
+  --theme-surface-base: #ffffff;
+  --theme-surface-raised: #ffffff;
+  --theme-surface-subtle: rgb(227, 230, 238);
+  --theme-surface-hover: rgb(221, 225, 235);
+  --theme-surface-accent: #e8eef5;
+  --theme-surface-accent-hover: rgb(230, 234, 240);
+
+  /* ========== 控件样式 ========== */
+  --theme-control-radius: 8px;
+  --theme-control-gap: 12px;
+  --theme-control-height: 40px;
+  --theme-control-padding-x: 16px;
+  --theme-control-padding-y: 10px;
+
+  /* ========== 圆角尺度 ========== */
+  --theme-radius-xs: 4px;
+  --theme-radius-sm: 6px;
+  --theme-radius-base: 8px;
+  --theme-radius-md: 12px;
+  --theme-radius-lg: 16px;
+  --theme-radius-xl: 20px;
+  --theme-radius-full: 999px;
+
+  /* ========== 间距尺度 ========== */
+  --theme-space-xs: 4px;
+  --theme-space-sm: 8px;
+  --theme-space-base: 12px;
+  --theme-space-md: 16px;
+  --theme-space-lg: 20px;
+  --theme-space-xl: 24px;
+  --theme-space-2xl: 32px;
+
+  /* ========== 字体大小 ========== */
+  --theme-font-size-xs: 11px;
+  --theme-font-size-sm: 12px;
+  --theme-font-size-base: 14px;
+  --theme-font-size-md: 16px;
+  --theme-font-size-lg: 18px;
+  --theme-font-size-xl: 20px;
+  --theme-font-size-2xl: 24px;
+
+  /* ========== 行高 ========== */
+  --theme-line-height-tight: 1.2;
+  --theme-line-height-normal: 1.5;
+  --theme-line-height-relaxed: 1.75;
+
+  /* ========== 字重 ========== */
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-medium: 500;
+  --theme-font-weight-semibold: 600;
+  --theme-font-weight-bold: 700;
+
+  /* ========== 按钮颜色 ========== */
+  --theme-button-primary-bg: #8b9dc3;
+  --theme-button-primary-hover: #7a8db5;
+  --theme-button-secondary-bg: #9ca3af;
+  --theme-button-secondary-hover: #8b949d;
+  --theme-button-accent-bg: #d4a5a5;
+  --theme-button-accent-hover: #c49494;
+
+  /* ========== 覆盖层 ========== */
+  --theme-overlay-soft: rgba(44, 44, 44, 0.08);
+  --theme-overlay-strong: rgba(44, 44, 44, 0.14);
+
+  /* ========== 焦点环 ========== */
+  --theme-focus-ring: rgba(139, 157, 195, 0.2);
+
+  /* ========== 柔和状态色 ========== */
+  --theme-danger-soft: rgba(212, 165, 165, 0.16);
+  --theme-warning-soft: rgba(212, 184, 150, 0.18);
+  --theme-success-soft: rgba(168, 184, 168, 0.16);
+  --theme-info-soft: rgba(139, 157, 195, 0.16);
+  --theme-primary-soft: rgba(139, 157, 195, 0.14);
+  --theme-primary-softer: rgba(139, 157, 195, 0.08);
+  --theme-secondary-soft: rgba(156, 163, 175, 0.14);
+
+  /* ========== 输入框样式 ========== */
+  --theme-input-border: #e5e7eb;
+  --theme-input-border-hover: #cbd3e1;
+  --theme-input-border-focus: rgba(139, 157, 195, 0.5);
+  --theme-input-bg: #ffffff;
+  --theme-input-bg-disabled: #f8f9fa;
+  --theme-input-text: #2c2c2c;
+  --theme-input-placeholder: #9ca3af;
+
+  /* ========== 分割线 ========== */
+  --theme-divider: rgba(229, 231, 235, 0.5);
+  --theme-divider-strong: #e5e7eb;
+  --theme-divider-light: rgba(229, 231, 235, 0.25);
+
+  /* ========== 禁用状态 ========== */
+  --theme-disabled-bg: #f8f9fa;
+  --theme-disabled-text: #9ca3af;
+  --theme-disabled-border: #cbd3e1;
+
+  /* ========== 链接 ========== */
+  --theme-link: #8b9dc3;
+  --theme-link-hover: #7a8db5;
+  --theme-link-visited: rgb(136, 147, 170);
+
+  /* ========== 代码/预格式化 ========== */
+  --theme-code-bg: #f8f9fa;
+  --theme-code-text: #8b9dc3;
+  --theme-code-border: #e5e7eb;
+
+  /* ========== 弹窗样式 ========== */
+  --theme-popup-shell-bg: rgba(255, 255, 255, 0.94);
+  --theme-popup-shell-border: rgba(229, 231, 235, 0.7);
+  --theme-shell: rgba(255, 255, 255, 0.94);
+  --theme-shell-border: rgba(229, 231, 235, 0.7);
+  --theme-popup-icon-color: #d4a5a5;
+  --theme-popup-section-icon: #8b9dc3;
+  --theme-popup-progress-fill: rgba(255, 255, 255, 0.22);
+  --theme-popup-status-bg: #f8f9fa;
+  --theme-popup-status-hover: rgb(225, 227, 236);
+
+  /* ========== 选项页样式 ========== */
+  --theme-options-hero-start: rgba(139, 157, 195, 0.08);
+  --theme-options-hero-end: rgba(156, 163, 175, 0.12);
+  --theme-options-hero-overlay: rgba(255, 255, 255, 0.22);
+  --theme-options-link: #8b9dc3;
+  --theme-options-link-hover: #7a8db5;
+
+  /* ========== 统计页样式 ========== */
+  --theme-stats-name-line: rgb(158, 161, 174);
+  --theme-stats-name-bg: rgba(139, 157, 195, 0.07);
+  --theme-stats-name-bg-hover: rgba(139, 157, 195, 0.14);
+  --theme-stats-name-shadow: rgba(139, 157, 195, 0.15);
+  --theme-stats-drop-bg: rgba(139, 157, 195, 0.12);
+  --theme-stats-drop-border: #8b9dc3;
+  --theme-stats-tag-bg: #f8f9fa;
+  --theme-stats-tag-hover: rgb(222, 224, 234);
+  --theme-stats-followed-bg: #e8eef5;
+  --theme-stats-followed-text: #8b9dc3;
+  --theme-stats-unfollowed-bg: #f8f9fa;
+  --theme-stats-unfollowed-text: #9ca3af;
+
+  /* ========== 热力图颜色 ========== */
+  --theme-heatmap-level0: #ebedf0;
+  --theme-heatmap-level1: #b6e3ff;
+  --theme-heatmap-level2: #54aeff;
+  --theme-heatmap-level3: #0969da;
+  --theme-heatmap-level4: #0a3069;
+  --theme-heatmap-level5: #002d6b;
+}

@@ -213,7 +213,3 @@ class ThemeSwitcher {
 // 初始化主题切换器
 new ThemeSwitcher();
 ```
-
-## 维护者
-
-主题管理器由开发团队维护，如有问题或建议，请提交Issue或Pull Request。

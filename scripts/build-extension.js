@@ -45,6 +45,12 @@ function copyStaticAssets() {
   // 复制 picture 目录（图片资源）
   cpSync(join(root, "picture"), join(extensionRoot, "picture"), { recursive: true });
 
+  // 复制 temp 目录（临时文件和资源），如果存在的话
+  const tempDir = join(root, "temp");
+  if (existsSync(tempDir)) {
+    cpSync(tempDir, join(extensionRoot, "temp"), { recursive: true });
+  }
+
   // 只复制 ui 目录中的 HTML 和 CSS 文件，不复制 .ts 文件
   const uiSrcDir = join(srcRoot, "ui");
   const uiDestDir = join(extensionRoot, "ui");
