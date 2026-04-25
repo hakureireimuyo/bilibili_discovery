@@ -34,18 +34,13 @@ export class Heatmap {
    */
   render(data: HeatmapDataPoint[]): void {
     this.container.innerHTML = '';
-
-    // 计算最大值（如果未指定）
-    const maxSeconds = this.options.maxSeconds || Math.max(...data.map(d => d.seconds), 1);
-
-    // 渲染年度热力图
-    this.renderYearView(data, maxSeconds);
+    this.renderYearView(data);
   }
 
   /**
    * 渲染年度视图
    */
-  private renderYearView(data: HeatmapDataPoint[], maxSeconds: number): void {
+  private renderYearView(data: HeatmapDataPoint[]): void {
     const now = new Date();
     const currentYear = now.getFullYear();
 
@@ -159,7 +154,7 @@ export class Heatmap {
       weekDates.forEach(date => {
         const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         const dataPoint = data.find(d => d.date === dateKey);
-        const cell = this.createCell(dataPoint || { date: dateKey, seconds: 0, day: date.getDate() }, maxSeconds);
+        const cell = this.createCell(dataPoint || { date: dateKey, seconds: 0, day: date.getDate() });
         weekColumn.appendChild(cell);
       });
 
@@ -207,14 +202,13 @@ export class Heatmap {
   /**
    * 创建热力图单元格
    */
-  private createCell(point: HeatmapDataPoint, maxSeconds: number): HTMLElement {
+  private createCell(point: HeatmapDataPoint): HTMLElement {
     const cell = document.createElement('div');
     cell.className = 'heatmap-cell';
 
-    // 设置背景色
+    // 设置背景色（基于等比级数映射）
     if (point.date) {
-      const ratio = Math.min(point.seconds / maxSeconds, 1);
-      cell.style.backgroundColor = this.getHeatmapColor(ratio);
+      cell.style.backgroundColor = this.getHeatmapColorBySeconds(point.seconds);
 
       // 标记今天
       if (this.options.showTodayMarker && point.date === this.todayKey) {
@@ -245,21 +239,93 @@ export class Heatmap {
   }
 
   /**
-   * 获取热力图颜色
+   * 解析热力图颜色变量为实际十六进制值
    */
-  private getHeatmapColor(ratio: number): string {
-    // 使用主题中的热力图颜色
-    const colors = [
-      'var(--theme-heatmap-level0)', // 0%
-      'var(--theme-heatmap-level1)', // 1-20%
-      'var(--theme-heatmap-level2)', // 21-40%
-      'var(--theme-heatmap-level3)', // 41-60%
-      'var(--theme-heatmap-level4)', // 61-80%
-      'var(--theme-heatmap-level5)'  // 81-100%
+  private resolveHeatmapColors(): string[] {
+    const vars = [
+      '--theme-heatmap-level0',
+      '--theme-heatmap-level1',
+      '--theme-heatmap-level2',
+      '--theme-heatmap-level3',
+      '--theme-heatmap-level4',
+      '--theme-heatmap-level5'
     ];
+    const fallbacks = ['#ebedf0', '#b6e3ff', '#54aeff', '#0969da', '#0a3069', '#002d6b'];
+    return vars.map((v, i) => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+      return val || fallbacks[i];
+    });
+  }
 
-    const index = Math.min(Math.floor(ratio * (colors.length - 1)), colors.length - 1);
-    return colors[index];
+  /**
+   * 十六进制颜色转 RGB 分量
+   */
+  private hexToRgb(hex: string): { r: number; g: number; b: number } {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16)
+    };
+  }
+
+  /**
+   * 在两个 RGB 颜色之间线性插值
+   */
+  private interpolateRgb(
+    c1: { r: number; g: number; b: number },
+    c2: { r: number; g: number; b: number },
+    t: number
+  ): string {
+    const r = Math.round(c1.r + (c2.r - c1.r) * t);
+    const g = Math.round(c1.g + (c2.g - c1.g) * t);
+    const b = Math.round(c1.b + (c2.b - c1.b) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  /**
+   * 根据观看秒数获取热力图颜色（等比级数阈值 + RGB 连续插值）
+   *
+   * 每个颜色层级对应的时间阈值为等比数列：2048 × 2^(n-1) 秒
+   *   层级 0: 0s
+   *   层级 1: 2,048s (~34min)
+   *   层级 2: 4,096s (~1h 8min)
+   *   层级 3: 8,192s (~2h 16min)
+   *   层级 4: 16,384s (~4h 33min)
+   *   层级 5: 32,768s (~9h 6min)
+   *   层级 6: 65,536s (~18h 12min) — 极值覆盖，复用 level5 颜色
+   *
+   * 在两个阈值之间时，颜色在相邻两个色值之间线性插值，实现连续过渡
+   */
+  private getHeatmapColorBySeconds(seconds: number): string {
+    const thresholds = [0, 2048, 4096, 8192, 16384, 32768, 65536];
+    const colors = this.resolveHeatmapColors();
+
+    // 边界处理
+    if (seconds <= 0) return colors[0];
+    if (seconds >= thresholds[thresholds.length - 1]) return colors[colors.length - 1];
+
+    // 找到所在区间
+    let segIdx = 0;
+    for (let i = 0; i < thresholds.length - 1; i++) {
+      if (seconds >= thresholds[i] && seconds < thresholds[i + 1]) {
+        segIdx = i;
+        break;
+      }
+    }
+
+    // 区间内线性插值
+    const lower = thresholds[segIdx];
+    const upper = thresholds[segIdx + 1];
+    const t = (seconds - lower) / (upper - lower);
+
+    const c1 = this.hexToRgb(colors[segIdx]);
+    const c2 = this.hexToRgb(colors[Math.min(segIdx + 1, colors.length - 1)]);
+
+    return this.interpolateRgb(c1, c2, t);
   }
 
   /**

@@ -186,7 +186,7 @@ export class WatchStatsPage {
       const container = document.getElementById(config.id);
       if (container) {
         const card = new StatCard(container, {
-          showIcon: true,
+          showIcon: false,
           enableHover: true
         });
         card.render({

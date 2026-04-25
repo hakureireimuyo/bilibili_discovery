@@ -31,40 +31,44 @@ export class StatCard {
     const card = document.createElement('div');
     card.className = 'stat-card';
 
-    // 设置卡片样式
-    card.style.background = 'linear-gradient(145deg, var(--theme-bg-secondary) 0%, var(--theme-bg-tertiary) 100%)';
-    card.style.borderRadius = '16px';
-    card.style.padding = '14px';
-    card.style.border = `1px solid var(--theme-border-primary)`;
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.gap = '8px';
-    card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    card.style.position = 'relative';
-    card.style.overflow = 'hidden';
+    const themeVar = data.theme || 'primary';
 
-    // 添加顶部装饰条
-    const topBar = document.createElement('div');
-    topBar.style.cssText = `
+    // 设置卡片样式
+    card.style.cssText = `
+      background: var(--theme-bg-primary);
+      border-radius: 12px;
+      padding: 16px 18px;
+      border: 1px solid var(--theme-border-primary);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    `;
+
+    // 左侧主题色装饰条
+    const accent = document.createElement('div');
+    accent.style.cssText = `
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--theme-${data.theme || 'primary'}) 0%, var(--theme-secondary) 100%);
-      opacity: 0.8;
+      bottom: 0;
+      width: 3px;
+      background: var(--theme-${themeVar});
+      border-radius: 0 2px 2px 0;
     `;
-    card.appendChild(topBar);
+    card.appendChild(accent);
 
     // 悬停效果
     if (this.options.enableHover) {
       card.addEventListener('mouseenter', () => {
-        card.style.transform = 'translateY(-4px) scale(1.02)';
-        card.style.boxShadow = '0 8px 24px var(--theme-shadow-medium), 0 0 0 1px var(--theme-border-secondary)';
+        card.style.boxShadow = '0 4px 16px var(--theme-shadow-light)';
+        card.style.borderColor = 'var(--theme-border-secondary)';
       });
       card.addEventListener('mouseleave', () => {
-        card.style.transform = '';
         card.style.boxShadow = '';
+        card.style.borderColor = '';
       });
     }
 
@@ -79,23 +83,22 @@ export class StatCard {
       const iconWrapper = document.createElement('div');
       iconWrapper.className = 'stat-card-icon-wrapper';
       iconWrapper.style.cssText = `
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, var(--theme-${data.theme || 'primary'}) 0%, var(--theme-secondary) 100%);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--theme-${themeVar}-soft);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 2px;
-        box-shadow: 0 4px 12px var(--theme-shadow-light);
+        margin-bottom: 4px;
       `;
 
       const icon = document.createElement('div');
       icon.className = 'stat-card-icon';
       icon.textContent = data.icon;
       icon.style.cssText = `
-        font-size: 18px;
-        color: var(--theme-text-inverse);
+        font-size: 16px;
+        color: var(--theme-${themeVar});
       `;
       iconWrapper.appendChild(icon);
       card.appendChild(iconWrapper);
@@ -107,9 +110,10 @@ export class StatCard {
     label.textContent = data.label;
     label.style.cssText = `
       font-size: 12px;
-      color: var(--theme-text-secondary);
+      color: var(--theme-text-tertiary);
       font-weight: 500;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     `;
     card.appendChild(label);
 
@@ -126,12 +130,11 @@ export class StatCard {
     value.className = 'stat-card-value';
     value.textContent = String(data.value);
     value.style.cssText = `
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--theme-${data.theme || 'primary'}) 0%, var(--theme-secondary) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--theme-text-primary);
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
     `;
 
     valueWrapper.appendChild(value);

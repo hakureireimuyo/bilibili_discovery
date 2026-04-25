@@ -1,11 +1,14 @@
 /* Options页面特有样式 */
 
-/* 移除body背景样式，以便嵌入到统一页面中 */
+/* 使用表面色与父容器背景区分 */
+body {
+  background: var(--theme-surface-primary) !important;
+  min-height: auto !important;
+}
 
+/* 保留容器但不设置样式 */
 .app {
-  /* 保留容器但不设置背景、边框和阴影 */
-  max-width: 100%;
-  width: 100%;
+  /* 纯容器，无样式 */
 }
 
 .header {
@@ -48,6 +51,14 @@
 
 .content {
   padding: var(--theme-space-lg);
+}
+
+/* PC端限制内容宽度，避免拉伸 */
+@media (min-width: 1024px) {
+  .content {
+    max-width: 720px;
+    margin: 0 auto;
+  }
 }
 
 .section {
@@ -220,45 +231,4 @@
 
 .link-button:active {
   transform: translateY(0);
-}
-
-/* 响应式设计 */
-@media (min-width: 768px) {
-  .app {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  
-  .content {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--theme-space-lg);
-  }
-  
-  .section {
-    margin-bottom: 0;
-  }
-  
-  .form-label {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .form-input {
-    width: 100%;
-  }
-  
-  .form-hint {
-    margin-left: 0;
-  }
-}
-
-@media (min-width: 1024px) {
-  .app {
-    max-width: 1200px;
-  }
-  
-  .content {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
