@@ -142,6 +142,10 @@ export class UpListElementBuilder implements IUpListElementBuilder {
       creatorInfo.appendChild(creatorDesc);
     }
 
+    // 添加观看统计行（接口占位，后续接入真实数据）
+    const statsRow = this.createStatsRow();
+    creatorInfo.appendChild(statsRow);
+
     // 添加标签
     if (creator.tagWeights && creator.tagWeights.length > 0) {
       const tagsContainer = await this.createTagsContainer(creator);
@@ -183,6 +187,35 @@ export class UpListElementBuilder implements IUpListElementBuilder {
       ? description.substring(0, 100) + "..."
       : description;
     return creatorDesc;
+  }
+
+  /**
+   * 创建观看统计行（接口占位）
+   * 后续接入真实数据后，通过 updateStatsRow() 更新数值
+   */
+  private createStatsRow(): HTMLElement {
+    const row = document.createElement("div");
+    row.className = "up-stats-row";
+
+    // 观看时长
+    const watchTime = document.createElement("span");
+    watchTime.className = "up-stat-item";
+    watchTime.innerHTML = `
+      <span class="up-stat-label">观看</span>
+      <span class="up-stat-value up-stat-watch-time">--:--:--</span>
+    `;
+    row.appendChild(watchTime);
+
+    // 观看次数（预留）
+    const watchCount = document.createElement("span");
+    watchCount.className = "up-stat-item";
+    watchCount.innerHTML = `
+      <span class="up-stat-label">次数</span>
+      <span class="up-stat-value up-stat-watch-count">-</span>
+    `;
+    row.appendChild(watchCount);
+
+    return row;
   }
 
   /**

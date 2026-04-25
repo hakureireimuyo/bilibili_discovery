@@ -109,6 +109,10 @@ export class StatsManager {
   private container: InstanceContainerImpl;
   private initialized: boolean = false;
   private readonly cleanupFns: Array<() => void> = [];
+  private followedCount: number = 0;
+  private unfollowedCount: number = 0;
+  private rotatorTimer: number | null = null;
+  private currentRotatorIndex: number = 0;
 
   constructor(container?: InstanceContainerImpl) {
     this.container = container || InstanceContainerImpl.getInstance();
@@ -130,6 +134,9 @@ export class StatsManager {
     try {
       // 初始化实例容器
       await this.container.initialize();
+
+      // 初始化亮点轮播
+      this.initHighlightRotator();
 
       // 绑定事件
       this.bindPageActions();
@@ -154,8 +161,8 @@ export class StatsManager {
    */
   private async loadStats(): Promise<void> {
     // 获取已关注和未关注的UP数量
-    const followedCount = await this.container.services.creatorRepo.getFollowedCount(this.container.state.platform);
-    const unfollowedCount = await this.container.services.creatorRepo.getUnfollowedCount(this.container.state.platform);
+    this.followedCount = await this.container.services.creatorRepo.getFollowedCount(this.container.state.platform);
+    this.unfollowedCount = await this.container.services.creatorRepo.getUnfollowedCount(this.container.state.platform);
 
     // 获取标签总数
     const tagResult = await this.container.services.tagRepo.getAllTags();
@@ -163,15 +170,57 @@ export class StatsManager {
 
     // 更新UI
     setMetricValues({
-      "stat-followed-count": followedCount,
-      "stat-unfollowed-count": unfollowedCount,
-      "stat-tag-count": tagCount
+      "stat-followed-display": this.followedCount,
+      "stat-tag-display": tagCount
     });
   }
 
   /**
-   * 加载数据
+   * 初始化亮点轮播
    */
+  private initHighlightRotator(): void {
+    const rotator = document.getElementById('stat-rotator');
+    const dotsContainer = document.getElementById('stat-rotator-dots');
+    if (!rotator || !dotsContainer) return;
+
+    const items = rotator.querySelectorAll('.stat-rotator-item');
+
+    // 创建指示点
+    items.forEach((_, index) => {
+      const dot = document.createElement('div');
+      dot.className = 'stat-rotator-dot' + (index === 0 ? ' active' : '');
+      dot.dataset.index = String(index);
+      dot.addEventListener('click', () => this.showRotatorItem(index));
+      dotsContainer.appendChild(dot);
+    });
+
+    // 自动轮播
+    this.rotatorTimer = window.setInterval(() => {
+      const nextIndex = (this.currentRotatorIndex + 1) % items.length;
+      this.showRotatorItem(nextIndex);
+    }, 4000);
+  }
+
+  /**
+   * 切换到指定轮播项
+   */
+  private showRotatorItem(index: number): void {
+    const rotator = document.getElementById('stat-rotator');
+    if (!rotator) return;
+
+    const items = rotator.querySelectorAll('.stat-rotator-item');
+    const dots = document.querySelectorAll('#stat-rotator-dots .stat-rotator-dot');
+
+    items.forEach((item, i) => {
+      item.classList.toggle('active', i === index);
+    });
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === index);
+    });
+
+    this.currentRotatorIndex = index;
+  }
+
   private async loadData(): Promise<void> {
     console.log(`[StatsManager] loadData 被调用`);
     this.container.state.loading = true;
@@ -285,8 +334,20 @@ export class StatsManager {
 
     // 绑定关注筛选开关
     const followToggle = document.getElementById('show-followed-toggle');
+    const toggleLabel = document.querySelector('.toggle-label');
     followToggle?.addEventListener('change', (e) => {
-      this.container.state.showFollowedOnly = (e.target as HTMLInputElement).checked;
+      const checked = (e.target as HTMLInputElement).checked;
+      this.container.state.showFollowedOnly = checked;
+
+      // 更新标签文字和计数
+      if (toggleLabel) {
+        toggleLabel.textContent = checked ? '已关注' : '未关注';
+      }
+      const countDisplay = document.getElementById('stat-followed-display');
+      if (countDisplay) {
+        countDisplay.textContent = String(checked ? this.followedCount : this.unfollowedCount);
+      }
+
       // 重置页码到第一页
       this.container.services.paginationState.currentPage = 0;
       this.container.upListManager.renderUpList(this.container.state);
@@ -316,6 +377,10 @@ export class StatsManager {
   }
 
   dispose(): void {
+    if (this.rotatorTimer !== null) {
+      clearInterval(this.rotatorTimer);
+      this.rotatorTimer = null;
+    }
     this.cleanupFns.forEach(cleanup => cleanup());
     this.cleanupFns.length = 0;
   }

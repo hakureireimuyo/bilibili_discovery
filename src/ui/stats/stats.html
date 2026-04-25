@@ -12,30 +12,47 @@
   <body>
     <div class="app">
       <div class="layout">
+        <!-- 左侧面板：UP 列表 -->
         <div class="panel">
-          <div class="cards">
-            <div class="card">
-              <span class="label">关注UP数量</span>
-              <div class="stats-grid">
-                <span class="stat-label">已关注</span>
-                <span id="stat-followed-count" class="value">-</span>
-                <span class="stat-label">未关注</span>
-                <span id="stat-unfollowed-count" class="value">-</span>
+          <!-- 轮播亮点卡片 -->
+          <div class="highlight-card">
+            <div id="stat-rotator" class="stat-rotator">
+              <div class="stat-rotator-item active" data-index="0">
+                <span class="stat-rotator-label">观看时长最长的UP</span>
+                <span class="stat-rotator-value">--</span>
+              </div>
+              <div class="stat-rotator-item" data-index="1">
+                <span class="stat-rotator-label">互动最多的UP</span>
+                <span class="stat-rotator-value">--</span>
+              </div>
+              <div class="stat-rotator-item" data-index="2">
+                <span class="stat-rotator-label">近三天观看最多</span>
+                <span class="stat-rotator-value">--</span>
+              </div>
+              <div class="stat-rotator-item" data-index="3">
+                <span class="stat-rotator-label">近一月观看最多</span>
+                <span class="stat-rotator-value">--</span>
+              </div>
+              <div class="stat-rotator-item" data-index="4">
+                <span class="stat-rotator-label">标记最多的UP</span>
+                <span class="stat-rotator-value">--</span>
               </div>
             </div>
-            <div class="card">
-              <span class="label">UP分类词条数</span>
-              <span id="stat-tag-count" class="value">-</span>
-            </div>
+            <div class="stat-rotator-dots" id="stat-rotator-dots"></div>
           </div>
+
+          <!-- 搜索栏 + 关注计数 -->
           <div class="search-box">
             <label class="toggle-switch">
               <input type="checkbox" id="show-followed-toggle" checked />
               <span class="slider"></span>
             </label>
             <span class="toggle-label">已关注</span>
+            <span id="stat-followed-display" class="stat-badge">0</span>
             <input id="up-search" type="text" placeholder="搜索UP..." />
           </div>
+
+          <!-- UP 列表 -->
           <div id="up-list-container" class="up-list-container">
             <div id="up-list" class="up-list"></div>
             <div id="up-pagination" class="pagination">
@@ -45,7 +62,10 @@
             </div>
           </div>
         </div>
+
+        <!-- 右侧面板：筛选 + 标签 + 大分区 -->
         <div class="panel">
+          <!-- 筛选区域 -->
           <div class="filter-area">
             <div class="filter-section">
               <h3>筛选条件</h3>
@@ -59,23 +79,28 @@
                   <div id="filter-exclude-tags" class="filter-tags"></div>
                 </div>
               </div>
-              <div class="filter-actions">
-                <button id="btn-clear-filter" class="secondary">清除筛选</button>
-              </div>
             </div>
           </div>
-          <div class="content-row">
+
+          <!-- 标签 + 大分区 并排 -->
+          <div class="section-row">
+            <!-- 标签词条 -->
             <div class="section">
-              <h2>UP分类词条</h2>
+              <div class="section-header">
+                <h2>UP分类词条</h2>
+                <span id="stat-tag-display" class="stat-badge stat-badge-sm">0</span>
+              </div>
               <div class="search-box">
                 <input id="tag-search" type="text" placeholder="搜索标签..." />
                 <button id="btn-add-tag" class="add-tag-btn" title="新增标签">+</button>
               </div>
               <div id="tag-list-container" class="list-container">
-                <div id="tag-list" class="list tag-list-scrollable"></div>
+                <div id="tag-list" class="tag-wall"></div>
                 <div id="tag-pagination" class="pagination"></div>
               </div>
             </div>
+
+            <!-- 大分区 -->
             <div class="section">
               <h2>大分区</h2>
               <div class="search-box">

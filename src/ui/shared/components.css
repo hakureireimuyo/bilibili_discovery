@@ -255,7 +255,7 @@ select:disabled {
   padding: var(--spacing-lg);
   border: 1px solid color-mix(in srgb, var(--theme-border-primary) 70%, transparent);
   border-radius: var(--theme-radius-xl);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 16%, white 84%), color-mix(in srgb, var(--theme-secondary) 12%, white 88%)),
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 16%, var(--theme-bg-primary) 84%), color-mix(in srgb, var(--theme-secondary) 12%, var(--theme-bg-primary) 88%)),
               var(--theme-surface-primary);
 }
 

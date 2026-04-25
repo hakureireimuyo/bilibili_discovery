@@ -1,4 +1,4 @@
-import { navigateToOptions, navigateToWorkbench } from "./popup-progress.js";
+import { navigateToWorkbench } from "./popup-progress.js";
 import { initThemedPage } from "../../themes/index.js";
 import {
   CollectionItemRepositoryImpl,
@@ -39,9 +39,6 @@ interface LoadSnapshotResult {
   partialFailure: boolean;
 }
 
-const STORAGE_KEY = "popup-visible-widgets";
-const DEFAULT_WIDGETS: WidgetId[] = ["today", "week", "following", "favorites"];
-
 function setText(id: string, value: string): void {
   const el = document.getElementById(id);
   if (el) {
@@ -60,45 +57,6 @@ function formatDuration(totalSeconds: number): string {
   }
 
   return `${Math.max(1, Math.round(totalSeconds / 60))} 分钟`;
-}
-
-function formatTime(timestamp: number | null): string {
-  if (!timestamp) {
-    return "暂无记录";
-  }
-
-  const date = new Date(timestamp);
-  return `${date.getMonth() + 1}/${date.getDate()} ${date
-    .getHours()
-    .toString()
-    .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-}
-
-function getStoredWidgets(): WidgetId[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [...DEFAULT_WIDGETS];
-    }
-
-    const parsed = JSON.parse(raw) as WidgetId[];
-    const sanitized = parsed.filter((item) =>
-      ["today", "week", "following", "favorites", "tags", "records"].includes(item)
-    ) as WidgetId[];
-
-    return sanitized.length > 0 ? sanitized : [...DEFAULT_WIDGETS];
-  } catch (error) {
-    console.error("[popup] Failed to read widget preference:", error);
-    return [...DEFAULT_WIDGETS];
-  }
-}
-
-function saveWidgets(widgetIds: WidgetId[]): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(widgetIds));
-  } catch (error) {
-    console.error("[popup] Failed to save widget preference:", error);
-  }
 }
 
 function buildWidgets(snapshot: PopupSnapshot): FocusWidget[] {
@@ -254,16 +212,13 @@ async function loadSnapshotSafely(): Promise<LoadSnapshotResult> {
   }
 }
 
-function renderWidgetGrid(widgets: FocusWidget[], visibleIds: WidgetId[]): void {
+function renderWidgetGrid(widgets: FocusWidget[]): void {
   const container = document.getElementById("focus-grid");
   if (!container) {
     return;
   }
 
-  const visibleSet = new Set(visibleIds);
-  const cards = widgets.filter((item) => visibleSet.has(item.id));
-
-  container.innerHTML = cards
+  container.innerHTML = widgets
     .map(
       (item) => `
         <article class="focus-card ${item.accent}">
@@ -277,84 +232,6 @@ function renderWidgetGrid(widgets: FocusWidget[], visibleIds: WidgetId[]): void 
       `
     )
     .join("");
-}
-
-function renderSelector(widgets: FocusWidget[], visibleIds: WidgetId[]): void {
-  const container = document.getElementById("widget-selector");
-  if (!container) {
-    return;
-  }
-
-  const visibleSet = new Set(visibleIds);
-  container.innerHTML = widgets
-    .map(
-      (item) => `
-        <button
-          type="button"
-          class="widget-chip${visibleSet.has(item.id) ? " is-active" : ""}"
-          data-widget-id="${item.id}"
-          aria-pressed="${visibleSet.has(item.id)}"
-        >
-          <i class="fas ${item.icon}"></i>
-          <span>${item.label}</span>
-        </button>
-      `
-    )
-    .join("");
-}
-
-function renderHighlights(snapshot: PopupSnapshot): void {
-  setText("status-user-id", snapshot.userId ? String(snapshot.userId) : "未设置");
-  setText("status-last-update", formatTime(snapshot.lastUpdateTime));
-
-  const summaryEl = document.getElementById("hero-summary");
-  if (summaryEl) {
-    summaryEl.textContent = snapshot.lastUpdateTime
-      ? `最近 7 天累计 ${formatDuration(snapshot.weeklyWatchDuration)}，数据更新于 ${formatTime(snapshot.lastUpdateTime)}`
-      : "还没有可展示的数据，先正常浏览或在设置里完成基础配置。";
-  }
-
-  const uidHintEl = document.getElementById("uid-hint");
-  if (uidHintEl) {
-    uidHintEl.textContent = snapshot.userId ? "已完成基础绑定" : "点击这里前往设置 UID";
-  }
-
-  const focusList = document.getElementById("focus-creators");
-  if (focusList) {
-    focusList.innerHTML = "";
-
-    const entries = snapshot.focusCreators.length > 0 ? snapshot.focusCreators : ["还没有沉淀出重点关注对象"];
-    entries.forEach((name, index) => {
-      const item = document.createElement("li");
-      item.className = "focus-person";
-      item.innerHTML = `<span class="focus-rank">${index + 1}</span><span class="focus-name">${name}</span>`;
-      focusList.appendChild(item);
-    });
-  }
-
-  const healthEl = document.getElementById("data-health");
-  if (healthEl) {
-    const healthy = Boolean(snapshot.userId) && snapshot.watchRecordCount > 0;
-    healthEl.textContent = healthy ? "观察视窗已就绪" : "还需要再积累一点数据";
-    healthEl.classList.toggle("is-ready", healthy);
-  }
-}
-
-function bindStatusLink(snapshot: PopupSnapshot): void {
-  const userIdEl = document.getElementById("status-user-id");
-  if (!userIdEl || snapshot.userId) {
-    return;
-  }
-
-  userIdEl.classList.add("status-link");
-  userIdEl.title = "点击前往设置";
-  userIdEl.addEventListener("click", () => navigateToOptions());
-}
-
-function bindButtons(): void {
-  document.getElementById("btn-open-workbench")?.addEventListener("click", () => {
-    navigateToWorkbench();
-  });
 }
 
 function setHeroStatus(state: "loading" | "ready" | "error", text: string): void {
@@ -382,35 +259,9 @@ function setHeroStatus(state: "loading" | "ready" | "error", text: string): void
   }
 }
 
-function bindWidgetSelector(allWidgets: FocusWidget[], initialVisibleIds: WidgetId[]): void {
-  let visibleIds = [...initialVisibleIds];
-
-  renderSelector(allWidgets, visibleIds);
-  renderWidgetGrid(allWidgets, visibleIds);
-
-  document.getElementById("widget-selector")?.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-widget-id]");
-    if (!target) {
-      return;
-    }
-
-    const widgetId = target.dataset.widgetId as WidgetId | undefined;
-    if (!widgetId) {
-      return;
-    }
-
-    const exists = visibleIds.includes(widgetId);
-    if (exists && visibleIds.length === 1) {
-      return;
-    }
-
-    visibleIds = exists
-      ? visibleIds.filter((item) => item !== widgetId)
-      : [...visibleIds, widgetId];
-
-    saveWidgets(visibleIds);
-    renderSelector(allWidgets, visibleIds);
-    renderWidgetGrid(allWidgets, visibleIds);
+function bindButtons(): void {
+  document.getElementById("btn-open-workbench")?.addEventListener("click", () => {
+    navigateToWorkbench();
   });
 }
 
@@ -421,11 +272,8 @@ async function initPopupView(): Promise<void> {
 
     const { snapshot, partialFailure } = await loadSnapshotSafely();
     const widgets = buildWidgets(snapshot);
-    const visibleWidgets = getStoredWidgets();
 
-    renderHighlights(snapshot);
-    bindStatusLink(snapshot);
-    bindWidgetSelector(widgets, visibleWidgets);
+    renderWidgetGrid(widgets);
 
     if (partialFailure) {
       setHeroStatus("error", "部分数据暂时不可用，已展示当前可读取内容");

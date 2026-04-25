@@ -221,28 +221,10 @@ export class WatchHistoryManager {
     const actions = document.createElement("div");
     actions.className = "tag-actions";
 
-    const includeButton = document.createElement("button");
-    includeButton.type = "button";
-    includeButton.className = "tag-action-btn include";
-    includeButton.textContent = "包含";
-    includeButton.addEventListener("click", () => {
-      this.addIncludeTag(tag.tagId);
-    });
-
-    const excludeButton = document.createElement("button");
-    excludeButton.type = "button";
-    excludeButton.className = "tag-action-btn exclude";
-    excludeButton.textContent = "排除";
-    excludeButton.addEventListener("click", () => {
-      this.addExcludeTag(tag.tagId);
-    });
-
     const count = document.createElement("span");
     count.className = "tag-count";
     count.textContent = `${tag.count}`;
 
-    actions.appendChild(includeButton);
-    actions.appendChild(excludeButton);
     actions.appendChild(count);
 
     item.appendChild(pill);

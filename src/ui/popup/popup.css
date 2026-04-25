@@ -1,6 +1,6 @@
 /**
  * Popup 页面特定样式
- * 
+ *
  * 基础样式、通用工具类和组件已由 shared 中的样式库提供。
  * 此文件只保留 popup 页面独有的布局和交互样式。
  */
@@ -9,8 +9,7 @@
 .app {
   width: min(100vw, 420px);
   min-width: 320px;
-  min-height: 620px;
-  padding: 18px;
+  padding: 16px;
   background: var(--theme-shell);
   border: 1px solid var(--theme-shell-border);
   border-radius: 22px;
@@ -21,28 +20,20 @@
 
 /* ========== 英雄区域定制 ========== */
 .hero {
-  margin-bottom: 16px;
-  padding: 20px;
+  margin-bottom: 10px;
+  padding: 14px;
 }
 
 .hero-logo {
-  width: 52px;
-  height: 52px;
-  font-size: 24px;
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--theme-text-secondary);
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
 }
 
 .hero-copy {
-  margin-top: 18px;
+  margin-top: 12px;
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .hero-copy p {
@@ -51,37 +42,33 @@
   color: var(--theme-text-secondary);
 }
 
-.health-badge {
-  width: fit-content;
-  padding: 7px 12px;
-  border-radius: var(--theme-radius-full);
-  font-size: var(--font-size-xs);
-  color: var(--theme-primary);
-  background: color-mix(in srgb, var(--theme-primary) 12%, white 88%);
-}
-
-.health-badge.is-ready {
-  color: var(--theme-success);
-  background: color-mix(in srgb, var(--theme-success) 16%, white 84%);
+.hero-status {
+  font-size: 12px;
 }
 
 /* ========== 焦点网格 ========== */
+.panel-head h2 {
+  font-size: 14px;
+}
+
 .focus-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .focus-card {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 8px;
-  padding: 14px;
+  gap: 6px;
+  padding: 10px 12px;
   border-radius: var(--theme-radius-xl);
   color: var(--theme-text-primary);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.78));
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--theme-surface-primary) 96%, transparent),
+    color-mix(in srgb, var(--theme-surface-primary) 78%, transparent));
+  border: 1px solid var(--theme-border-primary);
 }
 
 .focus-card::after {
@@ -95,40 +82,40 @@
 }
 
 .accent-coral::after {
-  background: rgba(255, 128, 94, 0.25);
+  background: color-mix(in srgb, #ff805e 25%, transparent);
 }
 
 .accent-blue::after {
-  background: rgba(64, 138, 255, 0.24);
+  background: color-mix(in srgb, #408aff 24%, transparent);
 }
 
 .accent-gold::after {
-  background: rgba(255, 182, 67, 0.26);
+  background: color-mix(in srgb, #ffb643 26%, transparent);
 }
 
 .accent-pink::after {
-  background: rgba(255, 89, 138, 0.22);
+  background: color-mix(in srgb, #ff598a 22%, transparent);
 }
 
 .accent-teal::after {
-  background: rgba(30, 176, 164, 0.24);
+  background: color-mix(in srgb, #1eb0a4 24%, transparent);
 }
 
 .accent-violet::after {
-  background: rgba(124, 107, 255, 0.24);
+  background: color-mix(in srgb, #7c6bff 24%, transparent);
 }
 
 .focus-card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   position: relative;
   z-index: 1;
 }
 
 .focus-card-icon {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -137,181 +124,27 @@
 }
 
 .focus-card-title {
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   font-weight: var(--font-weight-semibold);
 }
 
 .focus-card-value {
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1.1;
   position: relative;
   z-index: 1;
 }
 
 .focus-card-hint {
-  font-size: var(--font-size-xs);
+  font-size: 11px;
   color: color-mix(in srgb, var(--theme-text-primary) 70%, transparent);
   position: relative;
   z-index: 1;
 }
 
-/* ========== 小部件选择器 ========== */
-.widget-selector-wrap {
-  margin-top: 14px;
-  display: grid;
-  gap: 10px;
-}
-
-.selector-label {
-  font-size: var(--font-size-xs);
-  color: var(--theme-text-secondary);
-}
-
-.widget-selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.widget-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--theme-border-primary) 72%, transparent);
-  border-radius: var(--theme-radius-full);
-  background: color-mix(in srgb, var(--theme-surface-muted) 78%, white 22%);
-  color: var(--theme-text-secondary);
-  cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
-}
-
-.widget-chip:hover {
-  transform: translateY(-1px);
-}
-
-.widget-chip.is-active {
-  color: white;
-  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
-}
-
-/* ========== 状态列表 ========== */
-.status-list {
-  display: grid;
-  gap: 10px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--theme-border-primary) 68%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--theme-popup-status-bg) 82%, white 18%);
-}
-
-.status-button {
-  text-align: left;
-  cursor: default;
-}
-
-.status-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--font-size-xs);
-  color: var(--theme-text-secondary);
-}
-
-.status-meta {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-}
-
-.status-meta small {
-  font-size: 11px;
-  color: var(--theme-text-secondary);
-}
-
-.status-value {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--theme-text-primary);
-}
-
-.status-link {
-  color: var(--theme-primary);
-  cursor: pointer;
-}
-
-/* ========== 焦点创作者列表 ========== */
-.focus-people {
-  margin-top: 14px;
-}
-
-.subhead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.subhead h3,
-.subhead span {
-  font-size: var(--font-size-xs);
-}
-
-.subhead span {
-  color: var(--theme-text-secondary);
-}
-
-.focus-people-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.focus-person {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--theme-radius-lg);
-  background: color-mix(in srgb, var(--theme-surface-muted) 70%, white 30%);
-}
-
-.focus-rank {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
-  flex-shrink: 0;
-}
-
-.focus-name {
-  font-size: var(--font-size-xs);
-  color: var(--theme-text-primary);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ========== 底部操作 ========== */
 .footer-actions {
-  margin-top: 14px;
+  margin-top: 12px;
   position: relative;
   z-index: 1;
 }
@@ -322,7 +155,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 10px 14px;
   border: none;
   border-radius: var(--theme-radius-xl);
   color: white;
@@ -331,6 +164,7 @@
   box-shadow: 0 16px 28px color-mix(in srgb, var(--theme-primary) 25%, transparent);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   font-weight: var(--font-weight-semibold);
+  font-size: 14px;
 }
 
 .primary-action:hover {
@@ -342,28 +176,58 @@
   transform: translateY(0);
 }
 
-.action-copy {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
-  text-align: left;
+/* ========== 深色模式适配 ========== */
+.theme-dark .app {
+  background: var(--theme-bg-primary);
+  border-color: var(--theme-border-primary);
 }
 
-.action-copy strong {
-  font-size: 15px;
+.theme-dark .primary-action {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 55%, var(--theme-bg-primary) 45%), var(--theme-bg-secondary));
 }
 
-.action-copy small {
-  font-size: var(--font-size-xs);
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.78);
+.theme-dark .hero {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--theme-primary) 12%, var(--theme-bg-primary) 88%),
+    color-mix(in srgb, var(--theme-secondary) 8%, var(--theme-bg-primary) 92%)),
+    var(--theme-bg-primary);
+}
+
+.theme-dark .focus-card {
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--theme-surface-raised) 96%, transparent),
+    color-mix(in srgb, var(--theme-surface-muted) 82%, transparent));
+  border-color: var(--theme-border-tertiary);
+}
+
+.theme-dark .accent-coral::after {
+  opacity: 0.35;
+}
+
+.theme-dark .accent-blue::after {
+  opacity: 0.35;
+}
+
+.theme-dark .accent-gold::after {
+  opacity: 0.35;
+}
+
+.theme-dark .accent-pink::after {
+  opacity: 0.35;
+}
+
+.theme-dark .accent-teal::after {
+  opacity: 0.35;
+}
+
+.theme-dark .accent-violet::after {
+  opacity: 0.35;
 }
 
 /* ========== 响应式设计 ========== */
 @media (max-width: 420px) {
   .app {
     width: 100vw;
-    min-height: 100vh;
     border-radius: 0;
     padding: 14px;
   }
@@ -376,7 +240,6 @@
 @media (max-width: 840px) {
   .app {
     width: 100vw;
-    min-height: 100vh;
     border-radius: 0;
   }
 

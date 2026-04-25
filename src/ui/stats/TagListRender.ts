@@ -40,7 +40,63 @@ export class TagListRender extends RenderList<Tag, HTMLElement> {
       this.container.appendChild(element);
     });
 
+    // 在下次绘制后计算并添加占位块，填充最后一行空隙
+    requestAnimationFrame(() => {
+      this.addWallFillers();
+    });
+
     this.renderPagination();
+  }
+
+  /**
+   * 向标签墙末尾添加不可见占位块，使最后一行视觉上填充完整
+   */
+  private addWallFillers(): void {
+    const wall = this.container;
+    const items = wall.querySelectorAll<HTMLElement>('.tag-pill');
+    if (items.length === 0) return;
+
+    const containerRect = wall.getBoundingClientRect();
+    const computedStyle = getComputedStyle(wall);
+    const padLeft = parseFloat(computedStyle.paddingLeft) || 0;
+    const padRight = parseFloat(computedStyle.paddingRight) || 0;
+    const containerWidth = containerRect.width - padLeft - padRight;
+    const gap = 6; // 与 CSS gap 保持一致
+
+    // 获取最后一个标签的行位置
+    const lastItem = items[items.length - 1];
+    const lastItemRect = lastItem.getBoundingClientRect();
+    const lastRowTop = lastItemRect.top - containerRect.top;
+
+    // 计算最后一行的总宽度
+    let lastRowWidth = 0;
+    for (let i = items.length - 1; i >= 0; i--) {
+      const itemRect = items[i].getBoundingClientRect();
+      const itemTop = itemRect.top - containerRect.top;
+      if (Math.abs(itemTop - lastRowTop) < 5) {
+        lastRowWidth += itemRect.width + gap;
+      } else {
+        break;
+      }
+    }
+    lastRowWidth -= gap; // 去掉末尾多余 gap
+
+    // 计算剩余空间，填充占位块
+    const remaining = Math.max(0, containerWidth - lastRowWidth);
+    if (remaining > 16) {
+      const tagHeight = lastItemRect.height;
+      // 每个占位块约 6 个字符宽（~50-60px），最多填 4 个
+      const fillerUnit = 56;
+      const count = Math.min(Math.ceil(remaining / fillerUnit), 4);
+      for (let i = 0; i < count; i++) {
+        const filler = document.createElement('div');
+        filler.className = 'tag-wall-filler';
+        const w = i < count - 1 ? fillerUnit : remaining - i * fillerUnit;
+        filler.style.width = `${Math.floor(w)}px`;
+        filler.style.height = `${tagHeight}px`;
+        wall.appendChild(filler);
+      }
+    }
   }
 
   protected async deleteElement(element: HTMLElement, data: Tag): Promise<void> {

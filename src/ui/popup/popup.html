@@ -20,14 +20,11 @@
           <div class="hero-mark">
             <span class="hero-logo"><i class="fab fa-bilibili"></i></span>
             <div>
-              <p class="eyebrow">Bilibili Discovery</p>
               <h1>观察窗口</h1>
             </div>
           </div>
 
           <div class="hero-copy">
-            <strong id="data-health" class="health-badge">正在准备数据</strong>
-            <p id="hero-summary">正在读取最近的观看与收藏数据...</p>
             <p id="hero-status" class="hero-status is-loading">
               <i class="fas fa-circle-notch fa-spin"></i>
               <span>正在整理你的观察窗口...</span>
@@ -37,64 +34,15 @@
 
         <section class="panel">
           <div class="panel-head">
-            <div>
-              <h2>核心数据</h2>
-              <p>只显示你现在最关心的内容</p>
-            </div>
+            <h2>核心数据</h2>
           </div>
 
           <div id="focus-grid" class="focus-grid"></div>
-
-          <div class="widget-selector-wrap">
-            <span class="selector-label">显示项</span>
-            <div id="widget-selector" class="widget-selector"></div>
-          </div>
-        </section>
-
-        <section class="panel compact">
-          <div class="panel-head">
-            <div>
-              <h2>观察摘要</h2>
-              <p>一眼看状态与重点对象</p>
-            </div>
-          </div>
-
-          <div class="status-list">
-            <button type="button" class="status-item status-button">
-              <span class="status-label">
-                <i class="fas fa-id-card"></i>
-                <span>用户 UID</span>
-              </span>
-              <span class="status-meta">
-                <span id="status-user-id" class="status-value">-</span>
-                <small id="uid-hint">读取中</small>
-              </span>
-            </button>
-
-            <div class="status-item">
-              <span class="status-label">
-                <i class="fas fa-wave-square"></i>
-                <span>最近更新</span>
-              </span>
-              <span id="status-last-update" class="status-value">-</span>
-            </div>
-          </div>
-
-          <div class="focus-people">
-            <div class="subhead">
-              <h3>最近关注焦点</h3>
-              <span>Top 3</span>
-            </div>
-            <ul id="focus-creators" class="focus-people-list"></ul>
-          </div>
         </section>
 
         <footer class="footer-actions">
           <button id="btn-open-workbench" type="button" class="primary-action">
-            <span class="action-copy">
-              <strong>进入完整工作台</strong>
-              <small>在同一个页面里切换 UP、统计、历史、收藏与设置</small>
-            </span>
+            <strong>打开工作台 →</strong>
             <i class="fas fa-arrow-up-right-from-square"></i>
           </button>
         </footer>
