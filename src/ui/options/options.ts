@@ -4,13 +4,6 @@ import { updateRateLimiterIntervals } from "../../api/request.js";
 
 declare const chrome: { runtime: { getURL: (path: string) => string } };
 
-function setStatus(text: string): void {
-  const status = document.getElementById("status");
-  if (status) {
-    status.textContent = text;
-  }
-}
-
 function setLinkTarget(id: string, path: string): void {
   const link = document.getElementById(id) as HTMLAnchorElement | null;
   if (link && typeof chrome !== "undefined") {
@@ -75,13 +68,14 @@ function readForm() {
   });
 }
 
-function bindSave(): void {
-  const saveBtn = document.getElementById("save-btn");
-  saveBtn?.addEventListener("click", async () => {
+function bindAutoSave(): void {
+  const content = document.querySelector(".content");
+  if (!content) return;
+
+  content.addEventListener("change", async () => {
     const settings = readForm();
     await saveSettings(settings);
     updateRateLimiterIntervals(settings.apiMinInterval, settings.apiMaxInterval);
-    setStatus("已保存");
   });
 }
 
@@ -99,7 +93,7 @@ export async function initOptions(): Promise<void> {
   setLinkTarget("open-api-test", "ui/api-test/api-test.html");
   setLinkTarget("open-image-compress", "ui/image-compress/image-compress.html");
   setLinkTarget("open-test-tools", "ui/test-tools/test-tools.html");
-  bindSave();
+  bindAutoSave();
 }
 
 if (typeof document !== "undefined") {
