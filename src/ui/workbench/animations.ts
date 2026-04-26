@@ -659,10 +659,15 @@ export function createAnimation(id: AnimationId) {
   let ctx: CanvasRenderingContext2D | null = null;
   let rafId = 0;
   let running = false;
+  let lastFrameTime = 0;
+  const FRAME_INTERVAL = 1000 / 30; // ~33ms, 30fps cap
 
   function frame(timestamp: number) {
     if (!running) return;
-    instance.animate(timestamp);
+    if (timestamp - lastFrameTime >= FRAME_INTERVAL) {
+      lastFrameTime = timestamp;
+      instance.animate(timestamp);
+    }
     rafId = requestAnimationFrame(frame);
   }
 

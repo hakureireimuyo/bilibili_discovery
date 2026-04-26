@@ -16,7 +16,13 @@ interface WorkbenchView {
 }
 
 const STORAGE_KEY = "workbench-last-view";
-const FRAME_IDS = ["workbench-frame-a", "workbench-frame-b"] as const;
+
+/** 每个 view 对应一个持久化的 iframe，首次访问时创建，永不销毁 */
+const frameCache = new Map<string, HTMLIFrameElement>();
+/** 记录已加载完成的 view */
+const loadedViews = new Set<string>();
+/** 当前激活的 view id */
+let currentViewId: string | null = null;
 
 const VIEWS: WorkbenchView[] = [
   {
@@ -122,22 +128,6 @@ function setLoading(visible: boolean): void {
   document.getElementById("frame-loading")?.classList.toggle("is-visible", visible);
 }
 
-function getFrames(): HTMLIFrameElement[] {
-  return FRAME_IDS.map((id) => document.getElementById(id) as HTMLIFrameElement | null).filter(
-    (frame): frame is HTMLIFrameElement => Boolean(frame)
-  );
-}
-
-function getActiveFrame(frames: HTMLIFrameElement[]): HTMLIFrameElement | null {
-  return frames.find((frame) => frame.classList.contains("is-active")) ?? frames[0] ?? null;
-}
-
-function markActiveFrame(nextFrame: HTMLIFrameElement, previousFrame: HTMLIFrameElement | null): void {
-  previousFrame?.classList.remove("is-active", "is-staged");
-  nextFrame.classList.remove("is-staged");
-  nextFrame.classList.add("is-active");
-}
-
 function hideFrameScrollbars(frame: HTMLIFrameElement): void {
   try {
     const doc = frame.contentDocument;
@@ -167,52 +157,57 @@ function hideFrameScrollbars(frame: HTMLIFrameElement): void {
 }
 
 function activateView(view: WorkbenchView, options?: { immediate?: boolean }): void {
-  const frames = getFrames();
-  const frameShell = document.querySelector(".frame-shell");
-  const currentFrame = getActiveFrame(frames);
-  const nextFrame = frames.find((frame) => frame !== currentFrame) ?? currentFrame;
-
-  if (!nextFrame) {
-    return;
-  }
-
   renderNav(view.id);
   window.location.hash = view.id;
   window.localStorage.setItem(STORAGE_KEY, view.id);
 
-  const nextUrl = getRuntimeUrl(view.path);
-  const isImmediate = Boolean(options?.immediate);
-
-  if (currentFrame?.dataset.viewId === view.id) {
+  if (currentViewId === view.id) {
     return;
   }
 
-  if (isImmediate || !currentFrame) {
-    setLoading(false);
-    currentFrame?.classList.remove("is-active", "is-staged");
-    nextFrame.classList.add("is-active");
-    nextFrame.classList.remove("is-staged");
-    nextFrame.dataset.viewId = view.id;
-    nextFrame.addEventListener("load", () => hideFrameScrollbars(nextFrame), { once: true });
-    nextFrame.src = nextUrl;
+  const frameShell = document.querySelector(".frame-shell");
+  if (!frameShell) {
     return;
   }
 
-  setLoading(true);
-  frameShell?.classList.add("is-switching");
-  nextFrame.classList.add("is-staged");
-  nextFrame.dataset.viewId = view.id;
+  // 懒创建：每个 view 只创建一次 iframe
+  let iframe = frameCache.get(view.id);
 
-  const handleLoad = (): void => {
-    nextFrame.removeEventListener("load", handleLoad);
-    hideFrameScrollbars(nextFrame);
-    markActiveFrame(nextFrame, currentFrame);
-    frameShell?.classList.remove("is-switching");
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.className = "workbench-frame";
+    iframe.title = `Bilibili Discovery - ${view.title}`;
+    iframe.dataset.viewId = view.id;
+
+    iframe.addEventListener("load", () => {
+      hideFrameScrollbars(iframe!);
+      loadedViews.add(view.id);
+      // 如果当前仍为此 view，隐藏 loading
+      if (currentViewId === view.id) {
+        setLoading(false);
+      }
+    }, { once: true });
+
+    frameShell.appendChild(iframe);
+    iframe.src = getRuntimeUrl(view.path);
+    frameCache.set(view.id, iframe);
+  }
+
+  // 切换可见性
+  if (currentViewId) {
+    const prevFrame = frameCache.get(currentViewId);
+    prevFrame?.classList.remove("is-active");
+  }
+
+  iframe.classList.add("is-active");
+  currentViewId = view.id;
+
+  // 未加载完成的 view 显示 loading
+  if (loadedViews.has(view.id)) {
     setLoading(false);
-  };
-
-  nextFrame.addEventListener("load", handleLoad, { once: true });
-  nextFrame.src = nextUrl;
+  } else if (!options?.immediate) {
+    setLoading(true);
+  }
 }
 
 let stopAnimation: (() => void) | null = null;
@@ -257,10 +252,8 @@ export function initWorkbench(): void {
   });
 
   window.addEventListener("hashchange", () => {
-    const frames = getFrames();
-    const activeFrame = getActiveFrame(frames);
     const nextView = getViewById(window.location.hash.replace(/^#/, ""));
-    if (activeFrame?.dataset.viewId !== nextView.id) {
+    if (currentViewId !== nextView.id) {
       activateView(nextView);
     }
   });
