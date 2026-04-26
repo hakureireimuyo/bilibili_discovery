@@ -15,38 +15,31 @@
       <div class="history-shell">
         <section class="history-main">
           <div class="hero-card">
-            <div>
-              <p class="hero-kicker">Watch History Search</p>
-              <h1>搜索过去看过的每一个视频</h1>
-              <p class="hero-subtitle">按标题、UP 主、观看时长、观看时间、进度、标签与完播状态筛选，专注于按视频聚合后的真实观看痕迹。</p>
+            <div class="summary-grid">
+              <article class="summary-card">
+                <span class="summary-label">命中视频</span>
+                <strong id="summaryTotal" class="summary-value">0</strong>
+              </article>
+              <article class="summary-card">
+                <span class="summary-label">累计已看时长</span>
+                <strong id="summaryDuration" class="summary-value">0:00</strong>
+              </article>
+              <article class="summary-card">
+                <span class="summary-label">完播视频</span>
+                <strong id="summaryComplete" class="summary-value">0</strong>
+              </article>
+              <article class="summary-card">
+                <span class="summary-label">重看视频</span>
+                <strong id="summaryRewatch" class="summary-value">0</strong>
+              </article>
+              <article class="summary-card">
+                <span class="summary-label">平均进度</span>
+                <strong id="summaryProgress" class="summary-value">0%</strong>
+              </article>
             </div>
             <div class="hero-searches">
-              <input id="searchInput" class="search-input" type="text" placeholder="搜索标题或 BV 号" />
-              <input id="creatorInput" class="search-input" type="text" placeholder="搜索 UP 主" />
+              <input id="searchInput" class="search-input" type="text" placeholder="搜索标题/BV号，或 @UP主名" />
             </div>
-          </div>
-
-          <div class="summary-grid">
-            <article class="summary-card">
-              <span class="summary-label">命中视频</span>
-              <strong id="summaryTotal" class="summary-value">0</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-label">累计已看时长</span>
-              <strong id="summaryDuration" class="summary-value">0:00</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-label">完播视频</span>
-              <strong id="summaryComplete" class="summary-value">0</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-label">重看视频</span>
-              <strong id="summaryRewatch" class="summary-value">0</strong>
-            </article>
-            <article class="summary-card">
-              <span class="summary-label">平均进度</span>
-              <strong id="summaryProgress" class="summary-value">0%</strong>
-            </article>
           </div>
 
           <div class="results-head">
@@ -76,6 +69,12 @@
         </section>
 
         <aside class="history-sidebar history-sidebar-tags">
+          <button id="filterToggle" class="filter-toggle-btn" type="button">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 4h14M3 8h10M6 12h4" />
+            </svg>
+            复杂筛选
+          </button>
           <section class="panel-card">
             <h3>标签过滤</h3>
             <div class="filter-zone-group">
@@ -96,8 +95,10 @@
             <div id="tagList" class="tag-list"></div>
           </section>
         </aside>
+      </div>
 
-        <aside class="history-sidebar history-sidebar-filters">
+      <div class="filter-drawer" id="filterDrawer">
+        <aside class="history-sidebar-filters">
           <section class="panel-card panel-card-filters">
             <div class="panel-header-row">
               <h3>复杂筛选</h3>

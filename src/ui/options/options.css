@@ -2,8 +2,9 @@
 
 /* 使用表面色与父容器背景区分 */
 body {
-  background: var(--theme-surface-primary) !important;
+  background: transparent !important;
   min-height: auto !important;
+  padding: var(--theme-space-lg);
 }
 
 /* 保留容器但不设置样式 */
@@ -63,10 +64,12 @@ body {
 
 .section {
   margin-bottom: var(--theme-space-2xl);
-}
-
-.section:last-child {
-  margin-bottom: 0;
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
+  border-radius: var(--theme-radius-lg);
+  padding: var(--theme-space-lg);
+  border: 1px solid var(--theme-border-primary);
 }
 
 .section-title {
@@ -155,7 +158,9 @@ body {
 
 .footer {
   padding: var(--theme-space-lg) var(--theme-space-lg);
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-top: 1px solid var(--theme-border-primary);
   border-radius: var(--theme-radius-lg);
   margin-top: var(--theme-space-lg);

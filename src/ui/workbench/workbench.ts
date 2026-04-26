@@ -1,4 +1,6 @@
 import { initThemedPage } from "../../themes/index.js";
+import { createAnimation, type AnimationId } from "./animations.js";
+import { getValue } from "../../database/implementations/index.js";
 
 declare const chrome: {
   runtime?: {
@@ -9,8 +11,6 @@ declare const chrome: {
 interface WorkbenchView {
   id: string;
   title: string;
-  kicker: string;
-  description: string;
   icon: string;
   path: string;
 }
@@ -22,66 +22,56 @@ const VIEWS: WorkbenchView[] = [
   {
     id: "overview",
     title: "观看统计",
-    kicker: "Overview",
-    description: "先从整体观看趋势开始看，适合每次打开时快速扫一眼。",
     icon: "fa-chart-line",
     path: "ui/watch-stats/watch-stats.html"
   },
   {
     id: "stats",
     title: "UP 与标签",
-    kicker: "Creators",
-    description: "查看你关注和整理过的 UP、标签、分区信息。",
     icon: "fa-user-group",
     path: "ui/stats/stats.html"
   },
   {
     id: "watch-history",
     title: "观看历史",
-    kicker: "History",
-    description: "浏览已记录的观看内容与筛选结果。",
     icon: "fa-clock-rotate-left",
     path: "ui/watch-history/watch-history.html"
   },
   {
     id: "favorites",
     title: "收藏视频",
-    kicker: "Favorites",
-    description: "查看你整理到收藏体系里的内容。",
     icon: "fa-heart",
     path: "ui/favorites/favorites.html"
   },
   {
     id: "database",
     title: "数据库统计",
-    kicker: "Database",
-    description: "检查本地数据规模和存储情况。",
     icon: "fa-database",
     path: "ui/database-stats/database-stats.html"
   },
   {
     id: "themes",
     title: "主题设置",
-    kicker: "Theme",
-    description: "调整扩展视觉主题和表现风格。",
     icon: "fa-palette",
     path: "ui/theme-settings/theme-settings.html"
   },
   {
     id: "settings",
     title: "基础设置",
-    kicker: "Settings",
-    description: "配置 UID、缓存和 API 相关参数。",
     icon: "fa-sliders",
     path: "ui/options/options.html"
   },
   {
     id: "test-tools",
     title: "测试工具",
-    kicker: "Tools",
-    description: "保留原有调试与实验入口。",
     icon: "fa-flask",
     path: "ui/test-tools/test-tools.html"
+  },
+  {
+    id: "animation-test",
+    title: "动画测试",
+    icon: "fa-wand-magic-sparkles",
+    path: "ui/animation-test/animation-test.html"
   }
 ];
 
@@ -126,18 +116,6 @@ function renderNav(activeId: string): void {
       </button>
     `
   ).join("");
-}
-
-function setWorkspaceHeader(view: WorkbenchView): void {
-  const kicker = document.getElementById("workspace-kicker");
-  const title = document.getElementById("workspace-title");
-
-  if (kicker) {
-    kicker.textContent = view.kicker;
-  }
-  if (title) {
-    title.textContent = view.title;
-  }
 }
 
 function setLoading(visible: boolean): void {
@@ -198,7 +176,6 @@ function activateView(view: WorkbenchView, options?: { immediate?: boolean }): v
     return;
   }
 
-  setWorkspaceHeader(view);
   renderNav(view.id);
   window.location.hash = view.id;
   window.localStorage.setItem(STORAGE_KEY, view.id);
@@ -238,6 +215,23 @@ function activateView(view: WorkbenchView, options?: { immediate?: boolean }): v
   nextFrame.src = nextUrl;
 }
 
+let stopAnimation: (() => void) | null = null;
+
+async function initAnimation(): Promise<void> {
+  stopAnimation?.();
+
+  try {
+    const settings = await getValue<{ backgroundAnimation?: string }>("settings");
+    const animId = (settings?.backgroundAnimation ?? "particles") as AnimationId;
+    const anim = createAnimation(animId);
+    stopAnimation = anim.start(document.querySelector(".frame-shell")!);
+  } catch {
+    // Fallback: particles if settings can't be loaded
+    const anim = createAnimation("particles");
+    stopAnimation = anim.start(document.querySelector(".frame-shell")!);
+  }
+}
+
 export function initWorkbench(): void {
   if (typeof document === "undefined") {
     return;
@@ -245,11 +239,12 @@ export function initWorkbench(): void {
 
   initThemedPage("workbench");
 
+  void initAnimation();
+
   const initialView = getInitialView();
   const nav = document.getElementById("workbench-nav");
 
   renderNav(initialView.id);
-  setWorkspaceHeader(initialView);
 
   nav?.addEventListener("click", (event) => {
     const target = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-view-id]");

@@ -10,7 +10,8 @@ export type ThemePageId =
   | "database-stats"
   | "theme-settings"
   | "theme-example"
-  | "workbench";
+  | "workbench"
+  | "animation-test";
 
 /**
  * 为页面建立统一的主题接入点。

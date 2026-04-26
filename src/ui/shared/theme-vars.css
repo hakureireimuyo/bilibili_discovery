@@ -78,6 +78,10 @@
   --theme-surface-accent: #e8eef5;
   --theme-surface-accent-hover: rgb(230, 234, 240);
 
+  /* ========== 亚克力玻璃效果 ========== */
+  --theme-glass-blur: 12px;
+  --theme-glass-transparency: 30%;
+
   /* ========== 控件样式 ========== */
   --theme-control-radius: 8px;
   --theme-control-gap: 12px;
@@ -209,7 +213,7 @@
   --theme-stats-unfollowed-text: #9ca3af;
 
   /* ========== 热力图颜色 ========== */
-  --theme-heatmap-level0: #ebedf0;
+  --theme-heatmap-level0: #d4dae4;
   --theme-heatmap-level1: #b6e3ff;
   --theme-heatmap-level2: #54aeff;
   --theme-heatmap-level3: #0969da;

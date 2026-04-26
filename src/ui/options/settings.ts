@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tagFetchInterval: 200,
   apiMinInterval: 500,
   apiMaxInterval: 1000,
-  maxVideosToFetch: 3
+  maxVideosToFetch: 3,
+  backgroundAnimation: "particles"
 };
 
 export function normalizeSettings(input: Partial<Settings>): Settings {
@@ -39,6 +40,9 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
   const apiMaxInterval = Math.min(10000, Math.max(apiMinInterval, apiMaxIntervalRaw));
   const maxVideosToFetchRaw = Number(input.maxVideosToFetch ?? DEFAULT_SETTINGS.maxVideosToFetch);
   const maxVideosToFetch = Math.min(10, Math.max(1, maxVideosToFetchRaw));
+  const backgroundAnimation = typeof input.backgroundAnimation === "string"
+    ? input.backgroundAnimation
+    : DEFAULT_SETTINGS.backgroundAnimation;
 
   return {
     cacheHours,
@@ -50,7 +54,8 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
     tagFetchInterval,
     apiMinInterval,
     apiMaxInterval,
-    maxVideosToFetch
+    maxVideosToFetch,
+    backgroundAnimation
   };
 }
 

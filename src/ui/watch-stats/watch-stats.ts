@@ -33,6 +33,7 @@ export class WatchStatsPage {
   private dailySeconds: Record<string, number> = {};
   private totalSeconds: number = 0;
   private lastUpdate: number = 0;
+  private lastWatchData: WatchStatsData | null = null;
 
   constructor() {
     this.dailyWatchStatsRepo = new DailyWatchStatsRepositoryImpl();
@@ -375,7 +376,10 @@ export class WatchStatsPage {
    */
   private handleThemeChange(): void {
     // 重新渲染图表以应用新主题颜色
-    // 实际数据更新时会被重新渲染，这里只是预留接口
+    if (this.lastWatchData) {
+      this.updateLineChart(this.lastWatchData);
+      this.updateYearView();
+    }
   }
 
   /**
@@ -384,6 +388,7 @@ export class WatchStatsPage {
    */
   public updateStats(data: WatchStatsData): void {
     // 更新内部数据
+    this.lastWatchData = data;
     this.dailySeconds = data.dailySeconds;
     this.totalSeconds = data.totalSeconds;
     this.lastUpdate = data.lastUpdate;

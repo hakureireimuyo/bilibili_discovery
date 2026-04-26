@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>动画效果测试</title>
+    <link rel="stylesheet" href="../shared/theme-vars.css" />
+    <link rel="stylesheet" href="../shared/base.css" />
+    <link rel="stylesheet" href="./animation-test.css" />
+  </head>
+  <body>
+    <div class="test-app">
+      <h1 class="test-title">背景动画测试</h1>
+      <p class="test-desc">点击下方按钮切换动画效果，查看实时预览</p>
+
+      <div id="animation-controls" class="controls"></div>
+
+      <div id="animation-stage" class="stage">
+        <div class="stage-content">
+          <div class="demo-card">
+            <span class="demo-icon">✦</span>
+            <span>动画背景预览区域</span>
+          </div>
+          <div class="demo-card">
+            <span class="demo-icon">◈</span>
+            <span>面板间隙可穿透</span>
+          </div>
+          <div class="demo-card">
+            <span class="demo-icon">◇</span>
+            <span>切换动画实时生效</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./animation-test.ts"></script>
+  </body>
+</html>

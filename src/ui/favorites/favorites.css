@@ -1,7 +1,5 @@
 body {
-  background:
-    radial-gradient(circle at top left, var(--theme-primary-softer), transparent 28%),
-    linear-gradient(180deg, var(--theme-page-bg) 0%, var(--theme-bg-primary) 100%);
+  background: transparent;
 }
 
 .favorites-page {
@@ -33,7 +31,9 @@ body {
 .tag-section,
 .pagination,
 .video-card {
-  background: var(--theme-surface-base);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: var(--theme-radius-lg);
   box-shadow: var(--theme-shadow-sm);
 }
@@ -184,7 +184,9 @@ body {
   gap: var(--theme-space-md);
   padding: var(--theme-space-md);
   border-radius: var(--theme-radius-md);
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
 }
 
 .tag-list-scrollable {

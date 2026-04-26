@@ -109,6 +109,10 @@ export function buildThemeVariables(theme: ThemeConfig): ThemeVariableMap {
     "--theme-surface-accent": colors.primaryLight,
     "--theme-surface-accent-hover": mix(colors.primaryLight, colors.primary, 0.12),
 
+    // ========== 亚克力玻璃效果 ==========
+    "--theme-glass-blur": "12px",
+    "--theme-glass-transparency": "30%",
+
     // ========== 控件样式 ==========
     "--theme-control-radius": "8px",
     "--theme-control-gap": "12px",

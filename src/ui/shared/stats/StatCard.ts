@@ -35,7 +35,9 @@ export class StatCard {
 
     // 设置卡片样式
     card.style.cssText = `
-      background: var(--theme-bg-primary);
+      background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+      backdrop-filter: blur(var(--theme-glass-blur));
+      -webkit-backdrop-filter: blur(var(--theme-glass-blur));
       border-radius: 12px;
       padding: 16px 18px;
       border: 1px solid var(--theme-border-primary);

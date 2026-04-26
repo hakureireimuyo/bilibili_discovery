@@ -39,13 +39,13 @@ export class WatchHistoryManager {
 
   private bindEvents(): void {
     this.cleanupFns.push(bindDebouncedTextInput("searchInput", (keyword) => {
-      this.state.keyword = keyword;
-      this.state.currentPage = 0;
-      void this.renderResults();
-    }));
-
-    this.cleanupFns.push(bindDebouncedTextInput("creatorInput", (keyword) => {
-      this.state.creatorKeyword = keyword;
+      if (keyword.startsWith("@")) {
+        this.state.creatorKeyword = keyword.slice(1);
+        this.state.keyword = "";
+      } else {
+        this.state.keyword = keyword;
+        this.state.creatorKeyword = "";
+      }
       this.state.currentPage = 0;
       void this.renderResults();
     }));
@@ -120,6 +120,42 @@ export class WatchHistoryManager {
       resetButton.addEventListener("click", handler);
       this.cleanupFns.push(() => resetButton.removeEventListener("click", handler));
     }
+
+    const filterToggle = document.getElementById("filterToggle");
+    const filterDrawer = document.getElementById("filterDrawer");
+    if (filterToggle && filterDrawer) {
+      const openDrawer = () => {
+        filterDrawer.classList.add("open");
+        filterToggle.classList.add("active");
+      };
+      const closeDrawer = () => {
+        filterDrawer.classList.remove("open");
+        filterToggle.classList.remove("active");
+      };
+      const toggleHandler = () => {
+        if (filterDrawer.classList.contains("open")) {
+          closeDrawer();
+        } else {
+          openDrawer();
+        }
+      };
+      filterToggle.addEventListener("click", toggleHandler);
+      this.cleanupFns.push(() => filterToggle.removeEventListener("click", toggleHandler));
+
+      // Click outside the drawer panel closes it
+      const outsideHandler = (event: MouseEvent) => {
+        if (!filterDrawer.classList.contains("open")) {
+          return;
+        }
+        const target = event.target as Node;
+        const panel = filterDrawer.querySelector(".history-sidebar-filters");
+        if (panel && !panel.contains(target) && !filterToggle.contains(target)) {
+          closeDrawer();
+        }
+      };
+      document.addEventListener("click", outsideHandler);
+      this.cleanupFns.push(() => document.removeEventListener("click", outsideHandler));
+    }
   }
 
   private bindDropZones(): void {
@@ -187,7 +223,7 @@ export class WatchHistoryManager {
       return;
     }
 
-    const tags = (await this.dataService.getTagSummaries(this.state.tagKeyword)).slice(0, 10);
+    const tags = (await this.dataService.getTagSummaries(this.state.tagKeyword)).slice(0, 30);
     container.innerHTML = "";
     if (tags.length === 0) {
       renderEmptyState(container, "没有匹配的标签");
@@ -200,10 +236,7 @@ export class WatchHistoryManager {
   }
 
   private createTagListItem(tag: WatchHistoryTagSummary): HTMLElement {
-    const item = document.createElement("div");
-    item.className = "tag-list-item";
-
-    const pill = createDraggableTagPill({
+    return createDraggableTagPill({
       text: tag.name,
       tagName: tag.name,
       className: "tag-pill",
@@ -217,19 +250,6 @@ export class WatchHistoryManager {
         event.stopPropagation();
       }
     });
-
-    const actions = document.createElement("div");
-    actions.className = "tag-actions";
-
-    const count = document.createElement("span");
-    count.className = "tag-count";
-    count.textContent = `${tag.count}`;
-
-    actions.appendChild(count);
-
-    item.appendChild(pill);
-    item.appendChild(actions);
-    return item;
   }
 
   private async renderFilterTags(): Promise<void> {
@@ -468,7 +488,6 @@ export class WatchHistoryManager {
 
     const inputIds = [
       "searchInput",
-      "creatorInput",
       "tagSearchInput",
       "durationMin",
       "durationMax",

@@ -8,7 +8,7 @@
    ======================================== */
 
 body {
-  background: var(--theme-bg-secondary);
+  background: transparent;
   min-height: 100vh;
   padding: var(--theme-space-lg);
 }
@@ -16,15 +16,14 @@ body {
 .app {
   max-width: 1600px;
   margin: 0 auto;
-  background: var(--theme-bg-primary);
+  background: transparent;
   border-radius: var(--theme-radius-xl);
-  box-shadow: var(--theme-shadow-2xl);
   overflow: hidden;
   position: relative;
 }
 
 .content {
-  padding: var(--theme-space-xl) var(--theme-space-2xl) var(--theme-space-2xl);
+  padding: 0 var(--theme-space-2xl) var(--theme-space-2xl);
   display: flex;
   flex-direction: column;
   gap: var(--theme-space-2xl);
@@ -63,7 +62,9 @@ body {
 }
 
 .chart-panel {
-  background: var(--theme-bg-primary);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: var(--theme-radius-lg);
   padding: var(--theme-space-xl);
   box-shadow: var(--theme-shadow-sm), 0 0 0 1px var(--theme-border-primary);
@@ -370,7 +371,9 @@ body {
 }
 
 .list-panel {
-  background: var(--theme-bg-primary);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: var(--theme-radius-lg);
   padding: var(--theme-space-xl);
   box-shadow: var(--theme-shadow-sm), 0 0 0 1px var(--theme-border-primary);
@@ -388,21 +391,12 @@ body {
   flex-direction: column;
   gap: 6px;
   margin-top: var(--theme-space-md);
-  scrollbar-width: thin;
-  scrollbar-color: var(--theme-border-primary) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .list-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-.list-container::-webkit-scrollbar-thumb {
-  background: var(--theme-border-primary);
-  border-radius: 2px;
-}
-
-.list-container::-webkit-scrollbar-track {
-  background: transparent;
+  display: none;
 }
 
 /* 列表项 */
@@ -482,7 +476,9 @@ body {
 
 .interest-section {
   width: 100%;
-  background: var(--theme-bg-primary);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: var(--theme-radius-lg);
   padding: var(--theme-space-xl);
   box-shadow: var(--theme-shadow-sm), 0 0 0 1px var(--theme-border-primary);

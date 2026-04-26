@@ -143,7 +143,8 @@ function patchHtmlEntryScripts() {
     join(extensionRoot, "ui", "test-tools", "test-tools.html"),
     join(extensionRoot, "ui", "theme-settings", "theme-settings.html"),
     join(extensionRoot, "ui", "theme-example", "theme-example.html"),
-    join(extensionRoot, "ui", "workbench", "workbench.html")
+    join(extensionRoot, "ui", "workbench", "workbench.html"),
+    join(extensionRoot, "ui", "animation-test", "animation-test.html")
   ];
 
   for (const file of htmlFiles) {

@@ -50,6 +50,10 @@ export interface AppSettings {
    * 获取UP主视频的最大数量
    */
   maxVideosToFetch: number;
+  /**
+   * 工作台背景动画类型
+   */
+  backgroundAnimation: string;
 }
 
 interface SettingsRecord<T = unknown> {

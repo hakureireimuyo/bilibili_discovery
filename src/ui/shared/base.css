@@ -57,7 +57,7 @@ body {
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--theme-text-primary);
-  background-color: var(--theme-page-bg);
+  background-color: transparent;
   min-height: 100vh;
 }
 

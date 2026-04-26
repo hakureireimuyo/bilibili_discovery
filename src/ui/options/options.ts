@@ -30,6 +30,7 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
   const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
   const maxVideosToFetchEl = document.getElementById("max-videos-to-fetch") as HTMLInputElement | null;
+  const backgroundAnimationEl = document.getElementById("background-animation") as HTMLSelectElement | null;
 
   if (cacheHoursEl) cacheHoursEl.value = String(settings.cacheHours);
   if (userIdEl && settings.userId) userIdEl.value = String(settings.userId);
@@ -41,6 +42,7 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   if (apiMinIntervalEl) apiMinIntervalEl.value = String(settings.apiMinInterval);
   if (apiMaxIntervalEl) apiMaxIntervalEl.value = String(settings.apiMaxInterval);
   if (maxVideosToFetchEl) maxVideosToFetchEl.value = String(settings.maxVideosToFetch);
+  if (backgroundAnimationEl) backgroundAnimationEl.value = settings.backgroundAnimation;
 }
 
 function readForm() {
@@ -54,6 +56,7 @@ function readForm() {
   const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
   const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
   const maxVideosToFetchEl = document.getElementById("max-videos-to-fetch") as HTMLInputElement | null;
+  const backgroundAnimationEl = document.getElementById("background-animation") as HTMLSelectElement | null;
 
   return normalizeSettings({
     cacheHours: Number(cacheHoursEl?.value ?? DEFAULT_SETTINGS.cacheHours),
@@ -67,7 +70,8 @@ function readForm() {
     tagFetchInterval: Number(tagFetchIntervalEl?.value ?? DEFAULT_SETTINGS.tagFetchInterval),
     apiMinInterval: Number(apiMinIntervalEl?.value ?? DEFAULT_SETTINGS.apiMinInterval),
     apiMaxInterval: Number(apiMaxIntervalEl?.value ?? DEFAULT_SETTINGS.apiMaxInterval),
-    maxVideosToFetch: Number(maxVideosToFetchEl?.value ?? DEFAULT_SETTINGS.maxVideosToFetch)
+    maxVideosToFetch: Number(maxVideosToFetchEl?.value ?? DEFAULT_SETTINGS.maxVideosToFetch),
+    backgroundAnimation: String(backgroundAnimationEl?.value ?? DEFAULT_SETTINGS.backgroundAnimation)
   });
 }
 

@@ -1,7 +1,5 @@
 body {
-  background:
-    radial-gradient(circle at top left, var(--theme-primary-softer), transparent 38%),
-    linear-gradient(135deg, var(--theme-options-hero-start) 0%, var(--theme-options-hero-end) 100%);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,19 +7,45 @@ body {
 }
 
 .app {
-  max-width: 800px;
   width: 100%;
-  background: var(--theme-surface-base);
+  background: transparent;
   border-radius: var(--theme-radius-xl);
-  box-shadow: var(--theme-shadow-2xl);
   overflow: hidden;
 }
 
 .header {
   background: linear-gradient(135deg, var(--theme-options-hero-start) 0%, var(--theme-options-hero-end) 100%);
   color: var(--theme-text-inverse);
-  padding: var(--theme-space-xl) var(--theme-space-lg);
+  padding: var(--theme-space-md) var(--theme-space-lg);
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--theme-space-md);
+}
+
+.hero-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: var(--theme-font-size-base);
+  font-weight: var(--theme-font-weight-bold);
+}
+
+.hero-description {
+  display: none;
 }
 
 .content {
@@ -60,7 +84,9 @@ body {
 
 .stat-card {
   padding: var(--theme-space-lg);
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: var(--theme-radius-md);
   border: 2px solid var(--theme-border-primary);
   transition: all var(--transition-base);
@@ -178,7 +204,9 @@ body {
 .progress-container {
   margin-top: 16px;
   padding: 16px;
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-radius: 8px;
   border: 2px solid var(--theme-border-primary);
 }
@@ -234,7 +262,9 @@ body {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--theme-text-secondary);
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-left: 3px solid var(--theme-info);
   border-radius: 4px;
   line-height: 1.4;
@@ -242,7 +272,9 @@ body {
 
 .footer {
   padding: 20px 24px;
-  background: var(--theme-surface-muted);
+  background: color-mix(in srgb, var(--theme-bg-primary), transparent var(--theme-glass-transparency));
+  backdrop-filter: blur(var(--theme-glass-blur));
+  -webkit-backdrop-filter: blur(var(--theme-glass-blur));
   border-top: 1px solid var(--theme-border-primary);
 }
 
