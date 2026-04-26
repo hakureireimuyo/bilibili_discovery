@@ -1,5 +1,5 @@
 import { initThemedPage } from "../../themes/index.js";
-import { createAnimation, type AnimationId } from "./animations.js";
+import { createAnimation, type AnimationId } from "./animations/index.js";
 import { getValue } from "../../database/implementations/index.js";
 
 declare const chrome: {

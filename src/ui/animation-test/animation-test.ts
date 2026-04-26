@@ -1,5 +1,5 @@
 import { initThemedPage } from "../../themes/index.js";
-import { createAnimation, ANIMATION_OPTIONS, type AnimationId } from "../workbench/animations.js";
+import { createAnimation, ANIMATION_OPTIONS, type AnimationId } from "../workbench/animations/index.js";
 
 let stopCurrent: (() => void) | null = null;
 

@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ./scripts/prebuild.js && cross-env NODE_ENV=development tsc -p tsconfig.json && node ./scripts/bundle-content-script.js && node ./scripts/build-extension.js",
-    "package": "node ./scripts/prebuild.js && cross-env NODE_ENV=production tsc -p tsconfig.json && node ./scripts/bundle-content-script.js && node ./scripts/build-extension.js && node ./scripts/package-extension.js"
+    "build": "node ./scripts/prebuild.js && cross-env NODE_ENV=development tsc -p tsconfig.json && node ./scripts/bundle-content-script.js && node ./scripts/bundle-workbench.js && node ./scripts/build-extension.js",
+    "package": "node ./scripts/prebuild.js && cross-env NODE_ENV=production tsc -p tsconfig.json && node ./scripts/bundle-content-script.js && node ./scripts/bundle-workbench.js && node ./scripts/build-extension.js && node ./scripts/package-extension.js"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.37",
@@ -16,6 +16,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "dexie": "^4.3.0"
+    "dexie": "^4.3.0",
+    "tsparticles": "^3.9.1"
   }
 }
