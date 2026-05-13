@@ -25,15 +25,20 @@
 }
 
 .hero-logo {
-  width: 40px;
+  width: auto;
+  min-width: 72px;
   height: 40px;
-  font-size: 20px;
+  padding: 0 10px;
+  font-size: 13px;
+  letter-spacing: 0;
+  font-weight: 800;
 }
 
 .hero-copy {
-  margin-top: 12px;
-  display: grid;
-  gap: 6px;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  margin-top: 0;
 }
 
 .hero-copy p {
@@ -44,6 +49,86 @@
 
 .hero-status {
   font-size: 12px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.popup-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.popup-icon::before {
+  display: block;
+}
+
+.icon-bilibili::before {
+  content: "B";
+}
+
+.icon-today::before {
+  content: "T";
+}
+
+.icon-week::before {
+  content: "7";
+}
+
+.icon-following::before {
+  content: "UP";
+  font-size: 0.72em;
+}
+
+.icon-favorites::before {
+  content: "F";
+}
+
+.icon-tags::before {
+  content: "#";
+}
+
+.icon-records::before {
+  content: "R";
+}
+
+.icon-open::before {
+  content: ">";
+}
+
+.icon-ready::before {
+  content: "";
+  width: 0.72em;
+  height: 0.72em;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.icon-error::before {
+  content: "!";
+}
+
+.icon-loading {
+  color: currentColor;
+}
+
+.icon-loading::before {
+  content: "";
+  width: 0.72em;
+  height: 0.72em;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.72;
 }
 
 /* ========== 焦点网格 ========== */

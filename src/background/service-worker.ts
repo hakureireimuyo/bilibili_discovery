@@ -4,10 +4,12 @@
 
 import { DataProcessor } from '../content/processors/data-processor.js';
 import { ImageRepositoryImpl, getValue, type AppSettings } from '../database/implementations/index.js';
+import { refreshPopupSnapshotInBackground } from './popup-snapshot-refresh.js';
 
 const dataProcessor = new DataProcessor();
 const imageRepository = new ImageRepositoryImpl();
 const IMAGE_CLEANUP_ALARM = "image-cache-cleanup";
+const POPUP_SNAPSHOT_REFRESH_DELAY = 5000;
 
 declare const chrome: {
   alarms?: {
@@ -103,9 +105,16 @@ async function handleAlarm(alarm: { name: string }): Promise<void> {
   }
 }
 
+function schedulePopupSnapshotRefresh(): void {
+  setTimeout(() => {
+    refreshPopupSnapshotInBackground("startup-idle");
+  }, POPUP_SNAPSHOT_REFRESH_DELAY);
+}
+
 export function initBackground(): void {
   console.log("[Background] Extension started");
   scheduleImageCleanupAlarm();
+  schedulePopupSnapshotRefresh();
   if (typeof chrome !== "undefined" && chrome.alarms?.onAlarm) {
     chrome.alarms.onAlarm.addListener((alarm) => {
       void handleAlarm(alarm);

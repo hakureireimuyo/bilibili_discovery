@@ -11,23 +11,21 @@
     <link rel="stylesheet" href="../shared/components.css" />
     <!-- 页面特定样式 -->
     <link rel="stylesheet" href="./popup.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   </head>
   <body>
     <div class="app">
       <div id="popup-content">
         <header class="hero">
           <div class="hero-mark">
-            <span class="hero-logo"><i class="fab fa-bilibili"></i></span>
+            <span class="hero-logo">BiliBili</span>
             <div>
               <h1>观察窗口</h1>
             </div>
           </div>
 
           <div class="hero-copy">
-            <p id="hero-status" class="hero-status is-loading">
-              <i class="fas fa-circle-notch fa-spin"></i>
-              <span>正在整理你的观察窗口...</span>
+            <p id="hero-status" class="hero-status is-loading" aria-label="正在整理你的观察窗口">
+              <span class="popup-icon icon-loading"></span>
             </p>
           </div>
         </header>
@@ -43,7 +41,7 @@
         <footer class="footer-actions">
           <button id="btn-open-workbench" type="button" class="primary-action">
             <strong>打开工作台 →</strong>
-            <i class="fas fa-arrow-up-right-from-square"></i>
+            <span class="popup-icon icon-open"></span>
           </button>
         </footer>
       </div>

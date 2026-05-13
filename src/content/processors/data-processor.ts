@@ -49,8 +49,14 @@ import {
   Creator,
   WatchEvent
 } from '../../database/types/index.js';
-import { dbManager } from '../../database/indexeddb/index.js';
+import { DBUtils, STORE_NAMES, dbManager } from '../../database/indexeddb/index.js';
 import { logger } from '../../utils/logger.js';
+import {
+  recordPopupCreatorChange,
+  recordPopupFavoriteDelta,
+  recordPopupTagDelta,
+  recordPopupWatchDelta
+} from '../../ui/popup/popup-snapshot-store.js';
 /**
  * 数据处理器类
  */
@@ -161,6 +167,7 @@ export class DataProcessor {
         };
 
         await this.creatorRepo.upsertCreator(updatedCreator);
+        await recordPopupCreatorChange(existingCreator, updatedCreator);
         logger.debug('[DataProcessor] UP主数据已更新');
 
         // 如果头像URL发生变化，下载并存储新头像
@@ -191,6 +198,7 @@ export class DataProcessor {
       };
 
       await this.creatorRepo.upsertCreator(newCreator);
+      await recordPopupCreatorChange(null, newCreator);
       logger.debug('[DataProcessor] 新UP主记录已创建');
 
       // UP主记录创建后，再下载并存储头像
@@ -377,6 +385,11 @@ export class DataProcessor {
         isComplete: updatedIsComplete,
         endTime: data.endTime
       });
+      await recordPopupWatchDelta({
+        watchDuration: data.watchDuration,
+        watchTime: data.watchTime,
+        isNewRecord: false
+      });
 
       // 同步更新UP主的总观看时长(不增加观看次数)
       if (data.creatorId) {
@@ -404,6 +417,11 @@ export class DataProcessor {
       };
 
       await this.watchEventRepo.recordWatchEvent(watchEvent);
+      await recordPopupWatchDelta({
+        watchDuration: data.watchDuration,
+        watchTime: data.watchTime,
+        isNewRecord: true
+      });
 
       // 同步更新UP主的总观看时长(增加观看次数)
       if (data.creatorId) {
@@ -459,11 +477,13 @@ export class DataProcessor {
         // 不抛出错误，避免影响主要数据处理流程
       }
       
-      await this.syncFavoriteCollections(videoId, folderNames, 'add');
+      const favoriteDelta = await this.syncFavoriteCollections(videoId, folderNames, 'add');
+      await recordPopupFavoriteDelta(favoriteDelta);
       return;
     }
 
-    await this.syncFavoriteCollections(videoId, folderNames, 'remove');
+    const favoriteDelta = await this.syncFavoriteCollections(videoId, folderNames, 'remove');
+    await recordPopupFavoriteDelta(favoriteDelta);
   }
 
   /**
@@ -563,7 +583,11 @@ export class DataProcessor {
     logger.debug('[DataProcessor] 创建标签:', tagNames);
     // 确保数据库已初始化
     await this.ensureDbInitialized();
-    return await this.tagRepo.createTags(tagNames, TagSource.SYSTEM);
+    const beforeCount = await DBUtils.count(STORE_NAMES.TAGS);
+    const tagIds = await this.tagRepo.createTags(tagNames, TagSource.SYSTEM);
+    const afterCount = await DBUtils.count(STORE_NAMES.TAGS);
+    await recordPopupTagDelta(afterCount - beforeCount);
+    return tagIds;
   }
 
   /**
@@ -695,7 +719,9 @@ export class DataProcessor {
     videoId: ID,
     folderNames: string[],
     mode: 'add' | 'remove'
-  ): Promise<void> {
+  ): Promise<number> {
+    let delta = 0;
+
     if (folderNames.length === 0) {
       if (mode === 'remove') {
         const collections = await this.collectionRepo.getCollectionsByPlatform(Platform.BILIBILI);
@@ -703,10 +729,11 @@ export class DataProcessor {
           const exists = await this.collectionRepo.hasVideoInCollection(collection.collectionId, videoId);
           if (exists) {
             await this.collectionRepo.removeVideoFromCollection(collection.collectionId, videoId);
+            delta -= 1;
           }
         }
       }
-      return;
+      return delta;
     }
 
     for (const folderName of folderNames) {
@@ -715,14 +742,18 @@ export class DataProcessor {
         const exists = await this.collectionRepo.hasVideoInCollection(collectionId, videoId);
         if (!exists) {
           await this.collectionRepo.addItemToCollection(collectionId, { videoId });
+          delta += 1;
         }
       } else {
         const exists = await this.collectionRepo.hasVideoInCollection(collectionId, videoId);
         if (exists) {
           await this.collectionRepo.removeVideoFromCollection(collectionId, videoId);
+          delta -= 1;
         }
       }
     }
+
+    return delta;
   }
 
   private async ensureFavoriteCollection(folderName: string): Promise<ID> {
